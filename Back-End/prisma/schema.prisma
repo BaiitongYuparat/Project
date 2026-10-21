@@ -2,17 +2,12 @@ generator client {
   provider = "prisma-client-js"
 }
 
-generator erd {
-  provider = "prisma-erd-generator"
-  output   = "../erd/ERD.svg"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-
+//ตาราง user
 model User {
   id         Int      @id @default(autoincrement())
   googleId   String?  @unique
@@ -21,4 +16,54 @@ model User {
   phone      String?
   status     String   @default("active")
   created_at DateTime @default(now()) @db.Timestamp(6)
+
+  body       Body[]
+  userConsents UserConsent[]
+  @@map("User") //ระบุว่าตารางจริงใน PostgreSQL
+}
+
+
+model Body {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  height      Decimal? @db.Decimal(5, 2) // ซม.
+  weight      Decimal? @db.Decimal(5, 2) // กก.
+  chest       Decimal? @db.Decimal(5, 2) // ซม.
+  waist       Decimal? @db.Decimal(5, 2) // ซม.
+  hips        Decimal? @db.Decimal(5, 2) // ซม.
+  recorded_at DateTime @default(now()) @db.Timestamp(6)
+
+  user User @relation(fields: [user_id], references: [id])
+  images Image[]
+
+  @@map("body")
+}
+
+
+model Image {
+  id             Int      @id @default(autoincrement())
+  body_id        Int
+  s3             String?
+  angle          String? //มุมของภาพ เช่น ด้านหน้า ด้านข้าง ด้านหลัง
+  quality_status String? // ผ่าน, ไม่ผ่าน, รอดำเนินการ (ผลตรวจ AI)
+  uploaded_at    DateTime @default(now()) @db.Timestamp(6)
+
+  body Body @relation(fields: [body_id], references: [id])
+
+  @@unique([body_id, angle])
+  @@map("image")
+}
+
+
+model UserConsent {
+  id         Int       @id @default(autoincrement())
+  user_id    Int
+  type       String  // ยินยอมเรื่อง pdpa, ai_processing
+  granted    Boolean
+  granted_at DateTime  @default(now()) @db.Timestamp(6)
+  revoked_at DateTime? @db.Timestamp(6)
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("user_consents")
 }
