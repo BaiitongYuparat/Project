@@ -17,11 +17,11 @@ model User {
   status     String   @default("active")
   created_at DateTime @default(now()) @db.Timestamp(6)
 
-  body       Body[]
+  body         Body[]
   userConsents UserConsent[]
+
   @@map("User") //ระบุว่าตารางจริงใน PostgreSQL
 }
-
 
 model Body {
   id          Int      @id @default(autoincrement())
@@ -33,12 +33,11 @@ model Body {
   hips        Decimal? @db.Decimal(5, 2) // ซม.
   recorded_at DateTime @default(now()) @db.Timestamp(6)
 
-  user User @relation(fields: [user_id], references: [id])
+  user   User    @relation(fields: [user_id], references: [id])
   images Image[]
 
   @@map("body")
 }
-
 
 model Image {
   id             Int      @id @default(autoincrement())
@@ -54,11 +53,10 @@ model Image {
   @@map("image")
 }
 
-
 model UserConsent {
   id         Int       @id @default(autoincrement())
   user_id    Int
-  type       String  // ยินยอมเรื่อง pdpa, ai_processing
+  type       String // ยินยอมเรื่อง pdpa, ai_processing
   granted    Boolean
   granted_at DateTime  @default(now()) @db.Timestamp(6)
   revoked_at DateTime? @db.Timestamp(6)
