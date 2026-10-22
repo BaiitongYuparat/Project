@@ -4,18 +4,30 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "postinstall": "prisma skills sync || exit 0"
-  },
+  "dev": "tsx watch scr/index.ts",
+  "build": "tsc",
+  "start": "node dist/index.js",
+  "test": "echo \"Error: no test specified\" && exit 1",
+  "postinstall": "prisma skills sync || exit 0"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@mermaid-js/mermaid-cli": "^11.17.0",
-    "prisma": "6.19.3",
-    "prisma-erd-generator": "^3.2.1"
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "prisma": "^6.19.3",
+    "prisma-erd-generator": "^3.2.1",
+    "tsx": "^4.23.15"
   },
   "dependencies": {
-    "@prisma/client": "6.19.3"
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^6.19.3",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "google-auth-library": "^11.3.1",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.23.1"
   }
 }
