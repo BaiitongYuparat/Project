@@ -1,7 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import { Request, Response } from "express";
 import { OAuth2Client } from "google-auth-library";
-import jwt from "jsonwebtoken";
+import { signToken } from "../../lib/jwt";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -37,11 +37,9 @@ export const googleAuth = async (req: Request, res: Response) => {
             return res.status(403).json({ message: "Account is not active" });
         }
 
-        const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, {
-            expiresIn: "7d",
-        });
+        const token = signToken(user.id)
 
-        res.json({ token, user });
+        res.json({ token, user: {id: user.id , email: user.email , name: user.name} });
 
     } catch (error) {
         console.error(error);
