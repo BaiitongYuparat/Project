@@ -9,9 +9,9 @@ datasource db {
 
 //ตาราง user
 model User {
-  id         Int      @id @default(autoincrement())
+  id         String   @id @default(uuid())
   googleId   String?  @unique
-  name       String
+  name       String?
   email      String   @unique
   phone      String?
   status     String   @default("active")
@@ -24,8 +24,8 @@ model User {
 }
 
 model Body {
-  id          Int      @id @default(autoincrement())
-  user_id     Int
+  id          String   @id @default(uuid())
+  user_id     String
   height      Decimal? @db.Decimal(5, 2) // ซม.
   weight      Decimal? @db.Decimal(5, 2) // กก.
   chest       Decimal? @db.Decimal(5, 2) // ซม.
@@ -40,8 +40,8 @@ model Body {
 }
 
 model Image {
-  id             Int      @id @default(autoincrement())
-  body_id        Int
+  id             String   @id @default(uuid())
+  body_id        String
   s3             String?
   angle          String? //มุมของภาพ เช่น ด้านหน้า ด้านข้าง ด้านหลัง
   quality_status String? // ผ่าน, ไม่ผ่าน, รอดำเนินการ (ผลตรวจ AI)
@@ -54,8 +54,8 @@ model Image {
 }
 
 model UserConsent {
-  id         Int       @id @default(autoincrement())
-  user_id    Int
+  id         String   @id @default(uuid())
+  user_id    String
   type       String // ยินยอมเรื่อง pdpa, ai_processing
   granted    Boolean
   granted_at DateTime  @default(now()) @db.Timestamp(6)
