@@ -5,7 +5,7 @@ import { signToken } from "../../lib/jwt";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-export const googleAuth = async (req: Request, res: Response) => {
+export const logingoogle = async (req: Request, res: Response) => {
     const { idToken } = req.body;
     try {
 
@@ -22,35 +22,41 @@ export const googleAuth = async (req: Request, res: Response) => {
             return res.status(401).json({ message: "Email not verified" });
         }
 
-        // สมัครครั้งแรก หรือล็อกอินบัญชีเดิม
-        const user = await prisma.user.upsert({
-            where: { email: payload.email },
-            update: { googleId: payload.sub },
-            create: {
-                email: payload.email,
-                googleId: payload.sub,
-                name: payload.name ?? null,
-            },
+        //หาจาก googleId ก่อน แล้ว fallback ไปหาด้วย email
+        let user = await prisma.user.findUnique({
+            where: { googleId: payload.sub },
         });
+
+        // สมัครครั้งแรก 
+        if (!user) {
+            user = await prisma.user.create({
+                data: {
+                    email: payload.email,
+                    googleId: payload.sub,
+                    name: payload.name ?? null,
+                    phone: null,
+                },
+            });
+        }
 
         if (user.status !== "active") {
             return res.status(403).json({ message: "Account is not active" });
         }
 
-        const token = signToken(user.id)
+        const token = signToken(user.id);
+        res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
 
-        res.json({ token, user: {id: user.id , email: user.email , name: user.name} });
 
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: "Google authentication failed" });
+        res.status(401).json({ error: "Google authentication failed" });
     }
-}
+};
 
-export const loginUser = async (req: Request, res: Response) => {
 
-}
 
 export const logoutUser = async (req: Request, res: Response) => {
-
+    return res.status(200).json({
+        message: "Logout success"
+    });
 }
