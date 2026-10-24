@@ -1,8 +1,11 @@
 import express from 'express'
-import { googleAuth } from '../controllers/auth'
-
+import { logoutUser , logingoogle } from '../controllers/auth'
+import { getCurrentUser } from '../controllers/auth'
+import { authMiddleware } from '../middlewares/auth'
 const router = express.Router()
 
-router.post('/google', googleAuth)
+router.post('/google', logingoogle)
+router.post('/logout', logoutUser)
+router.get("/me", authMiddleware, getCurrentUser);
 
 export default router
