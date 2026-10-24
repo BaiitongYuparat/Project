@@ -1,23 +1,31 @@
 import { GoogleLogin } from "@react-oauth/google";
 import { loginWithGoogle } from "../services/authService";
+import { useState } from "react";
+import { useDispatch } from 'react-redux'
+import { login } from "../store/userSlice";
 
 type LoginModalProps = {
   isOpen: boolean;
   onClose: () => void;
 };
 
-export default function LoginModal({
-  isOpen,
-  onClose,
-}: LoginModalProps) {
-  if (!isOpen) return null;
+export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useDispatch();
+    if (!isOpen) return null;
 
-  async function handleGoogleLogin(idToken:string) {
+  async function handleGoogleLogin(idToken: string) {
+    setIsLoading(true);
     try {
-        await loginWithGoogle(idToken)
-        console.log("Login Successful")
-    } catch(error) {
-        console.log("Login Failed", error)
+      const result = await loginWithGoogle(idToken);
+      console.log("ข้อมูลที่ได้จาก Backend:",result)
+      dispatch(login(result.user))
+
+      onClose();
+    } catch (error) {
+      console.log("Login Failed", error);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -58,20 +66,25 @@ export default function LoginModal({
         </p>
 
         <div className="flex justify-center">
-          <GoogleLogin
-            onSuccess={async (response) => {
-              if (response.credential) {
-                await handleGoogleLogin(response.credential)
-              }
-            }}
-            onError={() => {
-              console.error("Google Login failed");
-            }}
-            text="continue_with"
-            theme="outline"
-            size="large"
-            shape="rectangular"
-          />
+          {isLoading ? (
+            <div className="text-blue-500"> กำลังเข้าสู่ระบบ... </div>
+          ) : (
+            <GoogleLogin
+              onSuccess={async (response) => {
+                if (response.credential) {
+                  await handleGoogleLogin(response.credential);
+                  console.log("Login Successful");
+                }
+              }}
+              onError={() => {
+                console.error("Google Login failed");
+              }}
+              text="continue_with"
+              theme="outline"
+              size="large"
+              shape="rectangular"
+            />
+          )}
         </div>
       </div>
     </div>

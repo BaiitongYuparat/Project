@@ -1,19 +1,16 @@
+import type { User } from "./userSlice";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 export type GoogleAuthResponse = {
   token: string;
-  user: {
-    id: string;
-    email: string;
-    name: string | null;
-  };
+  user: User;
 };
 
 export async function loginWithGoogle(
   idToken: string
-): Promise<GoogleAuthResponse> {
-  const response = await fetch(`${API_URL}/google`, {
+): Promise<GoogleAuthResponse > {
+  const response = await fetch(`${API_URL}/auth/google`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -26,6 +23,6 @@ export async function loginWithGoogle(
   if (!response.ok) {
     throw new Error(data.message || data.error || "Google Login failed");
   }
-
+    localStorage.setItem("token", data.token); // เก็บ token ไว้ชั่วคราว
   return data as GoogleAuthResponse;
 }
