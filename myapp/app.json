@@ -36,7 +36,17 @@
         }
       ],
       "expo-web-browser",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-image",
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "buildExpoModulesCoreFromSource": false
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

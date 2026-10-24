@@ -13,6 +13,7 @@ import * as Google from "expo-auth-session/providers/google";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { loginWithGoogle } from "../../services/authservice";
+import GoogleLogo from "../../component/GoogleLogo";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -69,7 +70,7 @@ const LoginScreen = () => {
     >
       <View className="flex-1 items-center justify-center px-6">
         <Text className="mb-3 text-center text-3xl font-bold text-[#3B2F2A]">
-          ยินดีต้อนรับสู่ LongLoei
+          ยินดีต้อนรับสู่ LongDress
         </Text>
         <Text className="mb-10 text-center text-base leading-6 text-[#8A7B72]">
           เข้าสู่ระบบหรือสร้างบัญชีใหม่ด้วย Google{"\n"}ในขั้นตอนเดียว
@@ -81,10 +82,7 @@ const LoginScreen = () => {
           className={`w-full flex-row items-center justify-center gap-[14px] rounded-full border-2 border-[#3B2F2A] bg-[#FFFDFB] py-[18px] active:bg-[#F5EEE9] ${!request || loading ? "opacity-60" : ""
             }`}
         >
-          <Image
-            source={require("../../assets/images/icon.png")}
-            className="h-[24px] w-[24px]"
-          />
+            <GoogleLogo size={24} />
           <Text className="text-lg font-bold text-[#3B2F2A]">
             {loading ? "กำลังดำเนินการ..." : "ดำเนินการต่อด้วย Google"}
           </Text>
