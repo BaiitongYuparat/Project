@@ -1,15 +1,14 @@
 {
   "expo": {
-    "name": "myapp",
-    "slug": "myapp",
+    "name": "app",
+    "slug": "app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "app",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.fourth.longdress"
+      "icon": "./assets/expo.icon"
     },
     "android": {
       "adaptiveIcon": {
@@ -18,8 +17,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false,
-      "package": "com.fourth.longdress"
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "server",
@@ -35,8 +33,7 @@
           "imageWidth": 76
         }
       ],
-      "expo-web-browser",
-      "expo-secure-store"
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

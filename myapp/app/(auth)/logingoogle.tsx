@@ -12,7 +12,7 @@ import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { loginWithGoogle } from "../../services/authservice";
+import { loginWithGoogle } from "../../service/authservice";
 import GoogleLogo from "../../component/GoogleLogo";
 
 WebBrowser.maybeCompleteAuthSession();
