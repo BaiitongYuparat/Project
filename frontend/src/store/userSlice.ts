@@ -1,13 +1,15 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { User } from "../services/userSlice";
+import type { User } from "../services/userService";
 
 //กำหนด type
 type UserState = {
   user: User | null;
+  authChecked: boolean;
 };
 // ตั้งค่าข้อมูลจริง (เริ่มต้นไม่มีผู้ใช้งาน)
 const initialState: UserState = {
   user: null,
+  authChecked: false,
 };
 
 export const userSlice = createSlice({
@@ -20,8 +22,11 @@ export const userSlice = createSlice({
     logout: (state) => {
       state.user = null;
     },
+    setAuthChecked: (state) => {
+      state.authChecked = true;
+    },
   },
 });
 
-export const { login, logout } = userSlice.actions;
+export const { login, logout , setAuthChecked } = userSlice.actions;
 export default userSlice.reducer;

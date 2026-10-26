@@ -2,13 +2,12 @@ import Button from "./Button";
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import LoginModal from "./LoginModal";
-import { useSelector} from 'react-redux'
-import type {RootState} from '../store/store';
+import { useSelector } from "react-redux";
+import type { RootState } from "../store/store";
 export default function NavBar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-    const user = useSelector(
-  (state: RootState) => state.user.user
-);
+  const user = useSelector((state: RootState) => state.user.user);
+  const authChecked = useSelector((state: RootState) => state.user.authChecked);
 
   return (
     <header className="h-16 bg-white shadow-md px-6">
@@ -59,20 +58,17 @@ export default function NavBar() {
 
         {/* Login */}
         <div className="shrink-0">
-            {user ? (
-                <Button variant="outline">{user.name}</Button>
-            ): (
-                <Button onClick={() => setIsModalOpen(true)}>เข้าสู่ระบบ</Button>
-            )}
-          
+          {!authChecked ? (
+            <div className="h-10 w-28" /> // รอเช็คว่า login อยู่ไหม
+          ) : user ? (
+            <Button variant="outline">{user.name ?? user.email}</Button>
+          ) : (
+            <Button onClick={() => setIsModalOpen(true)}>เข้าสู่ระบบ</Button>
+          )}
         </div>
       </div>
 
-
-      <LoginModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
+      <LoginModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </header>
   );
 }

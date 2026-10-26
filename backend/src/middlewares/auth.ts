@@ -22,15 +22,18 @@ export const authMiddleware = async (
     res: Response,
     next: NextFunction
 ) => {
+    
     try {
         // 1. ดึง token จาก header: Authorization: Bearer <token>
         const authHeader = req.headers.authorization;
 
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            return res.status(401).json({ message: "Missing or invalid Authorization header" });
-        }
+        const token = authHeader?.startsWith("Bearer ")
+            ? authHeader.slice(7).trim()
+            : req.cookies?.token;
 
-        const token = authHeader.split(" ")[1];
+        if (!token || typeof token !== "string") {
+            return res.status(401).json({ message: "Missing authentication token" });
+        }
         const { userId } = verifyToken(token);
  
         // 2. หา user จาก DataBase (กันกรณี user ถูกระงับ/ลบหลังออก token ไปแล้ว)
