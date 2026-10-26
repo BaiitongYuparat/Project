@@ -3,16 +3,20 @@ import { Request, Response } from "express";
 import { OAuth2Client } from "google-auth-library";
 import { signToken } from "../../lib/jwt";
 
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const googleClient = new OAuth2Client();
+
+const allowedAudiences = [
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_ID_APP,
+].filter(Boolean) as string[];
+
 
 export const logingoogle = async (req: Request, res: Response) => {
     const { idToken } = req.body;
     try {
-
-        // ตรวจ token กับ Google
         const ticket = await googleClient.verifyIdToken({
             idToken,
-            audience: process.env.GOOGLE_CLIENT_ID,
+            audience: allowedAudiences,
         });
 
         const payload = ticket.getPayload();
@@ -22,30 +26,41 @@ export const logingoogle = async (req: Request, res: Response) => {
             return res.status(401).json({ message: "Email not verified" });
         }
 
-        //หาจาก googleId ก่อน แล้ว fallback ไปหาด้วย email
-        let user = await prisma.user.findUnique({
-            where: { googleId: payload.sub },
-        });
+        const { sub: googleId, email, name } = payload;
 
-        // สมัครครั้งแรก 
-        if (!user) {
-            user = await prisma.user.create({
-                data: {
-                    email: payload.email,
-                    googleId: payload.sub,
-                    name: payload.name ?? null,
-                    phone: null,
-                },
+        // หาผู้ใช้ แล้วสร้างใหม่หรือเชื่อมบัญชีตามกรณี
+        try {
+            // หาจาก googleId ก่อน แล้ว fallback ไปหาด้วย email
+            let user = await prisma.user.findFirst({
+                where: { OR: [{ googleId }, { email }] },
             });
+
+            if (!user) {
+                // สมัครครั้งแรก
+                user = await prisma.user.create({
+                    data: { email, googleId, name: name ?? null },
+                });
+            } else if (!user.googleId) {
+                // มีบัญชีอีเมลอยู่แล้ว ให้เชื่อม Google เข้าไป
+                user = await prisma.user.update({
+                    where: { id: user.id },
+                    data: { googleId },
+                });
+            }
+
+            if (user.status !== "active") {
+                return res.status(403).json({ message: "Account is not active" });
+            }
+
+            const token = signToken(user.id);
+            return res.json({
+                token,
+                user: { id: user.id, email: user.email, name: user.name },
+            });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ message: "Internal server error" });
         }
-
-        if (user.status !== "active") {
-            return res.status(403).json({ message: "Account is not active" });
-        }
-
-        const token = signToken(user.id);
-        res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
-
 
     } catch (error) {
         console.error(error);
