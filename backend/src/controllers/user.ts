@@ -45,3 +45,40 @@ export const deleteUser = async (req: Request, res: Response) => {
 
     }
 }
+
+export const updateUser = async (req:Request , res: Response) => {
+     const id = req.params.id as string
+     const { name, email, phone } = req.body;
+     try{
+        const user = await prisma.user.update({
+             where: { id: id },
+             data: {
+                name,
+                email,
+                phone     
+             }
+        })
+        return res.json(user);
+     }
+     catch (error){
+        console.error(error);
+        res.status(500).json({ error: "Failed to update user" });
+     }
+}
+
+export const createUser = async (req:Request , res:Response) => {
+    const {name , email , phone , } = req.body;
+    try{
+        const user = await prisma.user.create({
+            data: {
+                email,
+                phone,
+                name
+            }
+        })
+        return res.status(201).json(user);
+    }catch(error){
+        console.error(error);
+        res.status(500).json({ error: "Failed to create user" });
+    }
+}

@@ -1,8 +1,14 @@
 import axios from "axios";
 
- const URL_API = "http://193.168.146.84:3000/auth";
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+const URL_API = `${BASE_URL}/auth`;
 
 export const loginWithGoogle = async (idToken: string) => {
-    const response = await axios.post(`${URL_API}/google`, { idToken });
-    return response.data;
-}
+    try {
+        const response = await axios.post(`${URL_API}/google`, { idToken });
+        return response.data;
+    } catch (error: any) {
+        console.log("AUTH API:", error.response?.status, error.response?.data);
+        throw error;
+    }
+};
