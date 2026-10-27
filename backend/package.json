@@ -19,9 +19,12 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.6.5",
     "prisma": "^6.19.3",
     "prisma-erd-generator": "^3.2.1",
-    "tsx": "^4.23.15"
+    "ts-node": "^10.9.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
