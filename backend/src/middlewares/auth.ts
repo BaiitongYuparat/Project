@@ -3,18 +3,6 @@ import jwt from "jsonwebtoken";
 import { prisma } from "../../lib/prisma";
 import { verifyToken } from "../../lib/jwt";
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        id: string;
-        email: string;
-        name: string | null;
-        status: string;
-      };
-    }
-  }
-}
 
 export const authMiddleware = async (
     req: Request,

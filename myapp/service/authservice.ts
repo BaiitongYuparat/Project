@@ -1,4 +1,5 @@
 import axios from "axios";
+import { Platform } from "react-native";
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const URL_API = `${BASE_URL}/auth`;
