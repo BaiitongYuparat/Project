@@ -11,10 +11,10 @@ export const getBodyData = async (req: Request, res: Response) => {
 };
 
 export const getBodyDataById = async (req: Request, res: Response) => {
-    const id = req.params.id as string;
+    const userId = req.user!.id as string
     try {
-        const bodyData = await prisma.body.findUnique({
-            where: { id: id },
+        const bodyData = await prisma.body.findFirst({
+            where: { user_id: userId },
         });
         if (!bodyData) {
             return res.status(404).json({ error: "Body data not found" });
@@ -46,11 +46,11 @@ export const createBody = async (req: Request, res: Response) => {
 }
 
 export const updateBody = async (req: Request, res: Response) => {
-    const id = req.params.id as string
+    const id = req.user!.id as string;
     const { weight, height, chest, waist, hips } = req.body;
     try {
         const updatedBody = await prisma.body.update({
-            where: { id: id },
+            where: { id:id },
             data: {
                 weight,
                 height,
@@ -70,7 +70,7 @@ export const deleteBody = async (req: Request, res: Response) => {
     const id = req.params.id as string
     try {
         await prisma.body.delete({
-            where: { id: id },
+            where: { id : id },
         });
         res.status(204).send();
     } catch (error) {
