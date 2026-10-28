@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const URL_API = "http://193.168.146.84:3000/body";
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+const URL_API = `${BASE_URL}/body`;
 
 export interface BodyData {
     id: string;
