@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { View, Text, ScrollView,TextInput,ActivityIndicator, TouchableOpacity, Alert, StyleSheet, } from "react-native";
 import { Stack ,useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import CustomInput from "../../component/Input"
-import { getBodyData, createBodyData, updateBodyData } from "../../service/bodrservice";
+import CustomInput from "../../../component/Input"
+import { getBodyData, createBodyData, updateBodyData } from "../../../service/bodrservice";
 
 
 export default function BodyForm() {
@@ -15,23 +15,23 @@ export default function BodyForm() {
   const [waist, setWaist] = useState("") //เอว
   const [hips, setHips] = useState("") //สะโพก
 
-  const [bodyId, setBodyId] = useState<string | null>(null)
-  const { mode } = useLocalSearchParams<{ mode?: string }>();
-  const isEdit = mode === "edit";
+  const [bodyId, setBodyId] = useState<string | null>(null) //เก็บ id ถ้ามีข้อมูลเดิมอยู่แล้ว ต้องแก้ไม่ใช่สร้างใหม่
+  const { mode } = useLocalSearchParams<{ mode?: string }>();  // อ่านค่าที่หน้าก่อนหน้าส่งมาทาง URL
+  const isEdit = mode === "edit"; // true = โหมดแก้ไข, false = user ใหม่
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
 
 
   useEffect(() => {
-    if (!isEdit) return
+    if (!isEdit) return // user ใหม่ ไม่มีข้อมูลเดิมให้โหลด
     getBodyData()
       .then((list) => {
-        if (!list.length) return
-        const latest = [...list].sort(
+        if (!list.length) return // ยังไม่เคยบันทึก ปล่อยฟอร์มว่าง
+        const latest = [...list].sort( // เลือกแถวที่ recorded_at ใหม่สุด
           (a, b) =>
             new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
         )[0]
-        setBodyId(latest.id);
+        setBodyId(latest.id); // จำ id ไว้ใช้ตอนกดบันทึก
         setHeight(String(latest.height));
         setWeight(String(latest.weight));
         setChest(String(latest.chest));

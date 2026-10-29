@@ -46,11 +46,12 @@ export const createBody = async (req: Request, res: Response) => {
 }
 
 export const updateBody = async (req: Request, res: Response) => {
-    const id = req.user!.id as string;
+    const userId = req.user!.id as string; // id ของ User
+    const bodyId = req.params.id as string // id ของแถว Body 
     const { weight, height, chest, waist, hips } = req.body;
     try {
         const updatedBody = await prisma.body.update({
-            where: { id:id },
+            where: { id: bodyId, user_id: userId }, //
             data: {
                 weight,
                 height,
@@ -65,12 +66,11 @@ export const updateBody = async (req: Request, res: Response) => {
         res.status(500).json({ error: "Failed to update body data" });
     }
 }
-
 export const deleteBody = async (req: Request, res: Response) => {
     const id = req.params.id as string
     try {
         await prisma.body.delete({
-            where: { id : id },
+            where: { id: id },
         });
         res.status(204).send();
     } catch (error) {

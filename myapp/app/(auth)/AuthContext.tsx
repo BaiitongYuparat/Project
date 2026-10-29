@@ -14,8 +14,8 @@ import {
   GoogleSignin,
   isSuccessResponse,
 } from "@react-native-google-signin/google-signin";
-import { loginWithGoogle } from "../service/authservice";
-import GoogleLogo from "../component/GoogleLogo";
+import { loginWithGoogle } from "../../service/authservice";
+import GoogleLogo from "../../component/GoogleLogo";
 
 
 type AuthContextType = {
@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setVisible(false)
 
       if (result.isNewUser) {
-        router.replace("/(auth)/BodyForm")
+        router.replace("/screens/profile/BodyForm")
       } else {
         pendingAction?.() //ทำงานต่อจากที่ผู้ใช้ ใช้ค้างไว้
       }

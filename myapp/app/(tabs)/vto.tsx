@@ -1,5 +1,5 @@
 import { View, Text, Pressable } from "react-native";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../(auth)/AuthContext";
 
 export default function TryOn() {
   const { requireAuth } = useAuth();

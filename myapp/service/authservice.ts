@@ -13,3 +13,12 @@ export const loginWithGoogle = async (idToken: string) => {
         throw error;
     }
 };
+
+export const logout = async () => {
+    try {
+        await axios.post(`${URL_API}/logout`);
+    }catch (error: any) {
+        console.log("LOGOUT API:", error.response?.status, error.response?.data);
+        throw error;
+    }
+}
