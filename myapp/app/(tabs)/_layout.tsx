@@ -68,7 +68,7 @@ export default function TabLayout() {
                             }}
                         >
                             <Ionicons
-                                name="scan-outline"
+                                name="shirt-outline"
                                 size={size}
                                 color="#FFFFFF" />
                         </View>
@@ -82,7 +82,7 @@ export default function TabLayout() {
                     tabBarIcon: ({ size, focused }) => (
 
                         <Ionicons
-                            name={focused ? 'shirt' : 'shirt-outline'}
+                            name={focused ? 'heart' : 'heart-outline'}
                             size={size}
                             color={focused ? '#7B675A' : '#8A776A'}
                         />

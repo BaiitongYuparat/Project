@@ -107,24 +107,24 @@ export const logoutUser = async (req: Request, res: Response) => {
     });
 }
 
-// export const devLogin = async (req: Request, res: Response) => {
-//     if (process.env.NODE_ENV === "production") {
-//         return res.status(404).json({ message: "Not found" });
-//     }
+export const devLogin = async (req: Request, res: Response) => {
+    if (process.env.NODE_ENV === "production") {
+        return res.status(404).json({ message: "Not found" });
+    }
 
-//     const { email } = req.body;
+    const { email } = req.body;
 
-//     try {
-//         let user = await prisma.user.findUnique({ where: { email } });
+    try {
+        let user = await prisma.user.findUnique({ where: { email } });
 
-//         if (!user) {
-//             user = await prisma.user.create({ data: { email, name: "Dev User" } });
-//         }
+        if (!user) {
+            user = await prisma.user.create({ data: { email, name: "Dev User" } });
+        }
 
-//         const token = signToken(user.id);
-//         return res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
-//     } catch (error) {
-//         console.error(error);
-//         return res.status(500).json({ message: "Internal server error" });
-//     }
-// };
+        const token = signToken(user.id);
+        return res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
