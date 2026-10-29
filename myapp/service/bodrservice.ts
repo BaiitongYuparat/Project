@@ -25,7 +25,7 @@ export const getBodyDataById = async (id: string): Promise<BodyData> => {
 }
 
 
-export const createBodyData = async (bodyData: Omit<BodyData, 'id' | 'recorded_at'>): Promise<BodyData> => {
+export const createBodyData = async (bodyData: Omit<BodyData, 'id' | 'recorded_at'|'user_id' >): Promise<BodyData> => {
     const response = await axios.post(URL_API, bodyData);
     return response.data;
 }

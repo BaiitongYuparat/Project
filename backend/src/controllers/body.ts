@@ -11,10 +11,10 @@ export const getBodyData = async (req: Request, res: Response) => {
 };
 
 export const getBodyDataById = async (req: Request, res: Response) => {
-    const id = req.params.id as string;
+    const userId = req.user!.id as string
     try {
-        const bodyData = await prisma.body.findUnique({
-            where: { id: id },
+        const bodyData = await prisma.body.findFirst({
+            where: { user_id: userId },
         });
         if (!bodyData) {
             return res.status(404).json({ error: "Body data not found" });
@@ -26,11 +26,11 @@ export const getBodyDataById = async (req: Request, res: Response) => {
 }
 
 export const createBody = async (req: Request, res: Response) => {
-    const { weight, height, chest, waist, hips, user_id } = req.body;
+    const { weight, height, chest, waist, hips } = req.body;
     try {
         const newBody = await prisma.body.create({
             data: {
-                user_id: user_id,
+                user_id: req.user!.id,
                 weight,
                 height,
                 chest,
@@ -46,11 +46,12 @@ export const createBody = async (req: Request, res: Response) => {
 }
 
 export const updateBody = async (req: Request, res: Response) => {
-    const id = req.params.id as string
+    const userId = req.user!.id as string; // id ของ User
+    const bodyId = req.params.id as string // id ของแถว Body 
     const { weight, height, chest, waist, hips } = req.body;
     try {
         const updatedBody = await prisma.body.update({
-            where: { id: id },
+            where: { id: bodyId, user_id: userId }, //
             data: {
                 weight,
                 height,
@@ -65,7 +66,6 @@ export const updateBody = async (req: Request, res: Response) => {
         res.status(500).json({ error: "Failed to update body data" });
     }
 }
-
 export const deleteBody = async (req: Request, res: Response) => {
     const id = req.params.id as string
     try {
