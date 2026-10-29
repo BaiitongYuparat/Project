@@ -26,11 +26,11 @@ export const getBodyDataById = async (req: Request, res: Response) => {
 }
 
 export const createBody = async (req: Request, res: Response) => {
-    const { weight, height, chest, waist, hips, user_id } = req.body;
+    const { weight, height, chest, waist, hips } = req.body;
     try {
         const newBody = await prisma.body.create({
             data: {
-                user_id: user_id,
+                user_id: req.user!.id,
                 weight,
                 height,
                 chest,
