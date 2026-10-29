@@ -14,17 +14,17 @@ export type BodyForm = {
     body: BodyData
 }
 
-export async function getBody(userId: string): Promise<BodyData> {
-  const response = await api.get<{ body: BodyData }>(`/body/${userId}`);
+export async function getBody(): Promise<BodyData> {
+  const response = await api.get<BodyData>("/body");
+  return response.data;
+}
+
+export async function createBody(data: BodyData): Promise<BodyData> {
+  const response = await api.post<{ body: BodyData }>("/body", data);
   return response.data.body;
 }
 
-export async function createBody(userId: string, data: BodyForm): Promise<BodyData> {
-  const response = await api.post<{ body: BodyData }>(`/body/${userId}`, data);
-  return response.data.body;
-}
-
-export async function updateBody(userId: string, data: BodyForm): Promise<BodyData> {
-  const response = await api.put<{ body: BodyData }>(`/body/${userId}`, data);
-  return response.data.body;
+export async function updateBody(data: BodyData): Promise<BodyData> {
+  const response = await api.put<BodyData>("/body", data);
+  return response.data;
 }

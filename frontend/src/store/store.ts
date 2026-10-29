@@ -1,9 +1,12 @@
 import { configureStore } from '@reduxjs/toolkit'
-import { userSlice } from './userSlice'
-
+import bodyReducer from "./bodySlice";
+import userReducer from "./userSlice";
+import uiReducer from './uiSlice'
 export const store = configureStore({
   reducer: {
-    user:userSlice.reducer
+    user:userReducer,
+    body: bodyReducer,
+    ui:uiReducer,
   }
 })
 
