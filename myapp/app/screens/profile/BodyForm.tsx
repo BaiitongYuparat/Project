@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { View, Text, ScrollView,TextInput,ActivityIndicator, TouchableOpacity, Alert, StyleSheet, } from "react-native";
-import { Stack ,useRouter, useLocalSearchParams } from "expo-router";
+import { View, Text, ScrollView, TextInput, ActivityIndicator, TouchableOpacity, Alert, StyleSheet, } from "react-native";
+import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import CustomInput from "../../../component/Input"
 import { getBodyData, createBodyData, updateBodyData } from "../../../service/bodrservice";
+import { BackHandler } from "react-native";
 
 
 export default function BodyForm() {
@@ -42,6 +43,13 @@ export default function BodyForm() {
       .finally(() => setLoading(false))
   }, [isEdit])
 
+
+  useEffect(() => {
+    if (isEdit) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => true);
+    return () => sub.remove();
+  }, [isEdit]);
+
   const handleSubmit = async () => {
     console.log("press handlesubmit");
     if (!height || !weight || !chest || !waist || !hips) {
@@ -56,11 +64,12 @@ export default function BodyForm() {
       waist: Number(waist),
       hips: Number(hips),
     }
-    if(Object.values(data).some((n) => isNaN(n) || n <= 0)) {
+    if (Object.values(data).some((n) => isNaN(n) || n <= 0)) {
       Alert.alert("ข้อมูลไม่ถูกต้อง", "กรุณากรอกเป็นตัวเลขที่มากกว่า 0");
       return;
     }
-    try { setSaving(true);
+    try {
+      setSaving(true);
       if (bodyId) {
         await updateBodyData(bodyId, data);
       } else {
@@ -76,12 +85,18 @@ export default function BodyForm() {
     }
   }
 
-   if (loading) return <ActivityIndicator className="mt-10" />;
+
+  if (loading) return <ActivityIndicator className="mt-10" />;
 
   return (
     <>
       <Stack.Screen
-        options={{ title: isEdit ? "ข้อมูลร่างกาย" : "กรอกข้อมูลร่างกาย" }}
+        options={{
+          headerShown: true,
+          title: isEdit ? "ข้อมูลร่างกาย" : "กรอกข้อมูลร่างกาย",
+          headerBackVisible: isEdit,      
+          gestureEnabled: isEdit,         
+        }}
       />
       <ScrollView
         className="flex-1 bg-[#FFFCFA]"
@@ -134,6 +149,8 @@ export default function BodyForm() {
             {saving ? "กำลังบันทึก..." : isEdit ? "บันทึก" : "ถัดไป"}
           </Text>
         </TouchableOpacity>
+
+
       </ScrollView>
     </>
   )

@@ -22,7 +22,7 @@ export const CustomButton = ({
     primary: "bg-[#3E322D] border-2 border-[#3E322D] active:bg-[#2B221E]",
     // ขอบน้ำตาล 
     secondary: "bg-[#FFFDFB] border-2 border-[#3E322D] active:bg-[#F3EBE4]",
-    danger: "bg-red-500 border-2 border-red-500 active:bg-red-600",
+    danger: "bg-red-800 border-2 border-red-700 active:bg-red-800",
   };
 
   const textVariantClasses = {

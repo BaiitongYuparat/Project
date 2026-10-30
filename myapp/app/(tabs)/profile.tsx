@@ -14,8 +14,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
 import ProfileMenuButton from "@/component/ProfileMenuButton";
 import { UserHeader } from "@/component/UserHeader";
-import { logout } from "@/service/authservice";
 import { CustomButton } from "@/component/CustomButtom";
+import { useAuth } from "../../component/AuthContext";
 
 
 
@@ -23,7 +23,13 @@ import { CustomButton } from "@/component/CustomButtom";
 export default function ProfileScreen() {
     const router = useRouter();
 
-    
+    const { isLoggedIn, logout, requireAuth } = useAuth();
+
+
+    const handleLogout = async () => {
+        await logout();
+        router.replace("/");
+    };
 
 
     return (
@@ -49,7 +55,22 @@ export default function ProfileScreen() {
                 />
 
             </View>
-            
+            {isLoggedIn ? (
+                <CustomButton
+                    title="ออกจากระบบ"
+                    variant="primary"
+                    onPress={handleLogout}
+                    className="mt-6"
+                />
+            ) : (
+                <CustomButton
+                    title="เข้าสู่ระบบ"
+                    variant="secondary"
+                    onPress={() => requireAuth()}
+                    className="mt-6"
+                />
+            )}
+
 
         </ScrollView>
     );
