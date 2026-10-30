@@ -12,10 +12,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
-import ProfileMenuButton from "@/component/ProfileMenuButton";
-import { UserHeader } from "@/component/UserHeader";
-import { CustomButton } from "@/component/CustomButtom";
-import { useAuth } from "../../component/AuthContext";
+import ProfileMenuButton from "@/components/profile/ProfileMenuButton";
+import { CustomButton } from "@/components/common/Button";
+import { useAuth } from "../../components/auth/AuthProvider";
+
 
 
 
@@ -32,16 +32,17 @@ export default function ProfileScreen() {
     };
 
 
+
+
     return (
         <ScrollView className="flex-1 bg-[#FFFDFB]" contentContainerStyle={{ padding: 16 }}>
             <Text className="text-3xl font-bold text-[#3B2F2A] mb-4">โปรไฟล์</Text>
-
 
             <View className="flex-1 p-4">
                 <ProfileMenuButton
                     title="ข้อมูลร่างกาย"
                     icon={<Ionicons name="body" size={20} color="#7B675A" />}
-                    onPress={() => router.push({ pathname: "/screens/profile/BodyForm", params: { mode: "edit" } })}
+                    onPress={() => router.push({ pathname: "/screens/profile/bodyedit", params: { mode: "edit" } })}
                 />
                 <ProfileMenuButton
                     title="รูปร่างกาย4ด้าน"
