@@ -14,8 +14,8 @@ import {
   GoogleSignin,
   isSuccessResponse,
 } from "@react-native-google-signin/google-signin";
-import { loginWithGoogle } from "../../service/authservice";
-import GoogleLogo from "../../component/GoogleLogo";
+import { loginWithGoogle } from "../service/authservice";
+import GoogleLogo from "./GoogleLogo";
 
 
 type AuthContextType = {
@@ -59,17 +59,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const onGooglePress = async () => {
-    try {
-      setLoading(true);
-      await GoogleSignin.hasPlayServices();
-      const response = await GoogleSignin.signIn();
-      if (!isSuccessResponse(response)) return;
+  try {
+    setLoading(true);
+    await GoogleSignin.hasPlayServices();
+    try { await GoogleSignin.signOut(); } catch { }
+    const response = await GoogleSignin.signIn();
 
-      const idToken = response.data.idToken;
-      if (!idToken) throw new Error("No idToken");
+    if (!isSuccessResponse(response)) {
+      return;
+    }
 
+    const idToken = response.data.idToken;
+    if (!idToken) throw new Error("No idToken");
 
-      const result = await loginWithGoogle(idToken);
+    const result = await loginWithGoogle(idToken);
       await AsyncStorage.setItem("token", result.token);
       setIsLoggedIn(true)
       setVisible(false)
@@ -88,6 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  
+
   return (
     <AuthContext.Provider value={{ isLoggedIn, requireAuth, logout }}>
       {children}
@@ -104,10 +109,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         >
           <Pressable onPress={() => { }} className="w-full rounded-3xl bg-[#FFFDFB] px-6 py-8">
             <Text className="mb-3 text-center text-2xl font-bold text-[#3B2F2A]">
-              เข้าสู่ระบบเพื่อใช้งาน
+             Welcome to LongDress
             </Text>
             <Text className="mb-8 text-center text-base leading-6 text-[#8A7B72]">
-              เข้าสู่ระบบหรือสร้างบัญชีใหม่ด้วย Google{"\n"}ในขั้นตอนเดียว
+              ใช้บัญชี Google เพื่อเข้าสู่ระบบหรือสร้างบัญชีในขั้นตอนเดียว
             </Text>
             <Pressable
               onPress={onGooglePress}

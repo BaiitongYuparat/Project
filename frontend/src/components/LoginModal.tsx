@@ -3,16 +3,15 @@ import { loginWithGoogle } from "../services/authService";
 import { useState } from "react";
 import { useDispatch } from 'react-redux'
 import { login } from "../store/userSlice";
+import { closeLogin } from "../store/uiSlice";
 
 type LoginModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
+  onLoginSuccess: () => void | Promise<void>;
 };
 
-export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
+export default function LoginModal({ onLoginSuccess }: LoginModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const dispatch = useDispatch();
-    if (!isOpen) return null;
 
   async function handleGoogleLogin(idToken: string) {
     setIsLoading(true);
@@ -21,7 +20,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
       console.log("ข้อมูลที่ได้จาก Backend:",result)
       dispatch(login(result.user))
 
-      onClose();
+     await onLoginSuccess();
     } catch (error) {
       console.log("Login Failed", error);
     } finally {
@@ -34,7 +33,9 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
       className="fixed inset-0 z-50 flex items-center justify-center
                  bg-black/50 p-4"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget) {
+          dispatch(closeLogin());
+        }
       }}
     >
       <div
@@ -46,7 +47,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
       >
         <button
           type="button"
-          onClick={onClose}
+          onClick={() => dispatch(closeLogin())}
           aria-label="ปิดหน้าต่าง"
           className="absolute right-4 top-4 text-2xl text-gray-500
                      hover:text-black"

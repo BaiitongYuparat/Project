@@ -1,12 +1,11 @@
 import { View, Text, Pressable } from "react-native";
-import { useAuth } from "../(auth)/AuthContext";
+import { useAuth } from "../../component/AuthContext";
 
 export default function TryOn() {
   const { requireAuth } = useAuth();
 
   const startTryOn = () => {
-    // โค้ดลองชุดจริงๆ
-    console.log("เริ่มลองชุด");
+
   };
 
   return (
