@@ -1,0 +1,57 @@
+import {
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    TouchableOpacity,
+    Button,
+    Pressable,
+    Alert
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect, useState } from "react";
+import ProfileMenuButton from "@/component/ProfileMenuButton";
+import { UserHeader } from "@/component/UserHeader";
+import { logout } from "@/service/authservice";
+import { CustomButton } from "@/component/CustomButtom";
+
+
+
+
+export default function ProfileScreen() {
+    const router = useRouter();
+
+    
+
+
+    return (
+        <ScrollView className="flex-1 bg-[#FFFDFB]" contentContainerStyle={{ padding: 16 }}>
+            <Text className="text-3xl font-bold text-[#3B2F2A] mb-4">โปรไฟล์</Text>
+
+
+            <View className="flex-1 p-4">
+                <ProfileMenuButton
+                    title="ข้อมูลร่างกาย"
+                    icon={<Ionicons name="body" size={20} color="#7B675A" />}
+                    onPress={() => router.push({ pathname: "/screens/profile/BodyForm", params: { mode: "edit" } })}
+                />
+                <ProfileMenuButton
+                    title="รูปร่างกาย4ด้าน"
+                    icon={<Ionicons name="images" size={20} color="#7B675A" />}
+                    onPress={() => router.push('/screens/profile/imge')}
+                />
+                <ProfileMenuButton
+                    title="ตั้งค่า & ช่วยเหลือ"
+                    icon={<Ionicons name="settings" size={20} color="#7B675A" />}
+                    onPress={() => router.push('/screens/profile/setting')}
+                />
+
+            </View>
+            
+
+        </ScrollView>
+    );
+
+}
