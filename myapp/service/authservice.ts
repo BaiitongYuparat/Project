@@ -1,12 +1,11 @@
-import axios from "axios";
-import { Platform } from "react-native";
+import api from "./api";
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-const URL_API = `${BASE_URL}/auth`;
+const URL_API = "/auth";
+
 
 export const loginWithGoogle = async (idToken: string) => {
     try {
-        const response = await axios.post(`${URL_API}/google`, { idToken , platform: "mobile" });
+        const response = await api.post(`${URL_API}/google`, { idToken , platform: "mobile" });
         return response.data;
     } catch (error: any) {
         console.log("AUTH API:", error.response?.status, error.response?.data);
@@ -16,7 +15,7 @@ export const loginWithGoogle = async (idToken: string) => {
 
 export const logout = async () => {
     try {
-        await axios.post(`${URL_API}/logout`);
+        await api.post(`${URL_API}/logout`);
     }catch (error: any) {
         console.log("LOGOUT API:", error.response?.status, error.response?.data);
         throw error;

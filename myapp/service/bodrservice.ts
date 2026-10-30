@@ -1,7 +1,7 @@
-import axios from "axios";
+import api from "./api";
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-const URL_API = `${BASE_URL}/body`;
+const URL_API = "/body";
+
 
 export interface BodyData {
     id: string;
@@ -15,26 +15,26 @@ export interface BodyData {
 }
 
 export const getBodyData = async (): Promise<BodyData[]> => {
-    const response = await axios.get(URL_API);
+    const response = await api.get(URL_API);
     return response.data;
 }
 
 export const getBodyDataById = async (id: string): Promise<BodyData> => {
-    const response = await axios.get(`${URL_API}/${id}`);
+    const response = await api.get(`${URL_API}/${id}`);
     return response.data;
 }
 
 
 export const createBodyData = async (bodyData: Omit<BodyData, 'id' | 'recorded_at'|'user_id' >): Promise<BodyData> => {
-    const response = await axios.post(URL_API, bodyData);
+    const response = await api.post(URL_API, bodyData);
     return response.data;
 }
 
 export const updateBodyData = async (id: string, bodyData: Partial<Omit<BodyData, 'id' | 'user_id' | 'recorded_at'>>): Promise<BodyData> => {
-    const response = await axios.put(`${URL_API}/${id}`, bodyData);
+    const response = await api.put(`${URL_API}/${id}`, bodyData);
     return response.data;
 }
 
 export const deleteBodyData = async (id: string): Promise<void> => {
-    await axios.delete(`${URL_API}/${id}`);
+    await api.delete(`${URL_API}/${id}`);
 }
