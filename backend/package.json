@@ -19,6 +19,8 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.3.0",
+    "@types/multer-s3": "^3.0.3",
     "@types/node": "^26.6.5",
     "prisma": "^6.19.3",
     "prisma-erd-generator": "^3.2.1",
@@ -36,6 +38,8 @@
     "express": "^5.3.0",
     "google-auth-library": "^11.3.1",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.5.0",
+    "multer-s3": "^3.0.1",
     "pg": "^8.23.1"
   }
 }
