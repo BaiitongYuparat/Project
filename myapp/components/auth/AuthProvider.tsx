@@ -14,12 +14,17 @@ import {
   GoogleSignin,
   isSuccessResponse,
 } from "@react-native-google-signin/google-signin";
-import { loginWithGoogle } from "../service/authservice";
-import GoogleLogo from "./GoogleLogo";
+import { loginWithGoogle } from "../../service/authservice";
+import GoogleLogo from "../common/GoogleLogo";
+import { login, logout as logoutAction, setAuthChecked } from "../../store/userSlice";
+import type { RootState } from "../../store/store";
+import { useDispatch, useSelector } from "react-redux";
+import { getMe } from "../../service/userservice"
 
 
 type AuthContextType = {
   isLoggedIn: boolean;
+  authChecked: boolean
   //ถ้าlogin แล้วรัน action ทันที ถ้ายังไม่login ให้เด้งหน้าlogin
   requireAuth: (action?: () => void) => boolean;
   logout: () => Promise<void>
@@ -32,16 +37,43 @@ export const useAuth = () => useContext(AuthContext)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); //loginยัง
+
   const [visible, setVisible] = useState(false); //popupเปิดอยู่ไหม
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
+
+  const dispatch = useDispatch();
+
+  // อ่านสถานะจาก Redux
+  const user = useSelector((state: RootState) => state.user.user)
+  const authChecked = useSelector((state: RootState) => state.user.authChecked)
+
+  const isLoggedIn = !!user;
+
 
   useEffect(() => {
     GoogleSignin.configure({
       webClientId: "478226735639-r7igr0pgvektnlfm74akc4erjnlbg3ur.apps.googleusercontent.com", // Web client ID ตัวเดียวกับ GOOGLE_CLIENT_ID ใน backend/.env
     });
-    AsyncStorage.getItem("token").then((t) => setIsLoggedIn(!!t))
+
+    // เช็ก token ที่เก็บไว้ แล้วดึงข้อมูล user เข้า Redux
+    const chackAuth = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token")
+        if (token) {
+          const user = await getMe()
+          dispatch(login(user))
+        }
+      } catch (error) {
+        await AsyncStorage.removeItem("token")
+        dispatch(logoutAction())
+      } finally {
+        dispatch(setAuthChecked())
+      }
+    }
+    chackAuth()
   }, []);
+
+  // เช็ก token ที่เก็บไว้ แล้วดึงข้อมูล user เข้า Redux
 
   const requireAuth = (action?: () => void) => {
     if (isLoggedIn) {
@@ -55,30 +87,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await AsyncStorage.removeItem("token")
-    setIsLoggedIn(false)
+    dispatch(logoutAction())
   }
 
   const onGooglePress = async () => {
-  try {
-    setLoading(true);
-    await GoogleSignin.hasPlayServices();
-    try { await GoogleSignin.signOut(); } catch { }
-    const response = await GoogleSignin.signIn();
+    try {
+      setLoading(true);
+      await GoogleSignin.hasPlayServices();
+      try {
+        await GoogleSignin.signOut();
+      } catch { }
+      const response = await GoogleSignin.signIn();
 
-    if (!isSuccessResponse(response)) {
-      return;
-    }
+      if (!isSuccessResponse(response)) {
+        return;
+      }
 
-    const idToken = response.data.idToken;
-    if (!idToken) throw new Error("No idToken");
+      const idToken = response.data.idToken;
+      if (!idToken) throw new Error("No idToken");
 
-    const result = await loginWithGoogle(idToken);
+      const result = await loginWithGoogle(idToken);
       await AsyncStorage.setItem("token", result.token);
-      setIsLoggedIn(true)
+      dispatch(login(result.user));
       setVisible(false)
 
       if (result.isNewUser) {
-        router.replace("/screens/profile/BodyForm")
+        router.replace("/screens/profile/bodysetup")
       } else {
         pendingAction?.() //ทำงานต่อจากที่ผู้ใช้ ใช้ค้างไว้
       }
@@ -91,10 +125,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  
+
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, requireAuth, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn, requireAuth, authChecked, logout }}>
       {children}
       <Modal
         visible={visible}
@@ -109,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         >
           <Pressable onPress={() => { }} className="w-full rounded-3xl bg-[#FFFDFB] px-6 py-8">
             <Text className="mb-3 text-center text-2xl font-bold text-[#3B2F2A]">
-             Welcome to LongDress
+              Welcome to LongDress
             </Text>
             <Text className="mb-8 text-center text-base leading-6 text-[#8A7B72]">
               ใช้บัญชี Google เพื่อเข้าสู่ระบบหรือสร้างบัญชีในขั้นตอนเดียว

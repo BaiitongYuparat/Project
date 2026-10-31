@@ -7,34 +7,30 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-//ตาราง user
 model User {
-  id         String   @id @default(uuid())
-  googleId   String?  @unique
-  name       String?
-  email      String   @unique
-  phone      String?
-  status     String   @default("active")
-  created_at DateTime @default(now()) @db.Timestamp(6)
-
+  id           String        @id @default(uuid())
+  googleId     String?       @unique
+  name         String?
+  email        String        @unique
+  status       String        @default("active")
+  created_at   DateTime      @default(now()) @db.Timestamp(6)
   body         Body[]
   userConsents UserConsent[]
 
-  @@map("User") //ระบุว่าตารางจริงใน PostgreSQL
+  @@map("User")
 }
 
 model Body {
   id          String   @id @default(uuid())
   user_id     String
-  height      Decimal? @db.Decimal(5, 2) // ซม.
-  weight      Decimal? @db.Decimal(5, 2) // กก.
-  chest       Decimal? @db.Decimal(5, 2) // ซม.
-  waist       Decimal? @db.Decimal(5, 2) // ซม.
-  hips        Decimal? @db.Decimal(5, 2) // ซม.
+  height      Decimal? @db.Decimal(5, 2)
+  weight      Decimal? @db.Decimal(5, 2)
+  chest       Decimal? @db.Decimal(5, 2)
+  waist       Decimal? @db.Decimal(5, 2)
+  hips        Decimal? @db.Decimal(5, 2)
   recorded_at DateTime @default(now()) @db.Timestamp(6)
-
-  user   User    @relation(fields: [user_id], references: [id] ,  onDelete: Cascade)
-  images Image[]
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  images      Image[]
 
   @@map("body")
 }
@@ -43,27 +39,27 @@ model Image {
   id             String   @id @default(uuid())
   body_id        String
   s3             String?
-  angle          String? //มุมของภาพ เช่น ด้านหน้า ด้านข้าง ด้านหลัง
-  quality_status String? // ผ่าน, ไม่ผ่าน, รอดำเนินการ (ผลตรวจ AI)
+  angle          String?
+  quality_status String?
   uploaded_at    DateTime @default(now()) @db.Timestamp(6)
-
-  body Body @relation(fields: [body_id], references: [id])
+  body           Body     @relation(fields: [body_id], references: [id])
 
   @@unique([body_id, angle])
   @@map("image")
 }
 
 model UserConsent {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   user_id    String
-  type       String // ยินยอมเรื่อง pdpa, ai_processing
+  type       String
   granted    Boolean
   granted_at DateTime  @default(now()) @db.Timestamp(6)
   revoked_at DateTime? @db.Timestamp(6)
+  user       User      @relation(fields: [user_id], references: [id])
 
-  user User @relation(fields: [user_id], references: [id])
-
+  @@unique([user_id, type]) //1 คนห้ามมี type ซ้ำกัน
   @@map("user_consents")
+  
 }
 
 model Clothing {

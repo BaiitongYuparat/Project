@@ -19,3 +19,9 @@ export async function getCurrentUser(): Promise<User> {
 
   return response.data.user;
 }
+
+export async function logout(): Promise<void> {
+  const response = await api.post("/auth/logout");
+
+  return response.data.user;
+}
