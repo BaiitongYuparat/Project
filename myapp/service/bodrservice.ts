@@ -14,13 +14,15 @@ export interface BodyData {
     recorded_at : string;
 }
 
+
+//เราไม่ดึงid เราจะดึงtoken
 export const getBodyData = async (): Promise<BodyData[]> => {
     const response = await api.get(URL_API);
     return response.data;
 }
 
-export const getBodyDataById = async (id: string): Promise<BodyData> => {
-    const response = await api.get(`${URL_API}/${id}`);
+export const getBodyDataById = async (): Promise<BodyData> => {
+    const response = await api.get(`${URL_API}/latest`);
     return response.data;
 }
 
