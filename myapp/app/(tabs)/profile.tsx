@@ -10,35 +10,26 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useState } from "react";
 import ProfileMenuButton from "@/components/profile/ProfileMenuButton";
-import { CustomButton } from "@/components/common/Button";
-import { useAuth } from "../../components/auth/AuthProvider";
-
-
+import UserHeader from "@/components/profile/UserHeader";
 
 
 
 export default function ProfileScreen() {
     const router = useRouter();
 
-    const { isLoggedIn, logout, requireAuth } = useAuth();
-
-
-    const handleLogout = async () => {
-        await logout();
-        router.replace("/");
-    };
-
-
-
 
     return (
-        <ScrollView className="flex-1 bg-[#FFFDFB]" contentContainerStyle={{ padding: 16 }}>
-            <Text className="text-3xl font-bold text-[#3B2F2A] mb-4">โปรไฟล์</Text>
+        <ScrollView
+            className="flex-1 bg-[#FFFDFB]"
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
+        >
+            <Text className="text-3xl font-bold text-[#3B2F2A] mb-5">โปรไฟล์</Text>
 
-            <View className="flex-1 p-4">
+            <UserHeader />
+            <Text className="mt-4 mb-3 text-xl font-semibold text-[#8A7B72]">เมนู</Text>
+
+            <View className="gap-1">
                 <ProfileMenuButton
                     title="ข้อมูลร่างกาย"
                     icon={<Ionicons name="body" size={20} color="#7B675A" />}
@@ -56,23 +47,6 @@ export default function ProfileScreen() {
                 />
 
             </View>
-            {isLoggedIn ? (
-                <CustomButton
-                    title="ออกจากระบบ"
-                    variant="primary"
-                    onPress={handleLogout}
-                    className="mt-6"
-                />
-            ) : (
-                <CustomButton
-                    title="เข้าสู่ระบบ"
-                    variant="secondary"
-                    onPress={() => requireAuth()}
-                    className="mt-6"
-                />
-            )}
-
-
         </ScrollView>
     );
 

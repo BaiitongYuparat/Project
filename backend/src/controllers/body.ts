@@ -52,26 +52,18 @@ export const createBody = async (req: Request, res: Response) => {
 
 export const updateBody = async (req: Request, res: Response) => {
     const userId = req.user!.id as string; // id ของ User
-    const bodyId = req.params.id as string // id ของแถว Body 
     const { weight, height, chest, waist, hips } = req.body;
     try {
-        const updatedBody = await prisma.body.updateMany({
-            where: { id: bodyId, user_id: userId }, //
-            data: {
-                weight,
-                height,
-                chest,
-                waist,
-                hips,
-            },
+        const latest = await prisma.body.findFirst({
+            where: { user_id: userId },
+            orderBy: { recorded_at: "desc" },
         });
-        if (updatedBody.count === 0) {
+        if (!latest) {
             return res.status(404).json({ error: "Body data not found" });
         }
-        const updated = await prisma.body.findUnique({
-            where: {
-                id: bodyId
-            }
+        const updated = await prisma.body.update({
+            where: { id: latest.id },
+            data: { weight, height, chest, waist, hips },
         });
         res.status(200).json(updated);
     } catch (error) {
