@@ -33,3 +33,8 @@ export const updateUser = async (id: string, data: Partial<Omit<User, "name" | "
     const res = await api.put(`${URL_API}/${id}`, data);
     return res.data;
 }
+
+export const getMe = async (): Promise<User> => {
+  const response = await api.get(`${URL_API}/me`);
+  return response.data;
+};
