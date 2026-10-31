@@ -1,11 +1,11 @@
 import { useState } from "react";
-import BodyForm, { type BodyFormValues } from "../components/BodyForm";
-import { updateBody } from "../services/bodyService";
+import BodyForm, { type BodyFormValues } from "../../components/BodyForm";
+import { updateBody } from "../../services/bodyService";
 import { useDispatch, useSelector } from "react-redux";
-import type { RootState } from "../store/store";
-import { setBody } from "../store/bodySlice";
+import type { RootState } from "../../store/store";
+import { setBody } from "../../store/bodySlice";
 
-export default function ProfilePage() {
+export default function BodyPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const dispatch = useDispatch();

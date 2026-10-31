@@ -1,18 +1,20 @@
 import "./App.css";
 import NavBar from "./components/Navbar";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { getCurrentUser } from "./services/authService";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "./store/store";
 import { useEffect } from "react";
 import { login, logout, setAuthChecked } from "./store/userSlice";
-import ProfilePage from "./pages/Profile";
 import LoginModal from "./components/LoginModal";
 import BodyModal from "./components/BodyModal";
 import {closeLogin, openBody } from "./store/uiSlice";
 import { getBody } from "./services/bodyService";
 import { setBody } from "./store/bodySlice";
 import axios from "axios";
+import BodyPage from "./pages/Profile/BodyPage";
+import UploadBodyImg from "./pages/Profile/UploadBodyImg";
+import ProfilePage from "./pages/Profile";
 
 function App() {
   const dispatch = useDispatch();
@@ -72,7 +74,14 @@ function App() {
     <BrowserRouter>
       <NavBar />
       <Routes>
-        <Route path="/pages/Profile" element={<ProfilePage />} />
+        <Route path="/pages/Profile" element={<ProfilePage />}>
+          <Route
+    index
+    element={<Navigate to="BodyPage" replace />}
+  />
+           <Route path="BodyPage" element={<BodyPage />} />
+          <Route path="UploadBodyImg" element={<UploadBodyImg />} />
+        </Route>
       </Routes>
 
       {isLoginOpen && <LoginModal onLoginSuccess={handleLoginSuccess} />}

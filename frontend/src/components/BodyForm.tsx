@@ -51,7 +51,8 @@ export default function BodyForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
-      <Input
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input
         label="ส่วนสูง"
         type="number"
         placeholder="เช่น 165"
@@ -91,8 +92,11 @@ export default function BodyForm({
         })}
         error={errors.weight?.message}
       />
-
-      <Input
+      </div>
+      
+      {/* container2 */}
+      <div className="flex flex-col gap-2 md:flex-row ">
+        <Input
         label="รอบอก"
         type="number"
         placeholder="เช่น 32"
@@ -139,6 +143,7 @@ export default function BodyForm({
         })}
         error={errors.hips?.message}
       />
+      </div>
       <Button type="submit" disabled={isLoading} variant="secondary">
         {isLoading ? "กำลังบันทึก" : "บันทึกข้อมูล"}
       </Button>
