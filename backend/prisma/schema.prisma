@@ -57,7 +57,9 @@ model UserConsent {
   revoked_at DateTime? @db.Timestamp(6)
   user       User      @relation(fields: [user_id], references: [id])
 
+  @@unique([user_id, type]) //1 คนห้ามมี type ซ้ำกัน
   @@map("user_consents")
+  
 }
 
 model Clothing {
