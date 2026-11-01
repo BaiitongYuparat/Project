@@ -48,14 +48,14 @@ export const deleteUser = async (req: Request, res: Response) => {
 
 export const updateUser = async (req:Request , res: Response) => {
      const id = req.user!.id as string
-     const { name, email, phone } = req.body;
+     const { name, email, gender } = req.body;
      try{
         const user = await prisma.user.update({
              where: { id: id },
              data: {
                 name,
                 email,
-                phone     
+                gender   
              }
         })
         return res.json(user);
@@ -67,12 +67,12 @@ export const updateUser = async (req:Request , res: Response) => {
 }
 
 export const createUser = async (req:Request , res:Response) => {
-    const {name , email , phone , } = req.body;
+    const {name , email , gender , } = req.body;
     try{
         const user = await prisma.user.create({
             data: {
                 email,
-                phone,
+                gender,
                 name
             }
         })
