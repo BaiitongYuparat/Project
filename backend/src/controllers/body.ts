@@ -2,8 +2,12 @@ import { prisma } from "../../lib/prisma";
 import { Request, Response } from "express";
 
 export const getBodyData = async (req: Request, res: Response) => {
+    const userId = req.user!.id as string;
     try {
-        const bodyData = await prisma.body.findMany();
+        const bodyData = await prisma.body.findMany({
+            where: { user_id: userId },
+            orderBy: { recorded_at: "desc" },
+        });
         res.status(200).json(bodyData);
     } catch (error) {
         res.status(500).json({ error: "Failed to fetch body data" });
@@ -15,6 +19,7 @@ export const getBodyDataById = async (req: Request, res: Response) => {
     try {
         const bodyData = await prisma.body.findFirst({
             where: { user_id: userId },
+            orderBy: { recorded_at: "desc" }, // แถวล่าสุดของตัวเอง
         });
         if (!bodyData) {
             return res.status(404).json({ error: "Body data not found" });
@@ -47,30 +52,34 @@ export const createBody = async (req: Request, res: Response) => {
 
 export const updateBody = async (req: Request, res: Response) => {
     const userId = req.user!.id as string; // id ของ User
-    const bodyId = req.params.id as string // id ของแถว Body 
     const { weight, height, chest, waist, hips } = req.body;
     try {
-        const updatedBody = await prisma.body.update({
-            where: { id: bodyId, user_id: userId }, //
-            data: {
-                weight,
-                height,
-                chest,
-                waist,
-                hips,
-            },
+        const latest = await prisma.body.findFirst({
+            where: { user_id: userId },
+            orderBy: { recorded_at: "desc" },
         });
-        res.status(200).json(updatedBody);
+        if (!latest) {
+            return res.status(404).json({ error: "Body data not found" });
+        }
+        const updated = await prisma.body.update({
+            where: { id: latest.id },
+            data: { weight, height, chest, waist, hips },
+        });
+        res.status(200).json(updated);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Failed to update body data" });
     }
 }
 export const deleteBody = async (req: Request, res: Response) => {
-    const id = req.params.id as string
+    const userId = req.user!.id as string;
+    const bodyId = req.params.id as string;
     try {
-        await prisma.body.delete({
-            where: { id: id },
+        await prisma.body.deleteMany({
+            where: {
+                id: bodyId,
+                user_id: userId
+            },
         });
         res.status(204).send();
     } catch (error) {

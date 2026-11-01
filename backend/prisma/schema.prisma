@@ -57,6 +57,7 @@ model UserConsent {
   revoked_at DateTime? @db.Timestamp(6)
   user       User      @relation(fields: [user_id], references: [id])
 
+  @@unique([user_id, type])
   @@map("user_consents")
 }
 
@@ -70,7 +71,6 @@ model Clothing {
   style       String?  // เช่น casual, formal
   image_url   String
   is_favorite Boolean  @default(false)
-
   created_at  DateTime @default(now()) @db.Timestamp(6)
   updated_at  DateTime @updatedAt @db.Timestamp(6)
 

@@ -18,7 +18,7 @@ export default function ProfileMenuButton({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.7}
-      className={`bg-[#F0E4D8] px-5 py-4 ${
+      className={`bg-[#F0E4D8] px-5 py-4 rounded-md ${
         showDivider ? "border-b border-[#E3D3C2]" : ""
       }`}
     >

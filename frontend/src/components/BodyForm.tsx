@@ -50,11 +50,9 @@ export default function BodyForm({
   }, [initialData, reset]);
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="flex flex-col gap-5"
-    >
-      <Input
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input
         label="ส่วนสูง"
         type="number"
         placeholder="เช่น 165"
@@ -85,25 +83,27 @@ export default function BodyForm({
           max: { value: 150, message: "น้ำหนักไม่ถูกต้อง" },
           validate: {
             isNumber: (value) =>
-                Number.isFinite(value) || "กรุณากรอกน้ำหนักให้ถูกต้อง",
+              Number.isFinite(value) || "กรุณากรอกน้ำหนักให้ถูกต้อง",
             oneDecimal: (value) =>
-                Number.isFinite(value) &&
-                Math.abs(value * 10 - Math.round(value * 10)) < 1e-9 ||
-                "กรุณากรอกทศนิยมไม่เกิน 1 ตำแหน่ง",
-            },
+              (Number.isFinite(value) &&
+                Math.abs(value * 10 - Math.round(value * 10)) < 1e-9) ||
+              "กรุณากรอกทศนิยมไม่เกิน 1 ตำแหน่ง",
+          },
         })}
         error={errors.weight?.message}
       />
-
-      <Input
+      </div>
+      
+      {/* container2 */}
+      <div className="flex flex-col gap-2 md:flex-row ">
+        <Input
         label="รอบอก"
         type="number"
-        placeholder="ไม่บังคับ"
-        suffix="ซม."
+        placeholder="เช่น 32"
+        suffix="นิ้ว"
         disabled={isLoading}
         {...register("chest", {
-          setValueAs: (value) =>
-            value === "" ? null : Number(value),
+          setValueAs: (value) => (value === "" ? null : Number(value)),
           validate: (value) =>
             value === null ||
             (Number.isFinite(value) && value >= 1 && value <= 300) ||
@@ -115,12 +115,11 @@ export default function BodyForm({
       <Input
         label="รอบเอว"
         type="number"
-        placeholder="ไม่บังคับ"
-        suffix="ซม."
+        placeholder="เช่น 24"
+        suffix="นิ้ว"
         disabled={isLoading}
         {...register("waist", {
-          setValueAs: (value) =>
-            value === "" ? null : Number(value),
+          setValueAs: (value) => (value === "" ? null : Number(value)),
           validate: (value) =>
             value === null ||
             (Number.isFinite(value) && value >= 1 && value <= 300) ||
@@ -133,11 +132,10 @@ export default function BodyForm({
         label="รอบสะโพก"
         type="number"
         placeholder="ไม่บังคับ"
-        suffix="ซม."
+        suffix="นิ้ว"
         disabled={isLoading}
         {...register("hips", {
-          setValueAs: (value) =>
-            value === "" ? null : Number(value),
+          setValueAs: (value) => (value === "" ? null : Number(value)),
           validate: (value) =>
             value === null ||
             (Number.isFinite(value) && value >= 1 && value <= 300) ||
@@ -145,7 +143,10 @@ export default function BodyForm({
         })}
         error={errors.hips?.message}
       />
-      <Button type="submit" disabled={isLoading} variant="secondary">{isLoading ? "กำลังบันทึก" : "บันทึกข้อมูล"}</Button>
+      </div>
+      <Button type="submit" disabled={isLoading} variant="secondary">
+        {isLoading ? "กำลังบันทึก" : "บันทึกข้อมูล"}
+      </Button>
     </form>
   );
 }

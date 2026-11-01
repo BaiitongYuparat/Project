@@ -14,7 +14,7 @@ const bodySlice = createSlice({
   name: "body",
   initialState,
   reducers: {
-    setBody: (state, action: PayloadAction<BodyData>) => {
+    setBody: (state, action: PayloadAction<BodyData | null>) => {
       state.body = action.payload;
     },
     clearBody: (state) => {
