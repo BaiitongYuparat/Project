@@ -34,7 +34,7 @@ export default function BodyPage() {
 
   return (
     <div className="mx-auto max-w-xl p-6">
-      <h1 className="mb-2 text-2xl font-bold">ข้อมูลร่างกาย</h1>
+      <h1 className="mb-2 text-2xl font-bold ">ข้อมูลร่างกาย</h1>
 
       <p className="mb-6 text-gray-500">ดูและแก้ไขข้อมูลร่างกายของคุณ</p>
 
