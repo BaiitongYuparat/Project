@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import { DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { Type } from "@google/genai";
 import { prisma } from "../../lib/prisma";
 import { s3 } from "../middlewares/upload";
-import { ai, GEMINI_MODEL, isGeminiEnabled } from "../../lib/gemini";  // แก้จุดที่ 2+3
+import { ai, GEMINI_MODEL, isGeminiEnabled } from "../../lib/gemini";
 
 interface MulterS3File extends Express.Multer.File {
     location: string;
@@ -11,6 +12,8 @@ interface MulterS3File extends Express.Multer.File {
 
 const REQUIRED_ANGLES = ["front", "back", "left", "right"] as const;
 type AngleType = (typeof REQUIRED_ANGLES)[number];
+
+// S3 Helpers
 
 const removeFromS3 = async (key: string) => {
     try {
@@ -27,6 +30,7 @@ const removeMultipleFromS3 = async (keys: string[]) => {
     await Promise.all(keys.map((key) => removeFromS3(key)));
 };
 
+// แปลง S3 URL กลับเป็น key สำหรับลบไฟล์เก่า
 const keyFromUrl = (url: string): string | null => {
     try {
         return decodeURIComponent(new URL(url).pathname.slice(1));
@@ -35,59 +39,71 @@ const keyFromUrl = (url: string): string | null => {
     }
 };
 
+// Gemini Quality Check
+
 interface QualityResult {
     passed: boolean;
     reason?: string;
 }
 
+// ดึงรูปจาก S3 แล้วส่งให้ Gemini ตรวจคุณภาพตามมุมที่กำหนด
 const checkQualityWithGemini = async (
-    s3Key: string,         // แก้จุดที่ 1: รับ key แทน URL
+    s3Key: string,
     mimeType: string,
     angle: string
 ): Promise<QualityResult> => {
     try {
-        // แก้จุดที่ 1: ดึงรูปจาก S3 ด้วย credential ของเรา ไม่ใช่ fetch จาก URL สาธารณะ
         const obj = await s3.send(new GetObjectCommand({
             Bucket: process.env.AWS_S3_BUCKET_NAME!,
             Key: s3Key,
         }));
         const bytes = await obj.Body!.transformToByteArray();
-        const imageBuffer = Buffer.from(bytes).toString("base64");
+        const data = Buffer.from(bytes).toString("base64");
 
-        const response = await ai.models.generateContent({   // แก้จุดที่ 2: ใช้ ai จาก lib/gemini.ts
-            model: GEMINI_MODEL,                              // แก้จุดที่ 3: ใช้ GEMINI_MODEL จาก env
+        const response = await ai.models.generateContent({
+            model: GEMINI_MODEL,
             contents: [
+                { inlineData: { mimeType, data } },
                 {
-                    inlineData: {
-                        data: imageBuffer,
-                        mimeType: mimeType || "image/jpeg",
-                    },
+                    text:
+                        `This photo is for a virtual try-on app and should show a person's ${angle} view. ` +
+                        "Check: is it a real person, is the full body visible, is it the correct angle " +
+                        "(front = facing camera, back = back to camera, left/right = side profile), " +
+                        "and is it clear and well lit.",
                 },
-                `คุณคือ AI ตรวจสอบคุณภาพรูปถ่ายสรีระร่างกาย (มุม: ${angle}) 
-                โปรดตรวจสอบเงื่อนไขต่อไปนี้:
-                1. เห็นสรีระร่างกายชัดเจนและเต็มตัวตามมุมที่กำหนดหรือไม่
-                2. แสงสว่างเพียงพอหรือไม่ (ไม่มืด มืดสลัว หรือย้อนแสงจนมองไม่เห็นรายละเอียด)
-                3. ภาพไม่เบลอหรือหลุดโฟกัสเกินไป
-                
-                ตอบกลับเป็นรูปแบบ JSON เท่านั้น ดังนี้:
-                {
-                  "passed": true/false,
-                  "reason": "ระบุเหตุผลภาษาไทยอย่างสั้นหากไม่ผ่าน (ถ้าผ่านให้ระบุ null)"
-                }`,
             ],
             config: {
                 responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        is_real_person: { type: Type.BOOLEAN },
+                        full_body_visible: { type: Type.BOOLEAN },
+                        angle_correct: { type: Type.BOOLEAN },
+                        clear_enough: { type: Type.BOOLEAN },
+                        reason: { type: Type.STRING },
+                    },
+                    required: ["is_real_person", "full_body_visible", "angle_correct", "clear_enough", "reason"],
+                },
             },
         });
 
-        const jsonText = response.text || "{}";
-        return JSON.parse(jsonText) as QualityResult;
+        const result = JSON.parse(response.text ?? "{}");
+        const passed =
+            result.is_real_person &&
+            result.full_body_visible &&
+            result.angle_correct &&
+            result.clear_enough;
+
+        return { passed, reason: result.reason };
     } catch (error) {
         console.error(`Gemini quality check error for ${angle}:`, error);
-        return { passed: true };
+        // fail-closed: ถ้า Gemini error ให้ reject ไว้ก่อน ไม่ปล่อยผ่านอัตโนมัติ
+        return { passed: false, reason: "Quality check failed, please try again" };
     }
 };
 
+// Main Controller
 export const uploadAndVerifyBodyImages = async (req: Request, res: Response) => {
     const files = req.files as { [fieldname: string]: MulterS3File[] } | undefined;
 
@@ -95,6 +111,7 @@ export const uploadAndVerifyBodyImages = async (req: Request, res: Response) => 
         return res.status(400).json({ message: "Please upload image files" });
     }
 
+    // เก็บ key ทั้งหมดไว้ก่อน เผื่อต้อง rollback ลบออกจาก S3
     const allUploadedKeys: string[] = [];
     Object.values(files).forEach((fileArray) => {
         fileArray.forEach((file) => allUploadedKeys.push(file.key));
@@ -115,6 +132,7 @@ export const uploadAndVerifyBodyImages = async (req: Request, res: Response) => 
         }
         const bodyId = body_id.trim();
 
+        // ตรวจว่าครบ 4 มุมหรือไม่
         const missingAngles = REQUIRED_ANGLES.filter((angle) => !files[angle] || !files[angle][0]);
         if (missingAngles.length > 0) {
             await removeMultipleFromS3(allUploadedKeys);
@@ -128,6 +146,7 @@ export const uploadAndVerifyBodyImages = async (req: Request, res: Response) => 
             file: files[angle][0],
         }));
 
+        // ตรวจสิทธิ์ว่า body นี้เป็นของ user คนนี้จริงมั้ย
         const userBody = await prisma.body.findFirst({
             where: { id: bodyId, user_id: userId },
         });
@@ -139,23 +158,18 @@ export const uploadAndVerifyBodyImages = async (req: Request, res: Response) => 
             });
         }
 
-        // แก้จุดที่ 4: เช็ก isGeminiEnabled ก่อนเรียก AI
-        // ถ้า Gemini ปิดอยู่ ให้ข้ามการตรวจและถือว่าผ่านทั้งหมด
+        // ตรวจคุณภาพรูปด้วย Gemini (ข้ามถ้า Gemini ปิดอยู่)
         let failedChecks: { angle: string; passed: boolean; reason?: string }[] = [];
 
         if (isGeminiEnabled) {
             const qualityChecks = await Promise.all(
                 angleFileList.map(async (item) => {
                     const check = await checkQualityWithGemini(
-                        item.file.key,           // แก้จุดที่ 1: ส่ง key แทน location
+                        item.file.key,
                         item.file.mimetype,
                         item.angle
                     );
-                    return {
-                        angle: item.angle,
-                        passed: check.passed,
-                        reason: check.reason,
-                    };
+                    return { angle: item.angle, passed: check.passed, reason: check.reason };
                 })
             );
             failedChecks = qualityChecks.filter((c) => !c.passed);
@@ -169,6 +183,7 @@ export const uploadAndVerifyBodyImages = async (req: Request, res: Response) => 
             });
         }
 
+        // บันทึกลง DB ด้วย transaction และลบรูปเก่าออกจาก S3 หลัง commit
         const oldUrlsToDelete: string[] = [];
 
         const savedImages = await prisma.$transaction(async (tx) => {
@@ -180,23 +195,12 @@ export const uploadAndVerifyBodyImages = async (req: Request, res: Response) => 
                     select: { s3: true },
                 });
 
-                if (existing?.s3) {
-                    oldUrlsToDelete.push(existing.s3);
-                }
+                if (existing?.s3) oldUrlsToDelete.push(existing.s3);
 
                 const savedImage = await tx.image.upsert({
                     where: { body_id_angle: { body_id: bodyId, angle: item.angle } },
-                    update: {
-                        s3: item.file.location,
-                        quality_status: "APPROVED",   // แก้จุดที่ 5: PASSED → APPROVED
-                        uploaded_at: new Date(),
-                    },
-                    create: {
-                        body_id: bodyId,
-                        angle: item.angle,
-                        s3: item.file.location,
-                        quality_status: "APPROVED",   // แก้จุดที่ 5: PASSED → APPROVED
-                    },
+                    update: { s3: item.file.location, quality_status: "APPROVED", uploaded_at: new Date() },
+                    create: { body_id: bodyId, angle: item.angle, s3: item.file.location, quality_status: "APPROVED" },
                 });
 
                 results.push(savedImage);
@@ -205,6 +209,7 @@ export const uploadAndVerifyBodyImages = async (req: Request, res: Response) => 
             return results;
         });
 
+        // ลบไฟล์เก่าออกจาก S3 หลัง transaction สำเร็จ
         for (const oldUrl of oldUrlsToDelete) {
             const oldKey = keyFromUrl(oldUrl);
             if (oldKey && !allUploadedKeys.includes(oldKey)) {
