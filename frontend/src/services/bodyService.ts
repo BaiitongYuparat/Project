@@ -15,7 +15,7 @@ export type BodyForm = {
 }
 
 export async function getBody(): Promise<BodyData> {
-  const response = await api.get<BodyData>("/body");
+  const response = await api.get<BodyData>("/body/latest");
   return response.data;
 }
 
