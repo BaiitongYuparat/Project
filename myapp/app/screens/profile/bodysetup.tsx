@@ -5,6 +5,7 @@ import BodyFormFields, { type BodyFormValues } from "../../../components/common/
 import { createBodyData } from "../../../service/bodrservice";
 import { setBody } from "../../../store/bodySlice";
 import { useDispatch } from "react-redux";
+import {setConsent } from "../../../service/userconsentservice"
 
 export default function BodySetup() {
     const router = useRouter();

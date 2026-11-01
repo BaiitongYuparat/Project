@@ -42,7 +42,7 @@ model Image {
   angle          String?
   quality_status String?
   uploaded_at    DateTime @default(now()) @db.Timestamp(6)
-  body           Body     @relation(fields: [body_id], references: [id])
+  body           Body     @relation(fields: [body_id], references: [id],onDelete: Cascade)
 
   @@unique([body_id, angle])
   @@map("image")
@@ -55,7 +55,7 @@ model UserConsent {
   granted    Boolean
   granted_at DateTime  @default(now()) @db.Timestamp(6)
   revoked_at DateTime? @db.Timestamp(6)
-  user       User      @relation(fields: [user_id], references: [id])
+  user       User      @relation(fields: [user_id], references: [id] , onDelete: Cascade)
 
   @@unique([user_id, type]) //1 คนห้ามมี type ซ้ำกัน
   @@map("user_consents")
