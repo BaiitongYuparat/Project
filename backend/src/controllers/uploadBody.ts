@@ -4,6 +4,7 @@ import { Type } from "@google/genai";
 import { prisma } from "../../lib/prisma";
 import { s3 } from "../middlewares/upload";
 import { ai, GEMINI_MODEL, isGeminiEnabled } from "../../lib/gemini";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 interface MulterS3File extends Express.Multer.File {
     location: string;
@@ -226,4 +227,46 @@ export const uploadAndVerifyBodyImages = async (req: Request, res: Response) => 
         await removeMultipleFromS3(allUploadedKeys);
         return res.status(500).json({ message: "Internal server error" });
     }
+};
+
+export const getBodyImages = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const bodyId = req.params.bodyId as string;
+
+    const userBody = await prisma.body.findFirst({
+      where: { id: bodyId, user_id: userId },
+    });
+
+    if (!userBody) {
+      return res.status(403).json({ message: "You do not have permission" });
+    }
+
+    const images = await prisma.image.findMany({
+      where: { body_id: bodyId },
+    });
+
+    const imagesWithPresignedUrl = await Promise.all(
+      images.map(async (img) => {
+        const key = img.s3 ? keyFromUrl(img.s3) : null;
+        if (!key) return { ...img };
+
+        const presignedUrl = await getSignedUrl(
+          s3,
+          new GetObjectCommand({
+            Bucket: process.env.AWS_S3_BUCKET_NAME!,
+            Key: key,
+          }),
+          { expiresIn: 604800 }
+        );
+
+        return { ...img, s3: presignedUrl };
+      })
+    );
+
+    return res.status(200).json({ data: imagesWithPresignedUrl });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 };
