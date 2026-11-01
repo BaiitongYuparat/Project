@@ -6,6 +6,10 @@ import { createBody } from "../services/bodyService";
 import { setBody } from "../store/bodySlice";
 import { closeBody } from "../store/uiSlice";
 import { useDispatch } from "react-redux";
+import { updateMe, type Gender } from "../services/userService";
+import GenderSelector from "./GenderSelector";
+
+
 
 type BodyModalProps = {
   isOpen: boolean;
@@ -15,14 +19,24 @@ export default function BodyModal({ isOpen }: BodyModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const dispatch = useDispatch();
+  const [gender, setGender] = useState<Gender | "">("");
 
   if (!isOpen) return null;
 
+  
+
   const handleCreateBody = async (data: BodyFormValues) => {
+    if (!gender) {
+      setError("กรุณาเลือกเพศก่อนบันทึก เพื่อใช้ในการวิเคราะห์รูปร่าง");
+      return;
+    }
+
     setIsLoading(true);
     setError("");
 
     try {
+      // บันทึกเพศ
+      await updateMe({ gender });
       const savedBody = await createBody(data);
       // เก็บข้อมูล Body ที่บันทึกสำเร็จลง Redux
       dispatch(setBody(savedBody));
@@ -59,6 +73,9 @@ export default function BodyModal({ isOpen }: BodyModalProps) {
             {error}
           </p>
         )}
+        <div className="mb-4">
+          <GenderSelector value={gender} onChange={setGender} />
+        </div>
 
         <BodyForm onSubmit={handleCreateBody} isLoading={isLoading} />
       </div>

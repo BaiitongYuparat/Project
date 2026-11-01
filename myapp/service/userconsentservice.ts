@@ -13,6 +13,7 @@ export type UserConsent = {
     revoked_at: string | null;
 }
 
+export type ConsentInput = { type: ConsentType; granted: boolean };
 
 export const getConsents = async (): Promise<UserConsent[]> => {
   const response = await api.get(URL_API);
@@ -20,7 +21,7 @@ export const getConsents = async (): Promise<UserConsent[]> => {
 };
 
 // ยินยอม ไม่ยินยอม 
-export const setConsent = async (type: ConsentType, granted: boolean): Promise<UserConsent> => {
-  const response = await api.post(URL_API, { type, granted });
+export const setConsent = async (consents: ConsentInput[]): Promise<UserConsent> => {
+  const response = await api.post(URL_API, { consents });
   return response.data;
 };

@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, View } from "react-native";
+import { ActivityIndicator, Alert, View, ScrollView } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useDispatch } from "react-redux";
 import BodyFormFields, { type BodyFormValues } from "../../../components/common/BodyFormFields";
 import { getBodyData, createBodyData, updateBodyData } from "../../../service/bodrservice";
 import { setBody } from "../../../store/bodySlice";
 import { useAuth } from "../../../components/auth/AuthProvider";
+import GenderSelector from "../../../components/common/GenderSelector"
+import { getMe, type Gender, updateMe } from "@/service/userservice";
 
 
 export default function BodyEdit() {
@@ -16,6 +18,8 @@ export default function BodyEdit() {
     const [bodyId, setBodyId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [gender, setGender] = useState<Gender | "">("")
+
 
     const { isLoggedIn, authChecked, requireAuth } = useAuth(); //ดึงสถานะล็อกอิน
     //ถ้าเช็กเสร็จแล้วยังไม่ล็อกอิน ให้ออกจากหน้านี้แล้วเปิด popup เข้าสู่ระบบ
@@ -29,6 +33,14 @@ export default function BodyEdit() {
             );
         }
     }, [authChecked, isLoggedIn]);
+
+    useEffect(() => {
+        if (!authChecked || !isLoggedIn) return
+        getMe()
+            .then((u) => { if (u.gender) setGender(u.gender) })
+            .catch((e) => console.log("load user error", e))
+    }, [authChecked, isLoggedIn])
+
 
     useEffect(() => {
         if (!authChecked || !isLoggedIn) return
@@ -49,6 +61,10 @@ export default function BodyEdit() {
     }, [authChecked, isLoggedIn]);
 
     const handleSubmit = async (data: BodyFormValues) => {
+        if (!gender) {
+            Alert.alert("กรุณาเลือกเพศ", "ต้องเลือกเพศก่อนบันทึก เพื่อใช้ในการวิเคราะห์รูปร่าง")
+            return
+        }
         try {
             setSaving(true);
             const payload = {
@@ -58,6 +74,7 @@ export default function BodyEdit() {
                 waist: Number(data.waist),
                 hips: Number(data.hips),
             };
+            await updateMe({ gender })
 
             const saved = bodyId
                 ? await updateBodyData(payload)
@@ -83,12 +100,22 @@ export default function BodyEdit() {
     return (
         <>
             <Stack.Screen options={{ headerShown: true, title: "ข้อมูลร่างกาย" }} />
-            <BodyFormFields
-                initialData={initialData}
-                submitLabel="บันทึก"
-                isLoading={saving}
-                onSubmit={handleSubmit}
-            />
+            <ScrollView
+                className="flex-1 bg-[#FFFCFA]"
+                contentContainerStyle={{ paddingBottom: 48 }}
+                keyboardShouldPersistTaps="handled"
+            >
+
+                <GenderSelector value={gender} onChange={setGender} />
+                <BodyFormFields
+                    initialData={initialData}
+                    submitLabel="บันทึก"
+                    isLoading={saving}
+                    onSubmit={handleSubmit}
+                />
+
+
+            </ScrollView>
         </>
     );
 }
