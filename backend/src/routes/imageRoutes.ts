@@ -1,10 +1,10 @@
-import { Router } from 'express';
-import { upload } from '../middlewares/upload';
-import { uploadBodyImage } from '../controllers/uploadBody';
+import { Router } from "express";
+import { uploadBody4Angles, handleUploadError } from "../middlewares/upload";
+import { uploadAndVerifyBodyImages } from "../controllers/uploadBody";
 
 const router = Router();
 
-// Endpoint สำหรับอัปโหลดรูปภาพร่างกายทีละ 1 มุม (front, left, right, back)
-router.post('/body', upload.single('image'), uploadBodyImage);
+// authMiddleware อยู่ใน index.ts แล้ว ไม่ต้องใส่ซ้ำที่นี่
+router.post("/body", uploadBody4Angles, handleUploadError, uploadAndVerifyBodyImages);
 
 export default router;
