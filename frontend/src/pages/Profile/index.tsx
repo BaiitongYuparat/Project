@@ -13,7 +13,7 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div className="w-full px-3">
+    <div className="w-full min-h-screen px-3 ">
       <div className="py-5 ">
         <p className="font-bold text-2xl text-secondary">รู้จักรูปร่างของคุณ</p>
         <p>ข้อมูลของคุณช่วยให้ AI เลือกทรงและสัดส่วนได้ใกล้เคียงขึ้น</p>
