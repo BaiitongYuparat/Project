@@ -21,7 +21,7 @@ export default function NavBar() {
         {/* Navigation */}
         <nav aria-label="Main navigation" className="flex items-center gap-2">
           <NavLink
-            to="/pages/home"
+            to="/"
             end
             className={({ isActive }) =>
               `rounded-3xl px-4 py-2  transition-colors duration-200
