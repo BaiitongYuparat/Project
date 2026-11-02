@@ -23,6 +23,7 @@ export default function BodyPage() {
       })
       .catch((e) => console.error("Load user failed:", e));
   }, []);
+  
   const handleSaveBody = async (data: BodyFormValues) => {
     if (!gender) {
       setError("กรุณาเลือกเพศก่อนบันทึก เพื่อใช้ในการวิเคราะห์รูปร่าง");
