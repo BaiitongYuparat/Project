@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
-import { Alert, BackHandler , ScrollView } from "react-native";
+import { Alert, BackHandler, ScrollView } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import BodyFormFields, { type BodyFormValues } from "../../../components/common/BodyFormFields";
 import { createBodyData } from "../../../service/bodrservice";
 import { setBody } from "../../../store/bodySlice";
 import { useDispatch } from "react-redux";
-import {setConsent } from "../../../service/userconsentservice"
+import { setConsent } from "../../../service/userconsentservice"
 import { updateMe, type Gender } from "@/service/userservice";
 import GenderSelector from "../../../components/common/GenderSelector";
+import ConsentSection, { type ConsentState } from "../../../components/common/userConsent"
 
 
 export default function BodySetup() {
@@ -15,6 +16,10 @@ export default function BodySetup() {
     const dispatch = useDispatch();
     const [saving, setSaving] = useState(false);
     const [gender, setGender] = useState<Gender | "">("");
+    const [consent, setConsentState] = useState<ConsentState>({
+        body_data: false,
+        photo_analysis: false,
+    });
 
 
     useEffect(() => {
@@ -26,9 +31,19 @@ export default function BodySetup() {
         if (!gender) {
             Alert.alert("กรุณาเลือกเพศ", "ต้องเลือกเพศก่อนไปต่อ เพื่อใช้ในการวิเคราะห์รูปร่าง");
             return;
+        } if (!consent.body_data) {
+            Alert.alert(
+                "ต้องได้รับความยินยอม",
+                "กรุณายินยอมให้ใช้ข้อมูลสรีระเพื่อวิเคราะห์รูปร่าง จึงจะดำเนินการต่อได้"
+            );
+            return;
         }
         try {
             setSaving(true);
+            await setConsent([
+                { type: "body_data", granted: consent.body_data },
+                { type: "photo_analysis", granted: consent.photo_analysis },
+            ]);
             await updateMe({ gender });
             const saved = await createBodyData(data);
             dispatch(setBody(saved ?? data)); // ใช้ type BodyData ถ้า export ไว้
@@ -50,19 +65,20 @@ export default function BodySetup() {
                     gestureEnabled: false,
                 }}
             />
-                        <ScrollView
+            <ScrollView
                 className="flex-1 bg-[#FFFCFA]"
                 contentContainerStyle={{ paddingBottom: 48 }}
                 keyboardShouldPersistTaps="handled"
             >
                 <GenderSelector value={gender} onChange={setGender} />
 
-            <BodyFormFields
-                description="ใช้เพื่อสร้างภาพสวมใส่และแนะนำชุดที่เหมาะ"
-                submitLabel="ถัดไป"
-                isLoading={saving}
-                onSubmit={handleSubmit}
-            />
+                <BodyFormFields
+                    description="ใช้เพื่อสร้างภาพสวมใส่และแนะนำชุดที่เหมาะ"
+                    submitLabel="ถัดไป"
+                    isLoading={saving}
+                    onSubmit={handleSubmit}
+                />
+                <ConsentSection value={consent} onChange={setConsentState} />
             </ScrollView>
         </>
     );

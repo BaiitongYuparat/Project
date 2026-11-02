@@ -8,7 +8,8 @@ import { setBody } from "../../../store/bodySlice";
 import { useAuth } from "../../../components/auth/AuthProvider";
 import GenderSelector from "../../../components/common/GenderSelector"
 import { getMe, type Gender, updateMe } from "@/service/userservice";
-
+import { getConsents, setConsent } from "../../../service/userconsentservice";
+import ConsentSection, { type ConsentState } from "../../../components/common/userConsent"
 
 export default function BodyEdit() {
     const router = useRouter();
@@ -19,6 +20,7 @@ export default function BodyEdit() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [gender, setGender] = useState<Gender | "">("")
+    const [consent, setConsentState] = useState<ConsentState>({ body_data: false, photo_analysis: false, });
 
 
     const { isLoggedIn, authChecked, requireAuth } = useAuth(); //ดึงสถานะล็อกอิน
@@ -34,6 +36,7 @@ export default function BodyEdit() {
         }
     }, [authChecked, isLoggedIn]);
 
+    //โหลดเพศ
     useEffect(() => {
         if (!authChecked || !isLoggedIn) return
         getMe()
@@ -41,6 +44,22 @@ export default function BodyEdit() {
             .catch((e) => console.log("load user error", e))
     }, [authChecked, isLoggedIn])
 
+    // โหลดค่าที่เคยบันทึกไว้
+    useEffect(() => {
+        if (!authChecked || !isLoggedIn) return;
+        (async () => {
+            try {
+                const rows = await getConsents();
+                const next: ConsentState = { body_data: false, photo_analysis: false };
+                rows.forEach((r) => {
+                    next[r.type] = r.granted;
+                });
+                setConsentState(next);
+            } catch (e) {
+                console.log("load consent error", e);
+            }
+        })();
+    }, [authChecked, isLoggedIn]);
 
     useEffect(() => {
         if (!authChecked || !isLoggedIn) return
@@ -67,6 +86,10 @@ export default function BodyEdit() {
         }
         try {
             setSaving(true);
+            await setConsent([
+                { type: "body_data", granted: consent.body_data }, 
+                { type: "photo_analysis", granted: consent.photo_analysis },
+            ]);
             const payload = {
                 weight: Number(data.weight),
                 height: Number(data.height),
@@ -107,6 +130,7 @@ export default function BodyEdit() {
             >
 
                 <GenderSelector value={gender} onChange={setGender} />
+
                 <BodyFormFields
                     initialData={initialData}
                     submitLabel="บันทึก"
@@ -114,7 +138,7 @@ export default function BodyEdit() {
                     onSubmit={handleSubmit}
                 />
 
-
+                <ConsentSection value={consent} onChange={setConsentState} />
             </ScrollView>
         </>
     );
