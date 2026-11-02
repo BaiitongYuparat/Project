@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, View } from "react-native";
+import { ActivityIndicator, Alert, View, ScrollView } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useDispatch } from "react-redux";
 import BodyFormFields, { type BodyFormValues } from "../../../components/common/BodyFormFields";
 import { getBodyData, createBodyData, updateBodyData } from "../../../service/bodrservice";
 import { setBody } from "../../../store/bodySlice";
 import { useAuth } from "../../../components/auth/AuthProvider";
-
+import GenderSelector from "../../../components/common/GenderSelector"
+import { getMe, type Gender, updateMe } from "@/service/userservice";
+import { getConsents, setConsent } from "../../../service/userconsentservice";
+import ConsentSection, { type ConsentState } from "../../../components/common/userConsent"
 
 export default function BodyEdit() {
     const router = useRouter();
@@ -16,6 +19,9 @@ export default function BodyEdit() {
     const [bodyId, setBodyId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [gender, setGender] = useState<Gender | "">("")
+    const [consent, setConsentState] = useState<ConsentState>({ body_data: false, photo_analysis: false, });
+
 
     const { isLoggedIn, authChecked, requireAuth } = useAuth(); //ดึงสถานะล็อกอิน
     //ถ้าเช็กเสร็จแล้วยังไม่ล็อกอิน ให้ออกจากหน้านี้แล้วเปิด popup เข้าสู่ระบบ
@@ -28,6 +34,31 @@ export default function BodyEdit() {
                 router.push({ pathname: "/screens/profile/bodyedit", params: { mode: "edit" } })
             );
         }
+    }, [authChecked, isLoggedIn]);
+
+    //โหลดเพศ
+    useEffect(() => {
+        if (!authChecked || !isLoggedIn) return
+        getMe()
+            .then((u) => { if (u.gender) setGender(u.gender) })
+            .catch((e) => console.log("load user error", e))
+    }, [authChecked, isLoggedIn])
+
+    // โหลดค่าที่เคยบันทึกไว้
+    useEffect(() => {
+        if (!authChecked || !isLoggedIn) return;
+        (async () => {
+            try {
+                const rows = await getConsents();
+                const next: ConsentState = { body_data: false, photo_analysis: false };
+                rows.forEach((r) => {
+                    next[r.type] = r.granted;
+                });
+                setConsentState(next);
+            } catch (e) {
+                console.log("load consent error", e);
+            }
+        })();
     }, [authChecked, isLoggedIn]);
 
     useEffect(() => {
@@ -49,8 +80,16 @@ export default function BodyEdit() {
     }, [authChecked, isLoggedIn]);
 
     const handleSubmit = async (data: BodyFormValues) => {
+        if (!gender) {
+            Alert.alert("กรุณาเลือกเพศ", "ต้องเลือกเพศก่อนบันทึก เพื่อใช้ในการวิเคราะห์รูปร่าง")
+            return
+        }
         try {
             setSaving(true);
+            await setConsent([
+                { type: "body_data", granted: consent.body_data }, 
+                { type: "photo_analysis", granted: consent.photo_analysis },
+            ]);
             const payload = {
                 weight: Number(data.weight),
                 height: Number(data.height),
@@ -58,6 +97,7 @@ export default function BodyEdit() {
                 waist: Number(data.waist),
                 hips: Number(data.hips),
             };
+            await updateMe({ gender })
 
             const saved = bodyId
                 ? await updateBodyData(payload)
@@ -83,12 +123,23 @@ export default function BodyEdit() {
     return (
         <>
             <Stack.Screen options={{ headerShown: true, title: "ข้อมูลร่างกาย" }} />
-            <BodyFormFields
-                initialData={initialData}
-                submitLabel="บันทึก"
-                isLoading={saving}
-                onSubmit={handleSubmit}
-            />
+            <ScrollView
+                className="flex-1 bg-[#FFFCFA]"
+                contentContainerStyle={{ paddingBottom: 48 }}
+                keyboardShouldPersistTaps="handled"
+            >
+
+                <GenderSelector value={gender} onChange={setGender} />
+
+                <BodyFormFields
+                    initialData={initialData}
+                    submitLabel="บันทึก"
+                    isLoading={saving}
+                    onSubmit={handleSubmit}
+                />
+
+                <ConsentSection value={consent} onChange={setConsentState} />
+            </ScrollView>
         </>
     );
 }

@@ -7,6 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Gender {
+  MALE
+  FEMALE
+  UNSPECIFIED
+}
+
 model User {
   id           String        @id @default(uuid())
   googleId     String?       @unique
@@ -14,6 +20,7 @@ model User {
   email        String        @unique
   status       String        @default("active")
   created_at   DateTime      @default(now()) @db.Timestamp(6)
+  gender       Gender?
   body         Body[]
   userConsents UserConsent[]
 
@@ -42,7 +49,7 @@ model Image {
   angle          String?
   quality_status String?
   uploaded_at    DateTime @default(now()) @db.Timestamp(6)
-  body           Body     @relation(fields: [body_id], references: [id])
+  body           Body     @relation(fields: [body_id], references: [id],onDelete: Cascade)
 
   @@unique([body_id, angle])
   @@map("image")
@@ -55,21 +62,24 @@ model UserConsent {
   granted    Boolean
   granted_at DateTime  @default(now()) @db.Timestamp(6)
   revoked_at DateTime? @db.Timestamp(6)
-  user       User      @relation(fields: [user_id], references: [id])
+  user       User      @relation(fields: [user_id], references: [id] , onDelete: Cascade)
 
-  @@unique([user_id, type]) //1 คนห้ามมี type ซ้ำกัน
+  @@unique([user_id, type])
   @@map("user_consents")
-  
 }
 
 model Clothing {
-  id         String   @id @default(uuid())
-  user_id    String
-  name       String?
-  category   String
-  image_url  String
-  created_at DateTime @default(now()) @db.Timestamp(6)
-  updated_at DateTime @updatedAt @db.Timestamp(6)
+  id          String   @id @default(uuid())
+  user_id     String
+  name        String?
+  category    String   // เช่น top, bottom, shoes
+  subcategory String?  // เช่น t-shirt, jeans, hoodie
+  color       String?  // เช่น white, black, blue
+  style       String?  // เช่น casual, formal
+  image_url   String
+  is_favorite Boolean  @default(false)
+  created_at  DateTime @default(now()) @db.Timestamp(6)
+  updated_at  DateTime @updatedAt @db.Timestamp(6)
 
   @@index([user_id])
   @@map("clothings")

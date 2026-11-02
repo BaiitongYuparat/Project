@@ -9,7 +9,7 @@ export default function NavBar() {
   const dispatch = useDispatch();
 
   return (
-    <header className="h-16 bg-white shadow-md px-6">
+    <header className="relative z-50 h-16 bg-white px-6 shadow-md shadow-black/20">
       <div className="flex h-full items-center justify-between">
         {/* Logo */}
         <div>
