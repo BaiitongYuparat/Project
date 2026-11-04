@@ -32,6 +32,7 @@ function AppRoutes() {
       </Route>
 
       {/* SuperAdmin Layout */}
+      
     </Routes>
   );
 }
