@@ -11,6 +11,7 @@ import imageRoutes from './routes/imageRoutes';
 import clothingRoutes from './routes/clothingRoutes';
 
 import userconsentRoutes from "./routes/userconsentRoutes"
+import brandRoutes from "./routes/brandRoutes";
 
 const app = express();
 app.use(express.json());
@@ -24,6 +25,7 @@ app.use("/body", authMiddleware, bodyRoutes);
 app.use('/images', authMiddleware, imageRoutes);
 app.use('/clothings', authMiddleware, clothingRoutes);
 app.use("/userconsent", authMiddleware, userconsentRoutes);
+app.use("/brands", brandRoutes);
 
 
 const PORT = process.env.PORT || 3000;

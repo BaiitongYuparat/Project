@@ -13,6 +13,13 @@ enum Gender {
   UNSPECIFIED
 }
 
+enum BrandStatus {
+  DRAFT // กรอกยังไม่ครบ
+  PENDING // รอแอดมินตรวจสอบ
+  APPROVED
+  REJECTED
+}
+
 model User {
   id           String        @id @default(uuid())
   googleId     String?       @unique
@@ -49,7 +56,7 @@ model Image {
   angle          String?
   quality_status String?
   uploaded_at    DateTime @default(now()) @db.Timestamp(6)
-  body           Body     @relation(fields: [body_id], references: [id],onDelete: Cascade)
+  body           Body     @relation(fields: [body_id], references: [id], onDelete: Cascade)
 
   @@unique([body_id, angle])
   @@map("image")
@@ -62,20 +69,21 @@ model UserConsent {
   granted    Boolean
   granted_at DateTime  @default(now()) @db.Timestamp(6)
   revoked_at DateTime? @db.Timestamp(6)
-  user       User      @relation(fields: [user_id], references: [id] , onDelete: Cascade)
+  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, type])
   @@map("user_consents")
 }
 
+// เสื้อผ้าที่ผู้ใช้บันทึก
 model Clothing {
   id          String   @id @default(uuid())
   user_id     String
   name        String?
-  category    String   // เช่น top, bottom, shoes
-  subcategory String?  // เช่น t-shirt, jeans, hoodie
-  color       String?  // เช่น white, black, blue
-  style       String?  // เช่น casual, formal
+  category    String // เช่น top, bottom, shoes
+  subcategory String? // เช่น t-shirt, jeans, hoodie
+  color       String? // เช่น white, black, blue
+  style       String? // เช่น casual, formal
   image_url   String
   is_favorite Boolean  @default(false)
   created_at  DateTime @default(now()) @db.Timestamp(6)
@@ -83,4 +91,69 @@ model Clothing {
 
   @@index([user_id])
   @@map("clothings")
+}
+
+// ร้านค้า
+model Brand {
+  id                String      @id @default(uuid())
+  brand_name        String      @unique
+  owner_name        String
+  email             String?     @unique
+  phone_number      String?
+  store_url         String?     @unique
+  ebiz_reg_no       String? // เลขทะเบียนพาณิชย์อิเล็กทรอนิกส์
+  ebiz_registration String? // ไฟล์ทะเบียนพาณิชย์ (URL ใน S3)
+  status            BrandStatus @default(DRAFT)
+  created_at        DateTime    @default(now()) @db.Timestamp(6)
+  updated_at        DateTime    @updatedAt @db.Timestamp(6)
+  products          Product[]
+
+  @@index([status])
+  @@map("brands")
+}
+
+//สินค้าในร้านค้า
+model Product {
+  id          String             @id @default(uuid())
+  brand_id    String
+  name        String
+  category    String
+  description String?
+  created_at  DateTime           @default(now()) @db.Timestamp(6)
+  updated_at  DateTime           @updatedAt @db.Timestamp(6)
+  brand       Brand              @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  size_charts ProductSizeChart[]
+  images      ProductImage[]
+
+  @@index([brand_id])
+  @@index([category])
+  @@map("products")
+}
+
+// ขนาดของสินค้า
+model ProductSizeChart {
+  id         String   @id @default(uuid())
+  product_id String
+  size       String // S, M, L
+  chest      Decimal? @db.Decimal(5, 2)
+  waist      Decimal? @db.Decimal(5, 2)
+  hips       Decimal? @db.Decimal(5, 2)
+  length     Decimal? @db.Decimal(5, 2)
+  product    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([product_id, size])
+  @@map("product_size_charts")
+}
+
+// รูปภาพของสินค้า
+model ProductImage {
+  id          String   @id @default(uuid())
+  product_id  String
+  s3_key      String
+  sort_order  Int      @default(0)
+  uploaded_at DateTime @default(now()) @db.Timestamp(6)
+  product     Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id])
+  @@map("product_images")
 }

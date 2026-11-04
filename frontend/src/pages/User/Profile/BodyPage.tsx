@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import BodyForm, { type BodyFormValues } from "../../components/BodyForm";
-import { updateBody } from "../../services/bodyService";
+import BodyForm, { type BodyFormValues } from "../../../components/BodyForm";
+import { updateBody } from "../../../services/bodyService";
 import { useDispatch, useSelector } from "react-redux";
-import type { RootState } from "../../store/store";
-import { setBody } from "../../store/bodySlice";
-import { getMe, updateMe, type Gender } from "../../services/userService";
-import GenderSelector from "../../components/GenderSelector";
+import type { RootState } from "../../../store/store";
+import { setBody } from "../../../store/bodySlice";
+import { getMe, updateMe, type Gender } from "../../../services/userService";
+import GenderSelector from "../../../components/GenderSelector";
 
 export default function BodyPage() {
   const [isSaving, setIsSaving] = useState(false);

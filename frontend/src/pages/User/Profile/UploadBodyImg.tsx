@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import type { RootState } from "../../store/store";
-import api from "../../services/api";
+import type { RootState } from "../../../store/store";
+import api from "../../../services/api";
 
 const ANGLES = [
   { key: "front", label: "หน้า" },
