@@ -1,8 +1,7 @@
-import type { User } from "./userService";
+import type { User } from "../types/user";
 import api from "./api";
 
 export type GoogleAuthResponse = {
-  //token: string;
   user: User;
 };
 

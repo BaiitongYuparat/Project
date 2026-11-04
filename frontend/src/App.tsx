@@ -17,6 +17,7 @@ import UploadBodyImg from "./pages/User/Profile/UploadBodyImg";
 import ProfilePage from "./pages/User/Profile";
 import ShopPage from "./pages/User/shop/ShopPage";
 import RegisterPage from "./pages/User/RegisterStore/RegisterPage";
+import AppRoutes from "./routes/AppRoutes";
 
 function MainLayout() {
   return (
@@ -80,19 +81,7 @@ function App() {
   return (
     <BrowserRouter>
 
-      <Routes>
-        <Route element={<MainLayout />}>
-          <Route path="/" element={<ShopPage />} />
-
-          <Route path="/pages/Profile" element={<ProfilePage />}>
-            <Route index element={<Navigate to="BodyPage" replace />} />
-            <Route path="BodyPage" element={<BodyPage />} />
-            <Route path="UploadBodyImg" element={<UploadBodyImg />} />
-          </Route>
-        </Route>
-
-        <Route path="/brand/register" element={<RegisterPage />} />
-      </Routes>
+      <AppRoutes />
 
       {isLoginOpen && <LoginModal onLoginSuccess={handleLoginSuccess} />}
       {isBodyOpen && <BodyModal isOpen={isBodyOpen} />}

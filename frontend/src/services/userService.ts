@@ -1,15 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL;
 import api from "./api";
-
-export type Gender = "MALE" | "FEMALE" | "UNSPECIFIED";
-
-export type User = {
-    id: string;
-    email: string;
-    name: string | null;
-    gender: Gender | null;
-    
-}
+import type { User } from "../types/user";
 
 export const getMe = async (): Promise<User> => {
   const res = await api.get("/user/me");
