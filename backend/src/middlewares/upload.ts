@@ -108,3 +108,27 @@ export const handleUploadError = (
 
     return res.status(400).json({ message: err.message || "File upload failed" });
 };
+
+ //Upload ทะเบียนพาณิชย์ของแบรนด์
+export const uploadBrandDoc = multer({
+  storage: multerS3({
+    s3: s3,
+    bucket: process.env.AWS_S3_BUCKET_NAME!,
+    contentType: multerS3.AUTO_CONTENT_TYPE,
+    metadata: (req, file, cb) => {
+      cb(null, { fieldName: file.fieldname });
+    },
+    key: (req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, `BrandDoc/${Date.now()}_${Math.round(Math.random() * 1e9)}${ext}`);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ["application/pdf", "image/jpeg", "image/png"];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Only PDF, JPG or PNG files are allowed"));
+  },
+});
+
+export const uploadEbizRegistration = uploadBrandDoc.single("ebiz_registration");

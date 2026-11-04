@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 
-import type { Shop } from "../../services/shopService";
-import type { Product } from "../../services/productService";
+import type { Shop } from "../../../services/shopService";
+import type { Product } from "../../../services/productService";
 
-import { getShops } from "../../services/shopService";
-import { getProducts } from "../../services/productService";
+import { getShops } from "../../../services/shopService";
+import { getProducts } from "../../../services/productService";
 
-import ProductGrid from "../../components/shop/ProductGrid";
-import Button from "../../components/Button";
+import ProductGrid from "../../../components/shop/ProductGrid";
+import Button from "../../../components/Button";
 
 const categories = [
   { value: "all", label: "ทั้งหมด" },

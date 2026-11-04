@@ -1,6 +1,6 @@
 import "./App.css";
 import NavBar from "./components/Navbar";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { getCurrentUser } from "./services/authService";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "./store/store";
@@ -12,11 +12,20 @@ import { closeLogin, openBody } from "./store/uiSlice";
 import { getBody } from "./services/bodyService";
 import { setBody } from "./store/bodySlice";
 import axios from "axios";
-import BodyPage from "./pages/Profile/BodyPage";
-import UploadBodyImg from "./pages/Profile/UploadBodyImg";
-import ProfilePage from "./pages/Profile";
-import ShopPage from "./pages/shop/ShopPage";
+import BodyPage from "./pages/User/Profile/BodyPage";
+import UploadBodyImg from "./pages/User/Profile/UploadBodyImg";
+import ProfilePage from "./pages/User/Profile";
+import ShopPage from "./pages/User/shop/ShopPage";
+import RegisterPage from "./pages/User/RegisterStore/RegisterPage";
 
+function MainLayout() {
+  return (
+    <>
+      <NavBar />
+      <Outlet />
+    </>
+  );
+}
 function App() {
   const dispatch = useDispatch();
   const isLoginOpen = useSelector((state: RootState) => state.ui.isLoginOpen);
@@ -70,14 +79,19 @@ function App() {
   };
   return (
     <BrowserRouter>
-      <NavBar />
+
       <Routes>
-        <Route path="/" element={<ShopPage />}/>
-        <Route path="/pages/Profile" element={<ProfilePage />}>
-          <Route index element={<Navigate to="BodyPage" replace />} />
-          <Route path="BodyPage" element={<BodyPage />} />
-          <Route path="UploadBodyImg" element={<UploadBodyImg />} />
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<ShopPage />} />
+
+          <Route path="/pages/Profile" element={<ProfilePage />}>
+            <Route index element={<Navigate to="BodyPage" replace />} />
+            <Route path="BodyPage" element={<BodyPage />} />
+            <Route path="UploadBodyImg" element={<UploadBodyImg />} />
+          </Route>
         </Route>
+
+        <Route path="/brand/register" element={<RegisterPage />} />
       </Routes>
 
       {isLoginOpen && <LoginModal onLoginSuccess={handleLoginSuccess} />}
