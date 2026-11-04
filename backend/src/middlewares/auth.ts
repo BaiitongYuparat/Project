@@ -26,7 +26,7 @@ export const authMiddleware = async (
         // 2. หา user จาก DataBase (กันกรณี user ถูกระงับ/ลบหลังออก token ไปแล้ว)
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            select: { id: true, email: true, name: true, status: true },
+            select: { id: true, email: true, name: true, status: true ,role:true},
         });
 
         if (!user) {

@@ -9,6 +9,9 @@ import UploadBodyImg from "../pages/User/Profile/UploadBodyImg";
 import RegisterPage from "../pages/User/RegisterStore/RegisterPage";
 import TryOnPage from "../pages/User/Tryon";
 import AIStylistPage from "../pages/User/AIStylist";
+import ShopAdminLayout from "../layouts/ShopAdminLayout";
+import ShopDashboard from "../pages/AdminStore/Dashboard";
+import ProductManagement from "../pages/AdminStore/ProductManagement";
 
 function AppRoutes() {
   return (
@@ -23,15 +26,21 @@ function AppRoutes() {
         <Route path="/ai" element={<AIStylistPage />} />
         {/* Profile */}
         <Route path="/pages/profile" element={<ProfilePage />}>
-           <Route index element={<Navigate to="BodyPage" replace />} />
-            <Route path="BodyPage" element={<BodyPage />} />
-            <Route path="UploadBodyImg" element={<UploadBodyImg />} />
+          <Route index element={<Navigate to="BodyPage" replace />} />
+          <Route path="BodyPage" element={<BodyPage />} />
+          <Route path="UploadBodyImg" element={<UploadBodyImg />} />
         </Route>
 
         <Route path="/brand/register" element={<RegisterPage />} />
       </Route>
 
       {/* SuperAdmin Layout */}
+
+    {/* ShopAdmin Layout */}
+      <Route path="/shopadmin/:brandId" element={<ShopAdminLayout />}>
+        <Route index element={<ShopDashboard />} />
+        <Route path="products" element={<ProductManagement />} />
+      </Route>
     </Routes>
   );
 }
