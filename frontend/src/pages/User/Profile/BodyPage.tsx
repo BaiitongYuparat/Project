@@ -4,8 +4,9 @@ import { updateBody } from "../../../services/bodyService";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../../../store/store";
 import { setBody } from "../../../store/bodySlice";
-import { getMe, updateMe, type Gender } from "../../../services/userService";
+import { getMe, updateMe } from "../../../services/userService";
 import GenderSelector from "../../../components/GenderSelector";
+import type { Gender } from "../../../types/user";
 
 export default function BodyPage() {
   const [isSaving, setIsSaving] = useState(false);

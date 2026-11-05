@@ -22,6 +22,11 @@ export default function RegisterPage() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [submittedEmail, setSubmittedEmail] = useState("");
+
+    const [duplicateMsg, setDuplicateMsg] = useState("");
+
     const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setForm((prev) => ({ ...prev, [name]: value }));
@@ -61,14 +66,22 @@ export default function RegisterPage() {
             Object.entries(form).forEach(([k, v]) => fd.append(k, v));
             fd.append("ebiz_registration", file);
             await registerBrand(fd);
-            navigate("/brand/register/success");
+            setSubmittedEmail(form.email);
+            setShowSuccess(true);
         } catch (err: any) {
             if (err.status === 409) {
+                const fields: string[] = err.fields ?? [];
                 const errs: Record<string, string> = {};
-                (err.fields ?? []).forEach((f: string) => {
+                fields.forEach((f) => {
                     errs[f] = "ข้อมูลนี้ถูกใช้สมัครแล้ว";
                 });
                 setFieldErrors(errs);
+
+                if (fields.includes("email")) {
+                    setDuplicateMsg("อีเมลนี้ถูกใช้สมัครไปแล้ว กรุณาใช้อีเมลอื่น");
+                } else {
+                    setDuplicateMsg("ข้อมูลนี้ถูกใช้สมัครไปแล้ว กรุณาตรวจสอบและลองใหม่");
+                }
             } else {
                 setError(err.error ?? err.message ?? "สมัครไม่สำเร็จ ลองใหม่อีกครั้ง");
             }
@@ -142,7 +155,7 @@ export default function RegisterPage() {
                     error={fieldErrors.ebiz_registration}
                     required
                 />
-                
+
 
                 {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -154,7 +167,72 @@ export default function RegisterPage() {
                     className="w-full">
                     {loading ? "กำลังส่ง..." : "สมัคร"}
                 </Button>
+
+
             </form>
+            {showSuccess && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl"
+                    >
+                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-3xl text-green-600">
+                            ✓
+                        </div>
+
+                        <h2 className="mb-2 text-xl font-bold">ส่งใบสมัครเรียบร้อยแล้ว</h2>
+
+                        <p className="text-sm text-gray-600">
+                            ขอบคุณที่สนใจร่วมเป็นส่วนหนึ่งของ LongDress
+                            <br />
+                            กรุณารอแอดมินตรวจสอบข้อมูล และจะแจ้งผลกลับไปทางอีเมล
+                        </p>
+
+                        <p className="mt-3 break-all rounded-lg bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-800">
+                            {submittedEmail}
+                        </p>
+
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            size="lg"
+                            className="mt-5 w-full"
+                            onClick={() => navigate("/")}
+                        >
+                            กลับสู่หน้าหลัก
+                        </Button>
+                    </div>
+                </div>
+            )}
+            {duplicateMsg && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+                    <div
+                        role="alertdialog"
+                        aria-modal="true"
+                        className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl"
+                    >
+                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-100 text-3xl text-red-600">
+                            !
+                        </div>
+
+                        <h2 className="mb-2 text-xl font-bold">ไม่สามารถสมัครได้</h2>
+
+                        <p className="text-sm text-gray-600">{duplicateMsg}</p>
+
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            size="lg"
+                            className="mt-5 w-full"
+                            onClick={() => setDuplicateMsg("")}
+                        >
+                            ตกลง
+                        </Button>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }
