@@ -55,7 +55,7 @@ export const updateUser = async (req:Request , res: Response) => {
              data: {
                 name,
                 email,
-                gender   
+                gender,
              }
         })
         return res.json(user);
@@ -73,7 +73,7 @@ export const createUser = async (req:Request , res:Response) => {
             data: {
                 email,
                 gender,
-                name
+                name,
             }
         })
         return res.status(201).json(user);

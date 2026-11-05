@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { User } from "../services/userService";
+import type { User } from "../types/user";
 
 //กำหนด type
 type UserState = {
