@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -10,11 +9,7 @@ import type { User, BrandMembership } from "./types/user";
 import { getCurrentUser } from "./services/authService";
 import { getBody } from "./services/bodyService";
 
-import {
-  login,
-  logout,
-  setAuthChecked,
-} from "./store/userSlice";
+import { login, logout, setAuthChecked } from "./store/userSlice";
 
 import {
   closeEntryChoice,
@@ -24,8 +19,6 @@ import {
 } from "./store/uiSlice";
 
 import { setBody } from "./store/bodySlice";
-
-import NavBar from "./components/Navbar";
 import LoginModal from "./components/LoginModal";
 import BodyModal from "./components/BodyModal";
 import EntryChoiceModal from "./components/EntryChoiceModal";
@@ -36,20 +29,16 @@ export default function AppContent() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const isLoginOpen = useSelector(
-    (state: RootState) => state.ui.isLoginOpen
-  );
+  const isLoginOpen = useSelector((state: RootState) => state.ui.isLoginOpen);
 
-  const isBodyOpen = useSelector(
-    (state: RootState) => state.ui.isBodyOpen
-  );
+  const isBodyOpen = useSelector((state: RootState) => state.ui.isBodyOpen);
 
   const isEntryChoiceOpen = useSelector(
-    (state: RootState) => state.ui.isEntryChoiceOpen
+    (state: RootState) => state.ui.isEntryChoiceOpen,
   );
 
   const entryChoiceBrand = useSelector(
-    (state: RootState) => state.ui.entryChoiceBrand
+    (state: RootState) => state.ui.entryChoiceBrand,
   );
 
   // ตรวจสอบ Session เมื่อเปิดเว็บไซต์
@@ -65,7 +54,6 @@ export default function AppContent() {
         }
 
         await loadUserBody();
-
       } catch (error) {
         dispatch(logout());
       } finally {
@@ -80,16 +68,17 @@ export default function AppContent() {
   const handleLoginSuccess = async (user: User) => {
     dispatch(closeLogin());
     dispatch(login(user));
+    //  ตรวจ role
 
     // Super Admin
     if (user.role === "SUPER_ADMIN") {
-      navigate("/admin");
+      dispatch(openEntryChoice(null));
       return;
     }
 
-    // ค้นหาร้านที่เป็น Owner
+    // !=SuperAdmin แต่เป็น Admin/Owner ของร้านค้า
     const ownerBrand = user.brandMemberships?.find(
-      (brand) => brand.role === "OWNER"
+      (brand) => brand.role === "OWNER" || brand.role === "ADMIN",
     );
 
     // Owner เลือกหน้าเข้าใช้งาน
@@ -107,12 +96,8 @@ export default function AppContent() {
     try {
       const body = await getBody();
       dispatch(setBody(body));
-
     } catch (error) {
-      if (
-        axios.isAxiosError(error) &&
-        error.response?.status === 404
-      ) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
         dispatch(openBody());
       } else {
         console.error("Failed to load body:", error);
@@ -135,24 +120,25 @@ export default function AppContent() {
     navigate(`/shopadmin/${brand.brandId}`);
   };
 
+  const handleSelectAdminDashboard = () => {
+    dispatch(closeEntryChoice());
+    navigate("/admin");
+  };
+
   return (
     <>
-
       <AppRoutes />
 
-      {isLoginOpen && (
-        <LoginModal onLoginSuccess={handleLoginSuccess} />
-      )}
+      {isLoginOpen && <LoginModal onLoginSuccess={handleLoginSuccess} />}
 
-      {isBodyOpen && (
-        <BodyModal isOpen={isBodyOpen} />
-      )}
+      {isBodyOpen && <BodyModal isOpen={isBodyOpen} />}
 
-      {isEntryChoiceOpen && entryChoiceBrand && (
+      {isEntryChoiceOpen && (
         <EntryChoiceModal
           brand={entryChoiceBrand}
           onSelectWebsite={handleSelectWebsite}
           onSelectDashboard={handleSelectDashboard}
+          onSelectAdminDashboard={handleSelectAdminDashboard}
         />
       )}
     </>

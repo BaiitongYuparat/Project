@@ -24,7 +24,7 @@ const uiSlice = createSlice({
     },
     openEntryChoice: (
       state,
-      action: PayloadAction<BrandMembership>
+      action: PayloadAction<BrandMembership | null>
     ) => {
       state.isEntryChoiceOpen = true;
       state.entryChoiceBrand = action.payload;
