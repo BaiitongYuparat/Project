@@ -19,6 +19,48 @@ const cookieOptions = {
 
 const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
+const getUserWithBrands = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      status: true,
+
+      brandMembers: {
+        select: {
+          role: true,
+          brand: {
+            select: {
+              id: true,
+              brand_name: true,
+              status: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!user) return null;
+
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+
+    brandMemberships: user.brandMembers.map((member) => ({
+      brandId: member.brand.id,
+      brandName: member.brand.brand_name,
+      brandStatus: member.brand.status,
+      role: member.role,
+    })),
+  };
+};
+
 export const logingoogle = async (req: Request, res: Response) => {
     const { idToken } = req.body;
     
@@ -65,7 +107,12 @@ export const logingoogle = async (req: Request, res: Response) => {
             }
 
             const token = signToken(user.id);
-            const safeUser = { id: user.id, email: user.email, name: user.name }
+            const safeUser = await getUserWithBrands(user.id);
+            if(!safeUser) {
+                return res.status(404).json({
+                    message: "User not found",
+                })
+            }
 
             //ถ้าเป็น mobile ให้เก็บ token
             if (req.body.platform === "mobile") {
@@ -88,16 +135,33 @@ export const logingoogle = async (req: Request, res: Response) => {
 };
 
 
-export const getCurrentUser = (req: Request, res: Response) => {
+export const getCurrentUser = async (
+  req: Request,
+  res: Response
+) => {
+  try {
     if (!req.user) {
-        return res.status(401).json({
-            message: "Not authenticated",
-        });
+      return res.status(401).json({
+        message: "Not authenticated",
+      });
     }
 
-    return res.json({
-        user: req.user,
+    const user = await getUserWithBrands(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    return res.json({ user });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: "Internal server error",
     });
+  }
 };
 
 export const logoutUser = async (req: Request, res: Response) => {

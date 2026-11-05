@@ -1,0 +1,160 @@
+
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import axios from "axios";
+
+import type { RootState } from "./store/store";
+import type { User, BrandMembership } from "./types/user";
+
+import { getCurrentUser } from "./services/authService";
+import { getBody } from "./services/bodyService";
+
+import {
+  login,
+  logout,
+  setAuthChecked,
+} from "./store/userSlice";
+
+import {
+  closeEntryChoice,
+  closeLogin,
+  openBody,
+  openEntryChoice,
+} from "./store/uiSlice";
+
+import { setBody } from "./store/bodySlice";
+
+import NavBar from "./components/Navbar";
+import LoginModal from "./components/LoginModal";
+import BodyModal from "./components/BodyModal";
+import EntryChoiceModal from "./components/EntryChoiceModal";
+
+import AppRoutes from "./routes/AppRoutes";
+
+export default function AppContent() {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const isLoginOpen = useSelector(
+    (state: RootState) => state.ui.isLoginOpen
+  );
+
+  const isBodyOpen = useSelector(
+    (state: RootState) => state.ui.isBodyOpen
+  );
+
+  const isEntryChoiceOpen = useSelector(
+    (state: RootState) => state.ui.isEntryChoiceOpen
+  );
+
+  const entryChoiceBrand = useSelector(
+    (state: RootState) => state.ui.entryChoiceBrand
+  );
+
+  // ตรวจสอบ Session เมื่อเปิดเว็บไซต์
+  useEffect(() => {
+    async function checkLogin() {
+      try {
+        const user = await getCurrentUser();
+
+        dispatch(login(user));
+
+        if (user.role === "SUPER_ADMIN") {
+          return;
+        }
+
+        await loadUserBody();
+
+      } catch (error) {
+        dispatch(logout());
+      } finally {
+        dispatch(setAuthChecked());
+      }
+    }
+
+    checkLogin();
+  }, [dispatch]);
+
+  // Login สำเร็จ
+  const handleLoginSuccess = async (user: User) => {
+    dispatch(closeLogin());
+    dispatch(login(user));
+
+    // Super Admin
+    if (user.role === "SUPER_ADMIN") {
+      navigate("/admin");
+      return;
+    }
+
+    // ค้นหาร้านที่เป็น Owner
+    const ownerBrand = user.brandMemberships?.find(
+      (brand) => brand.role === "OWNER"
+    );
+
+    // Owner เลือกหน้าเข้าใช้งาน
+    if (ownerBrand) {
+      dispatch(openEntryChoice(ownerBrand));
+      return;
+    }
+
+    // User ทั่วไป
+    await loadUserBody();
+  };
+
+  // โหลด Body
+  const loadUserBody = async () => {
+    try {
+      const body = await getBody();
+      dispatch(setBody(body));
+
+    } catch (error) {
+      if (
+        axios.isAxiosError(error) &&
+        error.response?.status === 404
+      ) {
+        dispatch(openBody());
+      } else {
+        console.error("Failed to load body:", error);
+      }
+    }
+  };
+
+  // เลือก Website
+  const handleSelectWebsite = async () => {
+    dispatch(closeEntryChoice());
+
+    await loadUserBody();
+    navigate("/");
+  };
+
+  // เลือก Shop Dashboard
+  const handleSelectDashboard = (brand: BrandMembership) => {
+    dispatch(closeEntryChoice());
+
+    navigate(`/shopadmin/${brand.brandId}`);
+  };
+
+  return (
+    <>
+
+      <AppRoutes />
+
+      {isLoginOpen && (
+        <LoginModal onLoginSuccess={handleLoginSuccess} />
+      )}
+
+      {isBodyOpen && (
+        <BodyModal isOpen={isBodyOpen} />
+      )}
+
+      {isEntryChoiceOpen && entryChoiceBrand && (
+        <EntryChoiceModal
+          brand={entryChoiceBrand}
+          onSelectWebsite={handleSelectWebsite}
+          onSelectDashboard={handleSelectDashboard}
+        />
+      )}
+    </>
+  );
+}

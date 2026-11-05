@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useDispatch } from 'react-redux'
 import { login } from "../store/userSlice";
 import { closeLogin } from "../store/uiSlice";
+import type { User } from "../types/user";
 
 type LoginModalProps = {
-  onLoginSuccess: () => void | Promise<void>;
+  onLoginSuccess: (user: User) => void | Promise<void>;
 };
 
 export default function LoginModal({ onLoginSuccess }: LoginModalProps) {
@@ -20,7 +21,7 @@ export default function LoginModal({ onLoginSuccess }: LoginModalProps) {
       console.log("ข้อมูลที่ได้จาก Backend:",result)
       dispatch(login(result.user))
 
-     await onLoginSuccess();
+     await onLoginSuccess(result.user);
     } catch (error) {
       console.log("Login Failed", error);
     } finally {
