@@ -25,6 +25,17 @@ export type BrandDetail = Brand & {
   ebiz_file_url: string | null;
 };
 
+export type CheckBrandAccessResponse = {
+  authorized: boolean;
+  brand: {
+    id: string;
+    brand_name: string;
+    slug: string | null;
+    status: BrandStatus;
+  };
+  role: "OWNER" | "ADMIN";
+};
+
 export async function registerBrand(formData: FormData): Promise<RegisterBrandResponse> {
   const response = await api.post("/brands/register", formData, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -49,5 +60,15 @@ export async function getBrandById(id: string): Promise<BrandDetail> {
 
 export async function updateBrandStatus(id: string, status: BrandStatus): Promise<BrandDetail> {
   const response = await api.put(`/brands/${id}/status`, { status });
+  return response.data;
+}
+
+export async function checkBrandAccess(
+  slug: string
+): Promise<CheckBrandAccessResponse> {
+  const response = await api.get<CheckBrandAccessResponse>(
+    `/brands/${encodeURIComponent(slug)}/access`
+  );
+
   return response.data;
 }

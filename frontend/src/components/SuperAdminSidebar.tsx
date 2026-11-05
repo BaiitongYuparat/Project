@@ -34,9 +34,8 @@ const menuItems = [
 
 export default function SuperAdminSidebar() {
     const [isOpen, setIsOpen] = useState(false);
-    const { brandId } = useParams();
 
-    const basePath = `/superadmin/${brandId}`;
+    const basePath = `/superadmin`;
     
     return (
         <>

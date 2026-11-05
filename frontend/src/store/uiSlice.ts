@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { BrandMembership } from "../types/auth";
+import type { BrandMembership } from "../types/user";
 
 const uiSlice = createSlice({
   name: "ui",

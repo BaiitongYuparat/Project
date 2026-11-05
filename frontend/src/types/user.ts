@@ -8,6 +8,7 @@ export type BrandMembership = {
     brandName: string;
     brandStatus: string;
     role: BrandMemberRole;
+    slug: string;
 };
 
 export type User = {
@@ -15,7 +16,6 @@ export type User = {
     email: string;
     name: string | null;
     gender: Gender | null;
-
     role: UserRole;
     brandMemberships: BrandMembership[];
     

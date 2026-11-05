@@ -133,6 +133,7 @@ model Brand {
   email             String?     @unique
   phone_number      String?
   store_url         String?     @unique
+  slug String? @unique
   ebiz_reg_no       String? // เลขทะเบียนพาณิชย์อิเล็กทรอนิกส์
   ebiz_registration String? // ไฟล์ทะเบียนพาณิชย์ (URL ใน S3)
   status            BrandStatus @default(PENDING)

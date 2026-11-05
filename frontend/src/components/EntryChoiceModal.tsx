@@ -19,15 +19,15 @@ const ctaClass =
 interface EntryChoiceModalProps {
   brand: BrandMembership | null;
   onSelectWebsite: () => void | Promise<void>;
-  onSelectDashboard: (brand: BrandMembership) => void;
-  onSelectAdminDashboard: () => void;
+  onSelectShopDashboard: (brand: BrandMembership) => void;
+  onSelectSuperAdminDashboard: () => void;
 }
 
 export default function EntryChoiceModal({
   brand,
   onSelectWebsite,
-  onSelectDashboard,
-  onSelectAdminDashboard,
+  onSelectShopDashboard,
+  onSelectSuperAdminDashboard,
 }: EntryChoiceModalProps) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
@@ -68,7 +68,7 @@ export default function EntryChoiceModal({
           {brand ? (
             <button
               type="button"
-              onClick={() => onSelectDashboard(brand)}
+              onClick={() => onSelectShopDashboard(brand)}
               className={cardClass}
             >
               <span className={iconClass}>
@@ -89,7 +89,7 @@ export default function EntryChoiceModal({
           ) : (
             <button
               type="button"
-              onClick={onSelectAdminDashboard}
+              onClick={onSelectSuperAdminDashboard}
               className={cardClass}
             >
               <span className={iconClass}>

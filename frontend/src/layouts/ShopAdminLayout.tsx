@@ -8,7 +8,7 @@ export default function ShopAdminLayout() {
 
       {/* Main Content */}
       <main className="min-h-screen pt-16 md:ml-64 md:pt-0">
-        <div className="p-5 md:p-8">
+        <div className="p-5 md:p-8 ">
           <Outlet />
         </div>
       </main>

@@ -7,6 +7,9 @@ import { setBody } from "../../../store/bodySlice";
 import { getMe, updateMe } from "../../../services/userService";
 import GenderSelector from "../../../components/GenderSelector";
 import type { Gender } from "../../../types/user";
+import Button from "../../../components/Button";
+import { openBody } from "../../../store/uiSlice";
+import BodyModal from "../../../components/BodyModal";
 
 export default function BodyPage() {
   const [isSaving, setIsSaving] = useState(false);
@@ -14,8 +17,8 @@ export default function BodyPage() {
   const dispatch = useDispatch();
   const body = useSelector((state: RootState) => state.body.body);
   const [gender, setGender] = useState<Gender | "">("");
+  const isBodyOpen = useSelector((state: RootState) => state.ui.isBodyOpen);
 
-  
   // โหลดเพศเดิมของผู้ใช้
   useEffect(() => {
     getMe()
@@ -24,7 +27,7 @@ export default function BodyPage() {
       })
       .catch((e) => console.error("Load user failed:", e));
   }, []);
-  
+
   const handleSaveBody = async (data: BodyFormValues) => {
     if (!gender) {
       setError("กรุณาเลือกเพศก่อนบันทึก เพื่อใช้ในการวิเคราะห์รูปร่าง");
@@ -49,10 +52,6 @@ export default function BodyPage() {
     }
   };
 
-  if (!body) {
-    return <div className="mx-auto max-w-xl p-6">ยังไม่มีข้อมูลร่างกาย</div>;
-  }
-
   return (
     <div className="mx-auto max-w-xl p-6">
       <h1 className="mb-2 text-2xl font-bold ">ข้อมูลร่างกาย</h1>
@@ -67,11 +66,19 @@ export default function BodyPage() {
       <div className="mb-4">
         <GenderSelector value={gender} onChange={setGender} />
       </div>
-      <BodyForm
-        initialData={body}
-        onSubmit={handleSaveBody}
-        isLoading={isSaving}
-      />
+      {body ? (
+        <BodyForm
+          initialData={body}
+          onSubmit={handleSaveBody}
+          isLoading={isSaving}
+        />
+      ) : (
+        <div>
+          <p>ยังไม่มีข้อมูลร่างกาย</p>
+          <Button onClick={() => dispatch(openBody())}>เพิ่มข้อมูล</Button>
+        </div>
+      )}
+      {isBodyOpen && <BodyModal isOpen={isBodyOpen} />}
     </div>
   );
 }

@@ -6,6 +6,14 @@ import { s3 } from "../middlewares/upload";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
+//สร้าง slug ไว้เป็น url ที่ไม่ซ้ำกัน
+const generateSlug = (brandName: string) => {
+  return brandName
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^\wก-๙-]/g, "");
+};
 
 //ตรวจสอบว่าเป็น URL ที่ถูกต้องหรือไม่
 const isValidUrl = (value: string) => {
@@ -74,9 +82,33 @@ export const registerBrand = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "กรุณาแนบไฟล์ทะเบียนพาณิชย์อิเล็กทรอนิกส์" });
     }
 
+    const slug = generateSlug(brand_name);
+    // ตรวจสอบว่า slug ที่สร้างไม่เป็นค่าว่าง
+    if (!slug) {
+      deleteS3File(ebizKey);
+      return res.status(400).json({
+        error: "ไม่สามารถสร้าง slug จากชื่อร้านได้ กรุณาเปลี่ยนชื่อร้าน",
+      });
+    }
+
+    // ตรวจสอบ slug ซ้ำ
+    const existingSlug = await prisma.brand.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+
+    if (existingSlug) {
+      deleteS3File(ebizKey);
+      return res.status(409).json({
+        error: "ชื่อ URL ร้านค้านี้ถูกใช้งานแล้ว กรุณาเปลี่ยนชื่อร้าน",
+        field: "slug",
+      });
+    }
+
     const newBrand = await prisma.brand.create({
       data: {
         brand_name: brand_name.trim(),
+        slug,
         owner_name: owner_name.trim(),
         email: email.trim().toLowerCase(),
         phone_number: phone_number?.trim() || null,
@@ -85,7 +117,7 @@ export const registerBrand = async (req: Request, res: Response) => {
         ebiz_reg_no: ebiz_reg_no?.trim() || null,
         status: "PENDING",
       },
-      select: { id: true, brand_name: true, status: true, created_at: true },
+      select: { id: true, brand_name: true, status: true, created_at: true , slug: true },
     });
 
     res.status(201).json(newBrand);
@@ -198,3 +230,80 @@ export const updateBrandStatus = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to update brand status" });
   }
 }
+
+
+export const checkBrandAccess = async (req: Request, res: Response) => {
+  const slugParam = req.params.slug;
+  const userId = req.user?.id;
+
+  try {
+    // ตรวจการ login
+    if (!userId) {
+      return res.status(401).json({
+        error: "Unauthorized",
+      });
+    }
+
+    //เช็ค type slug ต้องเป็น string
+    if (typeof slugParam !== "string") {
+      return res.status(400).json({
+        error: "Invalid brand slug",
+      });
+    }
+
+    //ค้นหาร้านค้าจากข้อมูล & ตรวจว่าเป็นสมาชิกของร้านจริงไหม
+    const brand = await prisma.brand.findUnique({
+      where: {
+        slug: slugParam,
+      },
+      select: {
+        id: true,
+        brand_name: true,
+        slug: true,
+        status: true,
+        members: {
+          where: {
+            user_id: userId,
+            role: {
+              in: ["OWNER", "ADMIN"],
+            },
+          },
+          select: {
+            role: true,
+          },
+        },
+      },
+    });
+
+    if (!brand) {
+      return res.status(404).json({
+        error: "Brand not found",
+      });
+    }
+    //ถ้ามีสมาชิกที่ตรงเงื่อนไข members.length > 0
+    //ถ้าไม่มีสมาชิกที่ตรงเงื่อนไข members.length == 0
+    if (brand.members.length === 0) {
+      return res.status(403).json({
+        error: "You do not have access to this brand",
+      });
+    }
+
+    return res.status(200).json({
+      authorized: true,
+      brand: {
+        id: brand.id,
+        brand_name: brand.brand_name,
+        slug: brand.slug,
+        status: brand.status,
+      },
+      role: brand.members[0].role,
+    });
+
+  } catch (error) {
+    console.error("checkBrandAccess error:", error);
+
+    return res.status(500).json({
+      error: "Failed to check brand access",
+    });
+  }
+};

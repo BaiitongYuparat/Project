@@ -50,6 +50,15 @@ export default function AppContent() {
         dispatch(login(user));
 
         if (user.role === "SUPER_ADMIN") {
+          dispatch(openEntryChoice(null));
+          return;
+        }
+        const ownerBrand = user.brandMemberships?.find(
+          (brand) => brand.role === "OWNER" || brand.role === "ADMIN",
+        );
+
+        if (ownerBrand) {
+          dispatch(openEntryChoice(ownerBrand));
           return;
         }
 
@@ -114,15 +123,16 @@ export default function AppContent() {
   };
 
   // เลือก Shop Dashboard
-  const handleSelectDashboard = (brand: BrandMembership) => {
+  const handleSelectShopDashboard = (brand: BrandMembership) => {
     dispatch(closeEntryChoice());
 
-    navigate(`/shopadmin/${brand.brandId}`);
+    navigate(`/shopadmin/${brand.slug}`);
   };
 
-  const handleSelectAdminDashboard = () => {
+  //Super Admin
+  const handleSelectSuperAdminDashboard = () => {
     dispatch(closeEntryChoice());
-    navigate("/admin");
+    navigate("/superadmin");
   };
 
   return (
@@ -137,8 +147,8 @@ export default function AppContent() {
         <EntryChoiceModal
           brand={entryChoiceBrand}
           onSelectWebsite={handleSelectWebsite}
-          onSelectDashboard={handleSelectDashboard}
-          onSelectAdminDashboard={handleSelectAdminDashboard}
+          onSelectShopDashboard={handleSelectShopDashboard}
+          onSelectSuperAdminDashboard={handleSelectSuperAdminDashboard}
         />
       )}
     </>

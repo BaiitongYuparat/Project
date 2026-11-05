@@ -16,7 +16,7 @@ const Button: React.FC<ButtonProps> = ({
 }) => {
     const baseStyles: string = `
     font-semibold rounded-lg focus:outline-none
-    focus:ring-2 focus:ring-offset-2 focus:ring-opaciry-75
+    focus:ring-2 focus:ring-offset-2 focus:ring-opacity-75
     transition-all duration-150 ease-in-out
     border
     disabled:opacity-60 disabled:cursor-not-allowed
@@ -82,7 +82,7 @@ const Button: React.FC<ButtonProps> = ({
     ${variantStyles}
     ${sizeStyles}
     ${className || ''}
-    `.replace(/]s+/g,' ').trim();
+    `.replace(/\s+/g, ' ').trim();
     return (
         <button
             type="button"

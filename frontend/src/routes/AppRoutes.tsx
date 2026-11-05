@@ -17,7 +17,8 @@ import Dashboard from "../pages/SuperAdmin/Dashboard";
 import StoreManagement from "../pages/SuperAdmin/storemanagement/StoreManagement";
 import StoreDetail from "../pages/SuperAdmin/storemanagement/StoreDetail";
 import UserManagement from "../pages/SuperAdmin/usermanagement/UserManagement";
-import ModelManagement from "../pages/SuperAdmin/modelmanagement/ModelManagement"
+import ModelManagement from "../pages/SuperAdmin/modelmanagement/ModelManagement";
+import ProtectedRoute from "./ProtectedRoute";
 
 function AppRoutes() {
   return (
@@ -36,23 +37,26 @@ function AppRoutes() {
           <Route path="BodyPage" element={<BodyPage />} />
           <Route path="UploadBodyImg" element={<UploadBodyImg />} />
         </Route>
-
-
       </Route>
       <Route path="/brand/register" element={<RegisterPage />} />
+
       {/* SuperAdmin Layout */}
-      <Route path="/superadmin/:brandId" element={<SuperAdminLayout />}>
-        <Route index element={<Dashboard />} />
-        <Route path="store-management" element={<StoreManagement />} />
-        <Route path="store-management/:id" element={<StoreDetail />} />
-        <Route path="user-management" element={<UserManagement />} />
-        <Route path="model-management" element={<ModelManagement />} />
+      <Route element={<ProtectedRoute allowedRoles={["SUPER_ADMIN"]} />}>
+        <Route path="/superadmin" element={<SuperAdminLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="store-management" element={<StoreManagement />} />
+          <Route path="store-management/:id" element={<StoreDetail />} />
+          <Route path="user-management" element={<UserManagement />} />
+          <Route path="model-management" element={<ModelManagement />} />
+        </Route>
       </Route>
 
       {/* ShopAdmin Layout */}
-      <Route path="/shopadmin/:brandId" element={<ShopAdminLayout />}>
-        <Route index element={<ShopDashboard />} />
-        <Route path="products" element={<ProductManagement />} />
+      <Route element={<ProtectedRoute requireShopAccess />}>
+        <Route path="/shopadmin/:slug" element={<ShopAdminLayout />}>
+          <Route index element={<ShopDashboard />} />
+          <Route path="products" element={<ProductManagement />} />
+        </Route>
       </Route>
 
     </Routes>

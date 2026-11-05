@@ -37,6 +37,7 @@ const getUserWithBrands = async (userId: string) => {
               id: true,
               brand_name: true,
               status: true,
+              slug: true,
             },
           },
         },
@@ -57,6 +58,7 @@ const getUserWithBrands = async (userId: string) => {
       brandName: member.brand.brand_name,
       brandStatus: member.brand.status,
       role: member.role,
+      slug: member.brand.slug,
     })),
   };
 };
