@@ -1,3 +1,4 @@
+import { UserRole } from "@prisma/client";
 export {}
 
 declare global {
@@ -8,6 +9,7 @@ declare global {
         email: string;
         name: string | null;
         status: string;
+        role: UserRole;
       };
     }
   }
