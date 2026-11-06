@@ -32,3 +32,8 @@ export const getUsers = async (): Promise<User[]> => {
   const res = await api.get("/user");
   return res.data;
 };
+
+export const setUserActive = async (id: string, isActive: boolean): Promise<User> => {
+    const res = await api.patch(`/user/${id}/status`, { isActive });
+    return res.data;
+};

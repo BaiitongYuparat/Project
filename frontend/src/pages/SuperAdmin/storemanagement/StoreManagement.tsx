@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams} from "react-router-dom";
 import { getBrands } from "../../../services/brandService";
 import type { Brand, BrandStatus } from "../../../services/brandService";
 
@@ -36,10 +36,10 @@ function StatusBadge({ status, className = "" }: { status: BrandStatus; classNam
 }
 
 function DetailLink({ id, name }: { id: string; name: string }) {
-  const { brandId } = useParams<{ brandId: string }>();
+
   return (
     <Link
-      to={`/superadmin/${brandId}/store-management/${id}`}
+      to={`/superadmin/store-management/${id}`}
       aria-label={`ดูรายละเอียด ${name}`}
       className="inline-flex items-center gap-1 whitespace-nowrap text-blue-700 hover:text-blue-900 hover:underline"
     >

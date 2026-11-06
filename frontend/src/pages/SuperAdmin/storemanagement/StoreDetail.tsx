@@ -34,7 +34,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function StoreDetail() {
-  const { id, brandId } = useParams<{ id: string; brandId: string }>();
+  const { id } = useParams<{ id: string; brandId: string }>();
   const [brand, setBrand] = useState<BrandDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +86,7 @@ export default function StoreDetail() {
   return (
     <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-6 md:p-8">
       <Link
-        to={`/superadmin/${brandId}/store-management`}
+        to={`/superadmin/store-management`}
         className="text-sm text-blue-700 hover:underline"
       >
         ← กลับไปรายชื่อร้านค้า

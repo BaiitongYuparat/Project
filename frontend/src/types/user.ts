@@ -18,5 +18,6 @@ export type User = {
     gender: Gender | null;
     role: UserRole;
     brandMemberships: BrandMembership[];
+     isActive?: boolean;
     
 }
