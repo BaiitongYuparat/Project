@@ -55,7 +55,7 @@ function AppRoutes() {
       </Route>
 
       {/* ShopAdmin Layout */}
-      <Route element={<ProtectedRoute requireShopAccess />}>
+      <Route element={<ProtectedRoute allowedRoles={["USER"]} requireShopAccess />}>
         <Route path="/shopadmin/:slug" element={<ShopAdminLayout />}>
           <Route index element={<ShopDashboard />} />
           <Route path="products" element={<ProductManagement />} />

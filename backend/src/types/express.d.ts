@@ -1,5 +1,4 @@
-import { UserRole } from "@prisma/client";
-export {}
+import { UserRole ,BrandStatus , BrandMemberRole} from "@prisma/client";
 
 declare global {
   namespace Express {
@@ -11,6 +10,15 @@ declare global {
         status: string;
         role: UserRole;
       };
+      brand?: {
+        id: string;
+        brand_name: string;
+        slug: string;
+        status: BrandStatus;
+        role: UserRole | BrandMemberRole;
+      };
     }
   }
 }
+
+export {}

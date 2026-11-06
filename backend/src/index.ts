@@ -12,6 +12,8 @@ import clothingRoutes from './routes/clothingRoutes';
 
 import userconsentRoutes from "./routes/userconsentRoutes"
 import brandRoutes from "./routes/brandRoutes";
+import publicRoutes from "./routes/publicRoutes";
+import adminRoutes from "./routes/adminRoutes";
 
 const app = express();
 app.use(express.json());
@@ -25,8 +27,11 @@ app.use("/body", authMiddleware, bodyRoutes);
 app.use('/images', authMiddleware, imageRoutes);
 app.use('/clothings', authMiddleware, clothingRoutes);
 app.use("/userconsent", authMiddleware, userconsentRoutes);
-app.use("/brands", brandRoutes);
 
+
+app.use("/", publicRoutes);
+app.use("/brands", brandRoutes);
+app.use("/admin", adminRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

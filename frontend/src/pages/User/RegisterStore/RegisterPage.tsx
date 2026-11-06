@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { registerBrand } from "../../../services/brandService";
+import { registerBrand } from "../../../services/ShopAdmin/brandService";
 import Input from "../../../components/Input";
 import Button from "../../../components/Button";
 

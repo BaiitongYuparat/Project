@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getBrandById, updateBrandStatus } from "../../../services/brandService";
-import type { BrandDetail, BrandStatus } from "../../../services/brandService";
+import { getBrandById, updateBrandStatus } from "../../../services/SuperAdmin/brandService";
+import type { BrandDetail, BrandStatus } from "../../../types/brand";
 import Button from "../../../components/Button";
 
 

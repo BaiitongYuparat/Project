@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma";
-import { UserRole, BrandMemberRole } from "@prisma/client";
+import { BrandMemberRole, BrandStatus } from "@prisma/client";
 
 // กำหนด Error สำหรับส่งสถานะกลับไปให้ Controller
 export class BrandAccessError extends Error {
@@ -15,14 +15,10 @@ export class BrandAccessError extends Error {
 
 export const getBrandAccess = async (
   slug: string,
-  userId: string,
-  userRole: UserRole
+  userId: string
 ) => {
-  // ค้นหา Brand และตรวจสอบสมาชิก
   const brand = await prisma.brand.findUnique({
-    where: {
-      slug,
-    },
+    where: { slug },
     select: {
       id: true,
       brand_name: true,
@@ -38,6 +34,7 @@ export const getBrandAccess = async (
         select: {
           role: true,
         },
+        take: 1,
       },
     },
   });
@@ -46,35 +43,21 @@ export const getBrandAccess = async (
     throw new BrandAccessError(404, "Brand not found");
   }
 
-  // ตรวจสอบสิทธิ์
-  let accessRole: UserRole | BrandMemberRole;
-
-  if (userRole === UserRole.SUPER_ADMIN) {
-    accessRole = UserRole.SUPER_ADMIN;
-  } else {
-    if (brand.members.length === 0) {
-      throw new BrandAccessError(
-        403,
-        "You do not have access to this brand"
-      );
-    }
-
-    accessRole = brand.members[0].role;
+  // ต้องเป็นสมาชิก OWNER หรือ ADMIN เท่านั้น
+  if (brand.members.length === 0) {
+    throw new BrandAccessError(403, "You are not a member of this brand");
   }
 
-  // ตรวจสอบสถานะร้าน
-  if (
-    userRole !== UserRole.SUPER_ADMIN &&
-    brand.status !== "APPROVED"
-  ) {
-    throw new BrandAccessError(
-      403,
-      "Brand is not approved",
-      { status: brand.status }
-    );
+  if (!brand.slug) {
+    throw new BrandAccessError(400, "Brand slug is missing");
   }
 
-  // ส่งข้อมูลกลับให้ Controller
+  if (brand.status !== BrandStatus.APPROVED) {
+    throw new BrandAccessError(403, "Brand is not approved", {
+      status: brand.status,
+    });
+  }
+
   return {
     brand: {
       id: brand.id,
@@ -82,6 +65,6 @@ export const getBrandAccess = async (
       slug: brand.slug,
       status: brand.status,
     },
-    role: accessRole,
+    role: brand.members[0].role,
   };
 };

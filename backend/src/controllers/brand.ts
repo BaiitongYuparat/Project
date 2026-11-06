@@ -5,8 +5,7 @@ import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { s3 } from "../middlewares/upload";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { BrandAccessError, getBrandAccess } from "../services/BrandAccessService";
-
+import { BrandAccessError , getBrandAccess } from "../services/brandAccessService";
 //สร้าง slug ไว้เป็น url ที่ไม่ซ้ำกัน
 const generateSlug = (brandName: string) => {
   return brandName
@@ -280,7 +279,7 @@ export const checkBrandAccess = async (req: Request, res: Response) => {
         error: "Unauthorized",
       });
     }
-    
+
     //เช็ค type slug ต้องเป็น string
     if (typeof slugParam !== "string") {
       return res.status(400).json({
@@ -292,7 +291,6 @@ export const checkBrandAccess = async (req: Request, res: Response) => {
     const result = await getBrandAccess(
         slugParam,
         userId,
-        userRole
       );
 
     return res.status(200).json({

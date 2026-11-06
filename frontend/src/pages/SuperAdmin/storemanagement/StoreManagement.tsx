@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams} from "react-router-dom";
-import { getBrands } from "../../../services/brandService";
-import type { Brand, BrandStatus } from "../../../services/brandService";
+import { getBrands } from "../../../services/SuperAdmin/brandService";
+import type { Brand, BrandStatus } from "../../../types/brand";
 
 const statusLabel: Record<BrandStatus, { label: string; className: string }> = {
   APPROVED: { label: "ใช้งานอยู่", className: "bg-green-100 text-green-800" },
