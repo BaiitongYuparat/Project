@@ -5,7 +5,7 @@ import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { s3 } from "../middlewares/upload";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { BrandAccessError, getBrandAccess } from "../services/BrandAccessService";
+import { BrandAccessError, getBrandAccess } from "../services/brandAccessService";
 
 //สร้าง slug ไว้เป็น url ที่ไม่ซ้ำกัน
 const generateSlug = (brandName: string) => {
