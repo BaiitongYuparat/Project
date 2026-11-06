@@ -5,6 +5,7 @@ import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { s3 } from "../middlewares/upload";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { BrandAccessError, getBrandAccess } from "../services/BrandAccessService";
 
 //สร้าง slug ไว้เป็น url ที่ไม่ซ้ำกัน
 const generateSlug = (brandName: string) => {
@@ -270,15 +271,16 @@ export const updateBrandStatus = async (req: Request, res: Response) => {
 export const checkBrandAccess = async (req: Request, res: Response) => {
   const slugParam = req.params.slug;
   const userId = req.user?.id;
+  const userRole = req.user?.role;
 
   try {
     // ตรวจการ login
-    if (!userId) {
+    if (!userId || !userRole) {
       return res.status(401).json({
         error: "Unauthorized",
       });
     }
-
+    
     //เช็ค type slug ต้องเป็น string
     if (typeof slugParam !== "string") {
       return res.status(400).json({
@@ -286,55 +288,25 @@ export const checkBrandAccess = async (req: Request, res: Response) => {
       });
     }
 
-    //ค้นหาร้านค้าจากข้อมูล & ตรวจว่าเป็นสมาชิกของร้านจริงไหม
-    const brand = await prisma.brand.findUnique({
-      where: {
-        slug: slugParam,
-      },
-      select: {
-        id: true,
-        brand_name: true,
-        slug: true,
-        status: true,
-        members: {
-          where: {
-            user_id: userId,
-            role: {
-              in: ["OWNER", "ADMIN"],
-            },
-          },
-          select: {
-            role: true,
-          },
-        },
-      },
-    });
-
-    if (!brand) {
-      return res.status(404).json({
-        error: "Brand not found",
-      });
-    }
-    //ถ้ามีสมาชิกที่ตรงเงื่อนไข members.length > 0
-    //ถ้าไม่มีสมาชิกที่ตรงเงื่อนไข members.length == 0
-    if (brand.members.length === 0) {
-      return res.status(403).json({
-        error: "You do not have access to this brand",
-      });
-    }
+    // เรียกใช้ Service
+    const result = await getBrandAccess(
+        slugParam,
+        userId,
+        userRole
+      );
 
     return res.status(200).json({
       authorized: true,
-      brand: {
-        id: brand.id,
-        brand_name: brand.brand_name,
-        slug: brand.slug,
-        status: brand.status,
-      },
-      role: brand.members[0].role,
+      ...result,
     });
 
   } catch (error) {
+    if (error instanceof BrandAccessError) {
+      return res.status(error.statusCode).json({
+        error: error.message,
+        ...error.details,
+      });
+    }
     console.error("checkBrandAccess error:", error);
 
     return res.status(500).json({
