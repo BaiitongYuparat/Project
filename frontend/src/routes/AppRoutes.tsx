@@ -19,6 +19,7 @@ import StoreDetail from "../pages/SuperAdmin/storemanagement/StoreDetail";
 import UserManagement from "../pages/SuperAdmin/usermanagement/UserManagement";
 import ModelManagement from "../pages/SuperAdmin/modelmanagement/ModelManagement";
 import ProtectedRoute from "./ProtectedRoute";
+import AdminManagement from "../pages/SuperAdmin/adminmanagement/AdminManagement"
 
 function AppRoutes() {
   return (
@@ -48,6 +49,8 @@ function AppRoutes() {
           <Route path="store-management/:id" element={<StoreDetail />} />
           <Route path="user-management" element={<UserManagement />} />
           <Route path="model-management" element={<ModelManagement />} />
+          <Route path="admin-management" element={<AdminManagement />} />
+
         </Route>
       </Route>
 

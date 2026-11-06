@@ -133,14 +133,13 @@ model Brand {
   email             String?     @unique
   phone_number      String?
   store_url         String?     @unique
-  slug String? @unique
+  slug              String?     @unique
   ebiz_reg_no       String? // เลขทะเบียนพาณิชย์อิเล็กทรอนิกส์
   ebiz_registration String? // ไฟล์ทะเบียนพาณิชย์ (URL ใน S3)
   status            BrandStatus @default(PENDING)
   created_at        DateTime    @default(now()) @db.Timestamp(6)
   updated_at        DateTime    @updatedAt @db.Timestamp(6)
   products          Product[]
-  
 
   members       BrandMember[]
   invites       BrandInvite[]
@@ -288,4 +287,24 @@ model ProductClick {
   @@index([brand_id, created_at])
   @@index([product_id, created_at])
   @@map("product_clicks")
+}
+
+model Model {
+  id              String   @id @default(uuid())
+  name            String
+  gender          Gender?
+  body_type       String
+  height          Decimal  @db.Decimal(5, 2)
+  image_url       String
+  supported_sizes String[] @default([])
+  is_active       Boolean  @default(true)
+  is_selectable   Boolean  @default(true)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+
+  @@index([gender])
+  @@index([body_type])
+  @@index([is_active, is_selectable])
+  @@map("try_on_models")
 }

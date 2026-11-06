@@ -36,6 +36,8 @@ export type CheckBrandAccessResponse = {
   role: "OWNER" | "ADMIN";
 };
 
+
+
 export async function registerBrand(formData: FormData): Promise<RegisterBrandResponse> {
   const response = await api.post("/brands/register", formData, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -72,3 +74,4 @@ export async function checkBrandAccess(
 
   return response.data;
 }
+
