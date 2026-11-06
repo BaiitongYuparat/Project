@@ -31,8 +31,8 @@ enum TryOnStatus {
 }
 
 enum BrandMemberRole {
-  OWNER
-  ADMIN
+  OWNER  //เจ้าของร้าน
+  ADMIN //แอดมินลูกน้องเจ้าของร้าน
 }
 
 enum InviteStatus {

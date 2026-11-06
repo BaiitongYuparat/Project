@@ -207,29 +207,64 @@ export const updateBrandStatus = async (req: Request, res: Response) => {
   }
 
   try {
-    const updatedBrand = await prisma.brand.update({
-      where: { id },
-      data: { status },
-      select: {
-        id: true,
-        brand_name: true,
-        owner_name: true,
-        email: true,
-        phone_number: true,
-        store_url: true,
-        ebiz_reg_no: true,
-        ebiz_registration: true,
-        status: true,
-        created_at: true,
-      },
+    const result = await prisma.$transaction(async (tx) => {
+      const brand = await tx.brand.findUnique({
+        where: { id },
+        select: { id: true, email: true, status: true },
+      });
+      if (!brand) return null;
+
+      const updatedBrand = await tx.brand.update({
+        where: { id },
+        data: { status },
+        select: {
+          id: true,
+          brand_name: true,
+          owner_name: true,
+          email: true,
+          phone_number: true,
+          store_url: true,
+          ebiz_reg_no: true,
+          status: true,
+          created_at: true,
+        },
+      });
+
+      let ownerLinked = false;
+
+      if (status === "APPROVED" && brand.email) {
+        // หา user จากอีเมลที่ใช้สมัครร้าน
+        const user = await tx.user.findUnique({
+          where: { email: brand.email },
+          select: { id: true },
+        });
+
+        if (user) {
+          await tx.brandMember.upsert({
+            where: {
+              brand_id_user_id: { brand_id: brand.id, user_id: user.id },
+            },
+            update: { role: "OWNER" },
+            create: { brand_id: brand.id, user_id: user.id, role: "OWNER" },
+          });
+          ownerLinked = true;
+        }
+      }
+
+      return { updatedBrand, ownerLinked };
     });
 
-    res.status(200).json(updatedBrand);
+    if (!result) return res.status(404).json({ error: "Brand not found" });
+
+    res.status(200).json({
+      ...result.updatedBrand,
+      owner_linked: result.ownerLinked,
+    });
   } catch (error) {
     console.error("updateBrandStatus error:", error);
     res.status(500).json({ error: "Failed to update brand status" });
   }
-}
+};
 
 
 export const checkBrandAccess = async (req: Request, res: Response) => {
