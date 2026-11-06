@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { getBrands, registerBrand , deleteBrand , getBrandById  , updateBrandStatus , checkBrandAccess} from "../controllers/brand";
-import { uploadEbizRegistration, handleUploadError } from "../middlewares/upload";
+import { uploadEbizRegistration, handleUploadError,uploadProductImages } from "../middlewares/upload";
 import { authMiddleware } from "../middlewares/auth";
 import { requireBrandAccess } from "../middlewares/brandAccess";
-import { getProductsController } from "../controllers/product";
+import { createProductController, deleteProductController, getProductByIdController, getProductsController, updateProductController } from "../controllers/product";
 
 const router = Router();
 
@@ -15,6 +15,10 @@ router.use("/:slug/products",authMiddleware,requireBrandAccess);
 
 // Product Management
 router.get("/:slug/products", getProductsController);
+router.get("/:slug/products/:id", getProductByIdController);
+router.post("/:slug/products",uploadProductImages, handleUploadError, createProductController);
+router.put("/:slug/products/:id",uploadProductImages, handleUploadError, updateProductController);
+router.delete("/:slug/products/:id", deleteProductController);
 
 
 
