@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { getUsers, deleteUserById } from "../../../services/userService";
+import { getUsers, } from "../../../services/userService";
 import type { User, UserRole } from "../../../types/user";
 
 const formatNumber = (n: number) => n.toLocaleString("th-TH");
@@ -56,16 +56,7 @@ export default function UserManagement() {
         }
     };
 
-    const handleDelete = async (user: User) => {
-        if (!window.confirm(`ต้องการลบ "${user.name}" ใช่หรือไม่?`)) return;
-        try {
-            await deleteUserById(String(user.id));
-            setUsers((prev) => prev.filter((u) => u.id !== user.id));
-        } catch (err) {
-            console.error("Failed to delete user:", err);
-            setError("ไม่สามารถลบผู้ใช้ได้");
-        }
-    };
+    
 
     useEffect(() => {
         fetchUsers();
@@ -158,6 +149,7 @@ export default function UserManagement() {
                                             <GenderBadge gender={user.gender} />
                                             <RoleBadge role={user.role} />
                                         </div>
+
                                     </div>
                                     
                                 </li>
