@@ -22,6 +22,7 @@
     "@types/multer": "^2.3.0",
     "@types/multer-s3": "^3.0.3",
     "@types/node": "^26.6.5",
+    "@types/nodemailer": "^8.0.2",
     "prisma": "^6.19.3",
     "prisma-erd-generator": "^3.2.1",
     "ts-node": "^10.9.2",
@@ -42,6 +43,7 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.5.0",
     "multer-s3": "^3.0.1",
+    "nodemailer": "^10.3.1",
     "pg": "^8.23.1"
   }
 }
