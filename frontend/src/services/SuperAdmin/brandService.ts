@@ -1,5 +1,5 @@
 import api from "../api";
-import type { Brand , BrandDetail , BrandStatus } from "../../types/brand";
+import type { Brand , BrandDetail , BrandStatus , BrandMember } from "../../types/brand";
 
 const baseUrl = "/admin/brands";
 
@@ -29,4 +29,10 @@ export async function updateBrandStatus(
 // ลบร้านค้า
 export async function deleteBrand(id: string): Promise<void> {
   await api.delete(`${baseUrl}/${id}`);
+}
+
+
+export async function getBrandMembers(): Promise<BrandMember[]> {
+  const response = await api.get(`${baseUrl}/members`);
+  return response.data;
 }

@@ -6,7 +6,8 @@ import {
   shieldCheckmarkOutline,
   arrowForward,
 } from "ionicons/icons";
-
+import SuspendedModal from "./SuspendedModal"
+import { useState } from "react";
 const cardClass =
   "group flex h-full flex-col items-center rounded-2xl border border-secondary/20 bg-white p-6 text-center transition duration-300 hover:-translate-y-1 hover:border-primary hover:shadow-[0_0_28px_4px] hover:shadow-primary/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
 
@@ -23,12 +24,30 @@ interface EntryChoiceModalProps {
   onSelectSuperAdminDashboard: () => void;
 }
 
+
+
 export default function EntryChoiceModal({
   brand,
   onSelectWebsite,
   onSelectShopDashboard,
   onSelectSuperAdminDashboard,
 }: EntryChoiceModalProps) {
+  const [dismissed, setDismissed] = useState(false);
+
+  // ร้านถูกระงับ  แสดง popup ระงับแทนหน้าเลือก
+  if (brand && brand.brandStatus !== "APPROVED") {
+    if (dismissed) return null;
+    return (
+      <SuspendedModal
+        brandName={brand.brandName}
+        onClose={() => {
+          setDismissed(true);
+          onSelectWebsite(); 
+        }}
+      />
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-lg rounded-2xl bg-secondary p-8 shadow-xl">

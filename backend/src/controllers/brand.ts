@@ -312,3 +312,34 @@ export const checkBrandAccess = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+export const getAllBrandMembers = async (req: Request, res: Response) => {
+  try {
+    const members = await prisma.brandMember.findMany({
+      select: {
+        id: true,
+        role: true,
+        created_at: true,
+        user: { select: { id: true, name: true, email: true } },
+        brand: { select: { id: true, brand_name: true } },
+      },
+      orderBy: [{ brand: { brand_name: "asc" } }, { role: "asc" }, { created_at: "asc" }],
+    });
+
+    res.status(200).json(
+      members.map((m) => ({
+        id: m.id,
+        role: m.role,
+        created_at: m.created_at,
+        user_name: m.user.name,
+        email: m.user.email,
+        brand_id: m.brand.id,
+        brand_name: m.brand.brand_name,
+      }))
+    );
+  } catch (error) {
+    console.error("getBrandMembers error:", error);
+    res.status(500).json({ error: "Failed to fetch brand members" });
+  }
+};

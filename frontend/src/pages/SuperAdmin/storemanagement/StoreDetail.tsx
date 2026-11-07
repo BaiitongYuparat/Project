@@ -10,9 +10,9 @@ const linkClass = "text-blue-700 hover:underline";
 // แสดงข้อมูลแถวของร้านค้า
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-1 px-5 py-4 text-center sm:grid-cols-3 sm:items-center sm:gap-4">
-      <dt className="text-stone-500">{label}</dt>
-      <dd className="break-all text-stone-900 sm:col-span-2">
+    <div className="grid gap-1 px-5 py-3 text-center text-sm sm:grid-cols-3 sm:items-center sm:gap-4">
+      <dt className="text-xs text-stone-500">{label}</dt>
+      <dd className="break-all text-sm text-stone-900 sm:col-span-2">
         {children || <span className="text-stone-400">-</span>}
       </dd>
     </div>
@@ -23,7 +23,7 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="mb-2 text-center text-sm font-semibold tracking-wide text-stone-500">
+      <h2 className="mb-2 text-center text-xs font-semibold tracking-wide text-stone-500">
         {title}
       </h2>
       <dl className="divide-y divide-stone-100 overflow-hidden rounded-2xl border border-stone-200 bg-white">
@@ -64,10 +64,16 @@ export default function StoreDetail() {
   const handleStatusChange = async (status: BrandStatus) => {
     if (!id || !brand) return;
 
-    const confirmText =
-      status === "APPROVED"
-        ? `ยืนยันการอนุมัติร้าน "${brand.brand_name}" ?`
-        : `ยืนยันการปฏิเสธร้าน "${brand.brand_name}" ?`;
+    const isSuspend = status === "REJECTED" && brand.status === "APPROVED";
+
+    let confirmText: string;
+    if (status === "APPROVED") {
+      confirmText = `ยืนยันการอนุมัติร้าน ${brand.brand_name} ?`;
+    } else if (isSuspend) {
+      confirmText = `ยืนยันการระงับร้าน ${brand.brand_name} ?\nเมื่อระงับแล้ว ผู้ใช้จะไม่สามารถเข้าใช้งานร้านค้านี้ได้`;
+    } else {
+      confirmText = `ยืนยันการปฏิเสธร้าน ${brand.brand_name} ?`;
+    }
     if (!window.confirm(confirmText)) return;
 
     try {
@@ -92,8 +98,8 @@ export default function StoreDetail() {
         ← กลับไปรายชื่อร้านค้า
       </Link>
 
-      {loading && <p className="mt-6 text-stone-400">กำลังโหลด...</p>}
-      {error && <p className="mt-6 text-red-600">{error}</p>}
+      {loading && <p className="mt-6 text-sm text-stone-400">กำลังโหลด...</p>}
+      {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
 
       {brand && (
         <>
@@ -142,7 +148,11 @@ export default function StoreDetail() {
               </InfoRow>
             </Section>
           </div>
-
+          {brand.status === "REJECTED" && (
+            <p className="mt-6 text-center text-sm text-red-600">
+              ร้านค้านี้ถูกระงับ/ปฏิเสธ ผู้ใช้ไม่สามารถเข้าใช้งานร้านค้าได้
+            </p>
+          )}
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             {brand.status !== "REJECTED" && (
               <Button

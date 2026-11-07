@@ -4,6 +4,7 @@ import {
   getBrandById,
   deleteBrand,
   updateBrandStatus,
+   getAllBrandMembers
 } from "../controllers/brand";
 import { authMiddleware } from "../middlewares/auth";
 import { requireSuperAdmin } from "../middlewares/requireSuperAdmin";
@@ -15,6 +16,7 @@ router.use(authMiddleware, requireSuperAdmin);
 
 // Brand Management
 router.get("/brands", getBrands);
+router.get("/brands/members", getAllBrandMembers);
 router.get("/brands/:id", getBrandById);
 router.put("/brands/:id/status", updateBrandStatus);
 router.delete("/brands/:id", deleteBrand);

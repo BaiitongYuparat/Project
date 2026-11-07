@@ -1,4 +1,5 @@
 export type BrandStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type BrandMemberRole = "OWNER" | "ADMIN";
 
 export type RegisterBrandResponse = {
   id: string;
@@ -31,5 +32,17 @@ export type CheckBrandAccessResponse = {
     slug: string;
     status: BrandStatus;
   };
-  role: "OWNER" | "ADMIN";
+  role: BrandMemberRole
+};
+
+// types/brand.ts
+export type BrandMember = {
+  id: string;
+  role: BrandMemberRole;
+  created_at: string;
+  user_name: string | null;
+  email: string;
+  brand_id: string;
+  brand_name: string;
+  brand_status: BrandStatus;
 };
