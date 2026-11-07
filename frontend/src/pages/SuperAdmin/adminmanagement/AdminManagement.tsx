@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { getBrands } from "../../../services/brandService";
-import type { Brand } from "../../../services/brandService";
+import { getBrands } from "../../../services/SuperAdmin/brandService";
+import type { Brand } from "../../../types/brand";
 
 //แปลงตัวเลขเป็นรูปแบบไทย
 const formatNumber = (n: number) => n.toLocaleString("th-TH");

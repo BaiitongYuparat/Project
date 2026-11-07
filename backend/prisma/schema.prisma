@@ -42,6 +42,12 @@ enum InviteStatus {
   CANCELLED
 }
 
+enum ProductImageQualityStatus {
+  PENDING
+  PASSED
+  FAILED
+}
+
 model User {
   id           String        @id @default(uuid())
   googleId     String?       @unique
@@ -133,7 +139,7 @@ model Brand {
   email             String?     @unique
   phone_number      String?
   store_url         String?     @unique
-  slug              String?     @unique
+  slug              String     @unique
   ebiz_reg_no       String? // เลขทะเบียนพาณิชย์อิเล็กทรอนิกส์
   ebiz_registration String? // ไฟล์ทะเบียนพาณิชย์ (URL ใน S3)
   status            BrandStatus @default(PENDING)
@@ -159,6 +165,7 @@ model Product {
   category    String
   price       Decimal?           @db.Decimal(10, 2)
   description String?
+  sku String?
   is_active   Boolean            @default(true)
   created_at  DateTime           @default(now()) @db.Timestamp(6)
   updated_at  DateTime           @updatedAt @db.Timestamp(6)
@@ -171,6 +178,7 @@ model Product {
 
   @@index([brand_id])
   @@index([category])
+  @@unique([brand_id, sku])
   @@map("products")
 }
 
@@ -193,12 +201,14 @@ model ProductSizeChart {
 model ProductImage {
   id          String   @id @default(uuid())
   product_id  String
+  quality_status ProductImageQualityStatus @default(PENDING)
+  quality_reason String?
   s3_key      String
   sort_order  Int      @default(0)
   uploaded_at DateTime @default(now()) @db.Timestamp(6)
   product     Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
 
-  @@index([product_id])
+  @@index([product_id, quality_status])
   @@map("product_images")
 }
 

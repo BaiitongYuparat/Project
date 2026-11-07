@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, Outlet, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import type { RootState } from "../store/store";
-import { checkBrandAccess } from "../services/brandService";
+import { checkBrandAccess } from "../services/ShopAdmin/brandService";
 
 interface ProtectedRouteProps {
   allowedRoles?: string[];
