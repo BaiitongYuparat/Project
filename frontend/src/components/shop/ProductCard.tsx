@@ -19,6 +19,8 @@ export default function ProductCard({
   onToggleFavorite,
   onTryOn,
 }: ProductCardProps) {
+  const imageUrl = product.images?.[0]?.image_url;
+
   return (
     <article className="min-w-0">
       {/* Gender + Favorite */}
@@ -41,9 +43,9 @@ export default function ProductCard({
       <div className="overflow-hidden rounded-2xl border border-[#DCC3B3] bg-white p-2">
         {/* Image */}
         <div className="aspect-[4/3] overflow-hidden rounded-xl bg-[#F3E1D4]">
-          {product.image_url ? (
+          {imageUrl ? (
             <img
-              src={product.image_url}
+              src={imageUrl}
               alt={product.name}
               className="h-full w-full object-cover transition duration-300 hover:scale-105"
             />
@@ -55,7 +57,7 @@ export default function ProductCard({
               {product.category === "SKIRT" && "กระโปรง"}
               {product.category === "ACCESSORY" && "กระเป๋า"}
               {!["TOP", "BOTTOM", "DRESS", "SKIRT", "ACCESSORY"].includes(
-                product.category
+                product.category,
               ) && "สินค้า"}
             </div>
           )}

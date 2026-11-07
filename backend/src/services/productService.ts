@@ -1,6 +1,44 @@
 import { prisma } from "../../lib/prisma";
+import { Prisma } from "@prisma/client";
 import { getImageUrl } from "../utils/s3Utils";
 import { deleteImage } from "../utils/s3Utils";
+
+const imageSelect = {
+  select: {
+    id: true,
+    s3_key: true,
+    sort_order: true,
+  },
+  orderBy: {
+    sort_order: "asc",
+  },
+} satisfies Prisma.ProductImageFindManyArgs;
+
+const withImageUrls = async <
+  T extends { s3_key: string }
+>(
+  images: T[]
+) => {
+  return Promise.all(
+    images.map(async (image) => ({
+      ...image,
+      image_url: await getImageUrl(image.s3_key),
+    }))
+  );
+};
+
+const withProductImageUrls = async <
+  T extends { images: { s3_key: string }[] }
+>(
+  products: T[]
+) => {
+  return Promise.all(
+    products.map(async (product) => ({
+      ...product,
+      images: await withImageUrls(product.images),
+    }))
+  );
+};
 
 //------------------------------------------- Public
 // ดึงสินค้าทั้งหมดของ Brand
@@ -14,21 +52,13 @@ export const getProducts = async (brandId: string) => {
       brand_id: true,
       name: true,
       category: true,
+      sku: true, 
       price: true,
       description: true,
       is_active: true,
       created_at: true,
       updated_at: true,
-      images: {
-        select: {
-          id: true,
-          s3_key: true,
-          sort_order: true,
-        },
-        orderBy: {
-          sort_order: "asc",
-        },
-      },
+      images: imageSelect,
     },
     orderBy: {
       created_at: "desc",
@@ -55,16 +85,7 @@ export const getPublicProducts = async () => {
       price: true,
       description: true,
       created_at: true,
-      images: {
-        select: {
-          id: true,
-          s3_key: true,
-          sort_order: true,
-        },
-        orderBy: {
-          sort_order: "asc",
-        },
-      },
+      images: imageSelect,
       brand: {
         select: {
           brand_name: true,
@@ -99,16 +120,7 @@ export const getPublicProduct = async (productId: string) => {
       description: true,
       created_at: true,
       updated_at: true,
-      images: {
-        select: {
-          id: true,
-          s3_key: true,
-          sort_order: true,
-        },
-        orderBy: {
-          sort_order: "asc",
-        },
-      },
+      images: imageSelect,
       size_charts: true,
       brand: {
         select: {
@@ -146,18 +158,17 @@ export const getProductById = async (
       created_at: true,
       updated_at: true,
 
-      images: {
-        select: {
-          id: true,
-          s3_key: true,
-          sort_order: true,
-          quality_status: true,
-          quality_reason: true,
+      images: 
+      { select: {
+            id: true,
+            s3_key: true,
+            sort_order: true,
+            quality_status: true,
+            quality_reason: true,
         },
         orderBy: {
-          sort_order: "asc",
-        },
-      },
+            sort_order: "asc",
+        },},
 
       size_charts: true,
     },
@@ -169,13 +180,8 @@ export const getProductById = async (
 
   return {
     ...product,
-    images: await Promise.all(
-      product.images.map(async (image) => ({
-        ...image,
-        image_url: await getImageUrl(image.s3_key),
-      }))
-    ),
-  };
+    images: await withImageUrls(product.images),
+    };
 };
 
 
@@ -221,7 +227,7 @@ export const updateProduct = async (
   data: {
     name?: string;
     category?: string;
-    price?: number | string | null;
+    price?: number | null;
     description?: string | null;
     sku?: string | null;
     is_active?: boolean;
@@ -262,41 +268,44 @@ export const updateProduct = async (
 };
 
 // ลบสินค้า
-export const deleteProduct = async (
-  brandId: string,
-  productId: string
-) => {
-  const result = await prisma.product.deleteMany({
-    where: {
-      id: productId,
-      brand_id: brandId,
-    },
+export const deleteProduct = async (brandId: string, productId: string) => {
+  const product = await prisma.product.findFirst({
+    where: { id: productId, brand_id: brandId },
+    select: { id: true, images: { select: { s3_key: true } } },
   });
+  if (!product) return null;
 
-  return getProductById(brandId, productId);
+  await prisma.product.delete({ where: { id: productId } });
+
+  for (const { s3_key } of product.images) {
+    try {
+      await deleteImage(s3_key);
+    } catch (error) {
+      console.error("Failed to delete image from S3:", s3_key, error);
+    }
+  }
+
+  return { id: productId };
 };
 
 // ดึงสินค้าทั้งหมดของ Brand พร้อม URL รูปภาพ
 export const getProductsWithImageUrls = async (brandId: string) => {
   const products = await getProducts(brandId);
 
-  return Promise.all(
-    products.map(async (product) => ({
-      ...product,
-      images: await Promise.all(
-        product.images.map(async (image) => ({
-          ...image,
-          image_url: await getImageUrl(image.s3_key),
-        }))
-      ),
-    }))
-  );
+  return withProductImageUrls(products);
 };
 
 type ProductImageInput = {
   s3_key: string;
   sort_order: number;
 };
+
+export const getPublicProductsWithImageUrls = async () => {
+  const products = await getPublicProducts();
+
+  return withProductImageUrls(products);
+};
+
 
 export const updateProductWithImages = async (
   brandId: string,
@@ -313,20 +322,19 @@ export const updateProductWithImages = async (
   removeImageIds: string[]
 ) => {
   const result = await prisma.$transaction(async (tx) => {
-    // ตรวจสอบว่าสินค้าเป็นของ Brand นี้
-    const product = await tx.product.findFirst({
-      where: {
-        id: productId,
-        brand_id: brandId,
-      },
-      select: {
-        id: true,
-      },
-    });
 
-    if (!product) {
-      return null;
-    }
+     // Lock สินค้าไว้ ป้องกันการแก้ไขพร้อมกัน
+    const locked = await tx.$queryRaw<{ id: string }[]>`
+    SELECT id
+    FROM products
+    WHERE id = ${productId}
+      AND brand_id = ${brandId}
+    FOR UPDATE
+  `;
+
+  if (locked.length === 0) {
+    return null;
+  }
 
     // ค้นหารูปที่ต้องการลบ โดยตรวจสอบว่าเป็นรูปของสินค้านี้จริง
     const imagesToRemove = removeImageIds.length

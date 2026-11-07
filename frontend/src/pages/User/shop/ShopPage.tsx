@@ -8,6 +8,7 @@ import { getProducts } from "../../../services/productService";
 
 import ProductGrid from "../../../components/shop/ProductGrid";
 import Button from "../../../components/Button";
+import ShopFilter from "../../../components/shop/ShopFilter";
 
 const categories = [
   { value: "all", label: "ทั้งหมด" },
@@ -68,7 +69,7 @@ export default function ShopPage() {
   const filteredProducts = useMemo(() => {
     let result = products.filter((product) => {
       const matchShop =
-        selectedShop === "all" || product.shop_id === selectedShop;
+        selectedShop === "all" || product.brand_id === selectedShop;
 
       const matchCategory =
         selectedCategory === "all" || product.category === selectedCategory;
@@ -138,7 +139,7 @@ export default function ShopPage() {
     <main className="min-h-screen bg-white">
       <div className="mx-auto max-w-[1400px] px-5 py-7 md:px-10 lg:px-14">
         {/* Hero Banner */}
-        <section className="mb-8 flex flex-col justify-between gap-6 rounded-2xl border border-[#DCC3B3] bg-[#F3E1D4] p-6 md:flex-row md:items-center md:px-8 md:py-7">
+        <section className="mb-8 flex flex-col justify-between gap-6 rounded-2xl border border-[#DCC3B3] bg-primary p-6 md:flex-row md:items-center md:px-8 md:py-7">
           <div className="max-w-xl">
             <p className="mb-4 text-xs font-medium text-[#806B5E]">
               AI VIRTUAL TRY-ON · ลองเลย
@@ -181,7 +182,7 @@ export default function ShopPage() {
 
             <button
               type="button"
-              className="rounded-full border border-[#DCC3B3] bg-[#F3E1D4] px-6 py-3 text-sm font-medium text-[#49352D] hover:bg-[#E8CEBD]"
+              className="rounded-full border border-[#DCC3B3] bg-primary px-6 py-3 text-sm font-medium text-[#49352D] hover:bg-[#E8CEBD]"
               onClick={() => setSearch(search.trim())}
             >
               ค้นหาด้วยรูป
@@ -190,7 +191,7 @@ export default function ShopPage() {
             <button
               type="button"
               onClick={() => setSelectedShop("all")}
-              className="rounded-full border border-[#DCC3B3] bg-[#F3E1D4] px-6 py-3 text-sm font-medium text-[#49352D] hover:bg-[#E8CEBD]"
+              className="rounded-full border border-[#DCC3B3] bg-primary px-6 py-3 text-sm font-medium text-[#49352D] hover:bg-[#E8CEBD]"
             >
               ♡ รายการโปรด ({favorites.length})
             </button>
@@ -207,7 +208,7 @@ export default function ShopPage() {
               className={`rounded-full border px-4 py-2 text-sm transition ${
                 selectedCategory === category.value
                   ? "border-[#3E2C25] bg-[#3E2C25] text-white"
-                  : "border-[#DCC3B3] bg-white text-[#49352D] hover:bg-[#F3E1D4]"
+                  : "border-[#DCC3B3] bg-white text-[#49352D] hover:bg-primary"
               }`}
             >
               {category.label}
@@ -227,7 +228,7 @@ export default function ShopPage() {
               className={`rounded-full border px-4 py-2 text-sm transition ${
                 selectedGender === gender.value
                   ? "border-[#3E2C25] bg-[#3E2C25] text-white"
-                  : "border-[#DCC3B3] bg-white text-[#49352D] hover:bg-[#F3E1D4]"
+                  : "border-[#DCC3B3] bg-white text-[#49352D] hover:bg-primary"
               }`}
             >
               {gender.label}
@@ -242,25 +243,9 @@ export default function ShopPage() {
               เลือกชิ้นที่ใช่ แล้วลองเลย
             </h2>
 
-            <div className="mt-3">
-              <label className="mb-1 block text-xs text-[#947D6D]">
-                เลือกร้านค้า
-              </label>
-
-              <select
-                value={selectedShop}
-                onChange={(e) => setSelectedShop(e.target.value)}
-                className="rounded-full border border-[#DCC3B3] bg-white px-4 py-2 text-sm text-[#49352D] outline-none focus:border-[#49352D]"
-              >
-                <option value="all">ทุกร้านค้า</option>
-
-                {shops.map((shop) => (
-                  <option key={shop.id} value={shop.id}>
-                    {shop.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <ShopFilter shops={shops}
+              selectedShop={selectedShop}
+              onChange={setSelectedShop}/>
           </div>
 
           <div className="flex items-center gap-2 text-sm text-[#947D6D]">
