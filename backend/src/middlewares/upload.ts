@@ -32,8 +32,7 @@ export const upload = multer({
             const sanitizedUserId = String(userId).trim().replace(/[^a-zA-Z0-9_-]/g, "");
             const ext = path.extname(file.originalname);
 
-            // โฟลเดอร์: body-images/{userId}/{เวลา}_{เลขสุ่ม}{นามสกุล}
-            cb(null, `body-images/${sanitizedUserId}/${Date.now()}_${Math.round(Math.random() * 1e9)}${ext}`);
+            cb(null, `temp/${sanitizedUserId}/${Date.now()}_${Math.round(Math.random() * 1e9)}${ext}`);
         },
     }),
     limits: { fileSize: 5 * 1024 * 1024 },
@@ -46,13 +45,7 @@ export const upload = multer({
     },
 });
 
-// 2.1 Middleware สำหรับอัปโหลด Body Images 4 ด้านพร้อมกัน
-export const uploadBody4Angles = upload.fields([
-    { name: "front", maxCount: 1 },
-    { name: "back", maxCount: 1 },
-    { name: "left", maxCount: 1 },
-    { name: "right", maxCount: 1 },
-]);
+
 
 // 3. Upload สำหรับ Clothing Images
 export const uploadClothing = multer({
