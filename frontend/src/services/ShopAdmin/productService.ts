@@ -7,7 +7,7 @@ export interface ProductImage {
   s3_key: string;
   image_url: string;
   sort_order: number;
-  quality_status?: "PENDING" | "PASSED" | "FAILED";
+  quality_status: "PENDING" | "PASSED" | "FAILED";
   quality_reason?: string | null;
 }
 

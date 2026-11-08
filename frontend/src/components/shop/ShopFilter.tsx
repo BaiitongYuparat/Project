@@ -26,7 +26,7 @@ export default function ShopFilter({
 
         {shops.map((shop) => (
           <option key={shop.id} value={shop.id}>
-            {shop.name}
+            {shop.brand_name}
           </option>
         ))}
       </select>

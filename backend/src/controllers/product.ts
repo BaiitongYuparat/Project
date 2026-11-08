@@ -1,10 +1,12 @@
 
 import { Request, Response } from "express";
-import { createProduct, deleteProduct, getProductById,  getProductsWithImageUrls , getPublicProduct, getPublicProducts, updateProduct, updateProductWithImages } from "../services/productService";
+import { createProduct, deleteProduct, getProductById,  getProductsWithImageUrls , getPublicProduct, getPublicProducts, getPublicProductsWithImageUrls, updateProduct, updateProductWithImages } from "../services/productService";
 import { BrandAccessError } from "../services/brandAccessService";
 import { processProductImageQuality } from "../services/productImageQuality";
 import { deleteImage } from "../utils/s3Utils";
 
+// GET /products
+//ดึงข้อมูลรวมรูป
 export const getProductsController = async (
   req: Request,
   res: Response
@@ -33,13 +35,13 @@ export const getProductsController = async (
   }
 };
 
-// GET /products
+
 export const getPublicProductsController = async (
   req: Request,
   res: Response
 ) => {
   try {
-    const products = await getPublicProducts();
+    const products = await getPublicProductsWithImageUrls();
 
     return res.status(200).json({
       message: "Public products fetched successfully",
@@ -193,6 +195,8 @@ export const createProductController = async (
           productId: product.id,
           key: file.key,
           mimeType: file.mimetype,
+        }).catch((error) => {
+        console.error("Product image quality check error:", error);
         });
       }
     }
@@ -214,9 +218,6 @@ export const createProductController = async (
   }
 };
 
-// PUT /brands/:slug/products/:id
-
-// PUT /brands/:slug/products/:id
 
 // PUT /brands/:slug/products/:id
 export const updateProductController = async (
