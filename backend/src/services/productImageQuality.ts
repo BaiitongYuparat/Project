@@ -80,8 +80,10 @@ export const processProductImageQuality = async (params: {
       params.key,
       params.mimeType
     );
+    
+    console.log("AI result:", result);
 
-    await prisma.productImage.updateMany({
+    const updated = await prisma.productImage.updateMany({
       where: {
         id: params.imageId,
         product_id: params.productId,
@@ -93,13 +95,9 @@ export const processProductImageQuality = async (params: {
       },
     });
 
-    console.log(
-      `Product image quality check ${params.imageId}: ${result.status}`
-    );
+    console.log("Updated image count:", updated.count);
+
   } catch (error) {
-    console.error(
-      "Product image quality check failed, status stays PENDING:",
-      error
-    );
+     console.error("Quality check failed:", error);
   }
 };
