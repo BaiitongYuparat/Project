@@ -1,6 +1,6 @@
 
 import { Request, Response } from "express";
-import { createProduct, deleteProduct, getProductById, getProducts, getPublicProduct, getPublicProducts, updateProduct, updateProductWithImages,getAdminProducts, getAdminProductStats} from "../services/productService";
+import { createProduct, deleteProduct, getProductById, getProducts, getPublicProduct, getPublicProducts,updateProductWithImages,getAdminProducts, getAdminProductStats} from "../services/productService";
 import { BrandAccessError } from "../services/brandAccessService";
 import { processProductImageQuality } from "../services/productImageQuality";
 import { deleteImage } from "../utils/s3Utils";
@@ -76,6 +76,18 @@ export const getProductsController = async (
     }
 
     const products = await getProducts(brandId);
+
+    console.dir(
+  products.map((p) => ({
+    id: p.id,
+    images: p.images.map((img) => ({
+      id: img.id,
+      quality_status: img.quality_status,
+      quality_reason: img.quality_reason,
+    })),
+  })),
+  { depth: null }
+);
 
     return res.status(200).json({
       message: "Products fetched successfully",
@@ -201,6 +213,7 @@ export const createProductController = async (
       message: "Product created successfully",
       product,
     });
+
   } catch (error: any) {
     console.error("Create product error:", error);
 
