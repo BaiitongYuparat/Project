@@ -25,6 +25,8 @@ import AI_PromptManagement from "../pages/SuperAdmin/ai_promptmanagement/AI_Prom
 import ShopAdminGuard from "../components/ShopAdminGuard";
 import System from "../pages/SuperAdmin/System";
 import MyOutfitPage from "../pages/User/myoutfit/MyOutfit";
+import ShopAdminManagement from "../pages/AdminStore/AdminManagement";
+
 function AppRoutes() {
   return (
     <Routes>
@@ -69,7 +71,7 @@ function AppRoutes() {
         <Route path="/shopadmin/:slug" element={<ShopAdminLayout />}>
           <Route index element={<ShopDashboard />} />
           <Route path="products" element={<ProductManagement />} />
-          <Route path="admin" element={<AdminManagement />} />
+          <Route path="admin" element={<ShopAdminManagement />} />
         </Route>
         </Route>
       </Route>
