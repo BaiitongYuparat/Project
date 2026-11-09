@@ -5,7 +5,7 @@ import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { s3 } from "../middlewares/upload";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { BrandAccessError , getBrandAccess } from "../services/brandAccessService";
+import { BrandAccessError, getBrandAccess } from "../services/brandAccessService";
 //สร้าง slug ไว้เป็น url ที่ไม่ซ้ำกัน
 const generateSlug = (brandName: string) => {
   return brandName
@@ -117,7 +117,7 @@ export const registerBrand = async (req: Request, res: Response) => {
         ebiz_reg_no: ebiz_reg_no?.trim() || null,
         status: "PENDING",
       },
-      select: { id: true, brand_name: true, status: true, created_at: true , slug: true },
+      select: { id: true, brand_name: true, status: true, created_at: true, slug: true },
     });
 
     res.status(201).json(newBrand);
@@ -289,9 +289,9 @@ export const checkBrandAccess = async (req: Request, res: Response) => {
 
     // เรียกใช้ Service
     const result = await getBrandAccess(
-        slugParam,
-        userId,
-      );
+      slugParam,
+      userId,
+    );
 
     return res.status(200).json({
       authorized: true,
@@ -322,7 +322,7 @@ export const getAllBrandMembers = async (req: Request, res: Response) => {
         role: true,
         created_at: true,
         user: { select: { id: true, name: true, email: true } },
-        brand: { select: { id: true, brand_name: true } },
+        brand: { select: { id: true, brand_name: true, status: true } },
       },
       orderBy: [{ brand: { brand_name: "asc" } }, { role: "asc" }, { created_at: "asc" }],
     });
@@ -336,6 +336,7 @@ export const getAllBrandMembers = async (req: Request, res: Response) => {
         email: m.user.email,
         brand_id: m.brand.id,
         brand_name: m.brand.brand_name,
+        brand_status: m.brand.status
       }))
     );
   } catch (error) {

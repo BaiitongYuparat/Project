@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState , } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { Shop } from "../../../services/shopService";
 import type { Product } from "../../../services/productService";
@@ -9,6 +9,7 @@ import { getProducts } from "../../../services/productService";
 import ProductGrid from "../../../components/shop/ProductGrid";
 import Button from "../../../components/Button";
 import ShopFilter from "../../../components/shop/ShopFilter";
+
 import { useNavigate } from "react-router-dom";
 
 const categories = [
@@ -142,7 +143,7 @@ export default function ShopPage() {
     <main className="min-h-screen bg-white">
       <div className="mx-auto max-w-[1400px] px-5 py-7 md:px-10 lg:px-14">
         {/* Hero Banner */}
-               {/* Hero Banner */}
+                {/* Hero Banner */}
         <section className="relative mb-8 overflow-hidden rounded-2xl border border-[#DCC3B3] bg-primary p-6 md:px-8 md:py-7">
           {/* Decorative Background */}
           <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/30 blur-2xl" />

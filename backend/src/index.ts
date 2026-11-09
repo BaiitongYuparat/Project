@@ -33,5 +33,6 @@ app.use("/", publicRoutes);
 app.use("/brands", brandRoutes);
 app.use("/admin", adminRoutes);
 
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

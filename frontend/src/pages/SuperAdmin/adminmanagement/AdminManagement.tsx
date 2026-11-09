@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getBrandMembers } from "../../../services/SuperAdmin/brandService";
-import type { BrandMemberRole, BrandMember } from "../../../types/brand";
+import type { BrandMemberRole, BrandMember, BrandStatus } from "../../../types/brand";
 
 //แปลงตัวเลขเป็นรูปแบบไทย
 const formatNumber = (n: number) => n.toLocaleString("th-TH");
@@ -16,6 +16,22 @@ function RoleBadge({ role }: { role: BrandMemberRole }) {
     return (
         <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${r.className}`}>
             {r.label}
+        </span>
+    );
+}
+
+const STATUS_LABEL: Record<BrandStatus, { label: string; className: string }> = {
+    APPROVED: { label: "ใช้งานอยู่", className: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
+    PENDING: { label: "รอดำเนินการ", className: "bg-amber-50 text-amber-700 ring-amber-200" },
+    REJECTED: { label: "ถูกระงับ", className: "bg-rose-50 text-rose-700 ring-rose-200" },
+};
+
+function StatusBadge({ status }: { status: BrandStatus }) {
+    const s = STATUS_LABEL[status];
+    if (!s) return <span>{status}</span>;
+    return (
+        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${s.className}`}>
+            {s.label}
         </span>
     );
 }
@@ -98,13 +114,13 @@ export default function AdminManagement() {
                                         <th scope="col" className="px-4 py-4 font-normal">อีเมล</th>
                                         <th scope="col" className="px-4 py-4 font-normal">บทบาท</th>
                                         <th scope="col" className="px-4 py-4 font-normal">วันที่สมัคร</th>
-                                        <th scope="col" className="px-8 py-4" />
+                                        <th scope="col" className="px-4 py-4 font-normal">สถานะ</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-stone-100">
                                     {members.length === 0 ? (
                                         <tr>
-                                            <td colSpan={5} className="px-8 py-10 text-center text-stone-500">
+                                            <td colSpan={6} className="px-8 py-10 text-center text-stone-500">
                                                 ไม่พบข้อมูล
                                             </td>
                                         </tr>
@@ -118,6 +134,7 @@ export default function AdminManagement() {
                                                 <td className="px-4 py-4">
                                                     {new Date(m.created_at).toLocaleDateString("th-TH")}
                                                 </td>
+                                                <td className="px-4 py-4"><StatusBadge status={m.brand_status} /></td>
                                             </tr>
                                         ))
                                     )}
@@ -139,6 +156,9 @@ export default function AdminManagement() {
                                         <p className="text-xs text-stone-400">
                                             {new Date(m.created_at).toLocaleDateString("th-TH")}
                                         </p>
+                                        <div className="flex items-center gap-1.5">
+                                            <StatusBadge status={m.brand_status} />
+                                        </div>
                                     </li>
                                 ))
                             )}
