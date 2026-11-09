@@ -1,47 +1,18 @@
 
 import { Request, Response } from "express";
-import { createProduct, deleteProduct, getProductById,  getProductsWithImageUrls , getPublicProduct, getPublicProducts, getPublicProductsWithImageUrls, updateProduct, updateProductWithImages , getAdminProducts, getAdminProductStats  } from "../services/productService";
+import { createProduct, deleteProduct, getProductById, getProducts, getPublicProduct, getPublicProducts, updateProduct, updateProductWithImages , getAdminProducts , getAdminProductStats} from "../services/productService";
 import { BrandAccessError } from "../services/brandAccessService";
 import { processProductImageQuality } from "../services/productImageQuality";
 import { deleteImage } from "../utils/s3Utils";
 
 // GET /products
-//ดึงข้อมูลรวมรูป
-export const getProductsController = async (
-  req: Request,
-  res: Response
-) => {
-  try {
-    const brandId = req.brand?.id;
-
-    if (!brandId) {
-      return res.status(403).json({
-        message: "Brand access required",
-      });
-    }
-
-    const products = await getProductsWithImageUrls(brandId);
-
-    return res.status(200).json({
-      message: "Products fetched successfully",
-      products,
-    });
-  } catch (error) {
-    console.error("Get products error:", error);
-
-    return res.status(500).json({
-      message: "Failed to fetch products",
-    });
-  }
-};
-
 
 export const getPublicProductsController = async (
   req: Request,
   res: Response
 ) => {
   try {
-    const products = await getPublicProductsWithImageUrls();
+    const products = await getPublicProducts();
 
     return res.status(200).json({
       message: "Public products fetched successfully",
@@ -78,10 +49,7 @@ export const getPublicProductByIdController = async (
       });
     }
 
-    return res.status(200).json({
-      message: "Public product fetched successfully",
-      product,
-    });
+    return res.status(200).json({product});
   } catch (error) {
     console.error("Get public product error:", error);
 
@@ -93,6 +61,34 @@ export const getPublicProductByIdController = async (
 
 //------ Shop Admin ------//
 
+//ดึงข้อมูลรวมรูป
+export const getProductsController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const brandId = req.brand?.id;
+
+    if (!brandId) {
+      return res.status(403).json({
+        message: "Brand access required",
+      });
+    }
+
+    const products = await getProducts(brandId);
+
+    return res.status(200).json({
+      message: "Products fetched successfully",
+      products,
+    });
+  } catch (error) {
+    console.error("Get products error:", error);
+
+    return res.status(500).json({
+      message: "Failed to fetch products",
+    });
+  }
+};
 // GET /brands/:slug/products/:id
 export const getProductByIdController = async (
   req: Request,
