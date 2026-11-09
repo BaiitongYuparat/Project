@@ -6,6 +6,9 @@ export const loadImageBase64 = async (key: string): Promise<string> => {
         Bucket: process.env.AWS_S3_BUCKET_NAME!,
         Key: key,
     }));
+    if (!obj.Body) {
+        throw new Error("Image not found in S3");
+    }
     const bytes = await obj.Body!.transformToByteArray();
     return Buffer.from(bytes).toString("base64");
 };

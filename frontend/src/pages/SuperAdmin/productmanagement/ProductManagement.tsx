@@ -11,12 +11,11 @@ import Button from "../../../components/Button";
 
 const formatNumber = (n: number) => n.toLocaleString("th-TH");
 
-type ProductQuality = "PASS" | "FAIL" | "REVIEW" | "PENDING";
+type ProductQuality = "PASS" | "FAIL" | "PENDING";
 
 const QUALITY_BADGE: Record<ProductQuality, { label: string; className: string }> = {
     PASS: { label: "AI ผ่าน", className: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
     FAIL: { label: "AI ไม่ผ่าน", className: "bg-rose-50 text-rose-700 ring-rose-200" },
-    REVIEW: { label: "ต้องตรวจโดยคน", className: "bg-amber-50 text-amber-700 ring-amber-200" },
     PENDING: { label: "รอผลตรวจ", className: "bg-stone-50 text-stone-600 ring-stone-200" },
 };
 

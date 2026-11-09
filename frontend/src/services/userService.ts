@@ -37,3 +37,13 @@ export const setUserActive = async (id: string, isActive: boolean): Promise<User
     const res = await api.patch(`/user/${id}/status`, { isActive });
     return res.data;
 };
+
+export const updateUserStatus = async ( id: string, status: "active" | "suspended") => {
+  const res = await api.put(`/admin/users/${id}/status`, { status });
+  return res.data;
+};
+
+export const deleteUser = async (id: string) => {
+  const res = await api.delete(`/admin/users/${id}`);
+  return res.data;
+};

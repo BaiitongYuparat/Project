@@ -3,10 +3,11 @@ import Button from "./Button";
 
 type Props = {
     brandName?: string;
+    title?: string;
     onClose: () => void;
 };
 
-export default function SuspendedModal({ brandName, onClose }: Props) {
+export default function SuspendedModal({ brandName, title, onClose }: Props) {
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
             if (e.key === "Escape") onClose();
@@ -31,7 +32,7 @@ export default function SuspendedModal({ brandName, onClose }: Props) {
                     !
                 </div>
                 <h2 id="suspended-title" className="text-lg font-semibold text-stone-900">
-                    บัญชีร้านค้าถูกระงับ
+                    {title ?? (brandName ? "บัญชีร้านค้าถูกระงับ" : "บัญชีของคุณถูกระงับ")}
                 </h2>
                 <p className="mt-2 text-sm text-stone-600">
                     {brandName ? `ร้าน ${brandName} ` : "บัญชีของคุณ"}
@@ -51,3 +52,4 @@ export default function SuspendedModal({ brandName, onClose }: Props) {
         </div>
     );
 }
+

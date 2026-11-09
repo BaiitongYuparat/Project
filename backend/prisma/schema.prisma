@@ -328,7 +328,7 @@ model BodyType {
   body_type   String    
   description String?  
   analyzed_at DateTime @default(now()) @db.Timestamp(6)
-  user        User     @relation(fields: [user_id], references: [id])
+  user        User     @relation(fields: [user_id], references: [id] ,onDelete: Cascade)
 
   @@map("body_type")
 }

@@ -13,7 +13,7 @@ import {
   getAdminProductsController,
   getAdminProductStatsController,
 } from "../controllers/product";
-
+import { deleteUser , updateUserStatus  } from "../controllers/user";
 const router = Router();
 
 // ทุก Route ต้องเป็น Super Admin
@@ -30,6 +30,9 @@ router.delete("/brands/:id", deleteBrand);
 router.get("/models", getModels);
 router.get("/products/stats", getAdminProductStatsController); // ต้องมาก่อน /products/:id ถ้าเพิ่มทีหลัง
 router.get("/products", getAdminProductsController);
+
+router.delete("/users/:id", deleteUser);
+router.put("/users/:id/status", updateUserStatus);
 
 
 
