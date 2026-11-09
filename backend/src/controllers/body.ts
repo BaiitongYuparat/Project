@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import { Request, Response } from "express";
+import { triggerBodyTypeAnalysis } from "./bodytype";
 
 export const getBodyData = async (req: Request, res: Response) => {
     const userId = req.user!.id as string;
@@ -19,7 +20,7 @@ export const getBodyDataById = async (req: Request, res: Response) => {
     try {
         const bodyData = await prisma.body.findFirst({
             where: { user_id: userId },
-            orderBy: { recorded_at: "desc" }, // แถวล่าสุดของตัวเอง
+            orderBy: { recorded_at: "desc" },
         });
         if (!bodyData) {
             return res.status(404).json({ error: "Body data not found" });
@@ -43,6 +44,7 @@ export const createBody = async (req: Request, res: Response) => {
                 hips,
             },
         });
+        triggerBodyTypeAnalysis(req.user!.id); // วิเคราะห์ body type ในเบื้องหลัง ไม่รอผล
         res.status(201).json(newBody);
     } catch (error) {
         console.error(error);
@@ -51,7 +53,7 @@ export const createBody = async (req: Request, res: Response) => {
 }
 
 export const updateBody = async (req: Request, res: Response) => {
-    const userId = req.user!.id as string; // id ของ User
+    const userId = req.user!.id as string;
     const { weight, height, chest, waist, hips } = req.body;
     try {
         const latest = await prisma.body.findFirst({
@@ -65,12 +67,14 @@ export const updateBody = async (req: Request, res: Response) => {
             where: { id: latest.id },
             data: { weight, height, chest, waist, hips },
         });
+        triggerBodyTypeAnalysis(userId); // วิเคราะห์ body type ในเบื้องหลัง ไม่รอผล
         res.status(200).json(updated);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Failed to update body data" });
     }
 }
+
 export const deleteBody = async (req: Request, res: Response) => {
     const userId = req.user!.id as string;
     const bodyId = req.params.id as string;
