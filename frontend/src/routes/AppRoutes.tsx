@@ -20,6 +20,9 @@ import UserManagement from "../pages/SuperAdmin/usermanagement/UserManagement";
 import ModelManagement from "../pages/SuperAdmin/modelmanagement/ModelManagement";
 import ProtectedRoute from "./ProtectedRoute";
 import AdminManagement from "../pages/SuperAdmin/adminmanagement/AdminManagement"
+import  ProductManagementSU from "../pages/SuperAdmin/productmanagement/ProductManagement"
+import AI_PromptManagement from "../pages/SuperAdmin/ai_promptmanagement/AI_PromptManagement";
+import ShopAdminGuard from "../components/ShopAdminGuard";
 
 function AppRoutes() {
   return (
@@ -50,15 +53,20 @@ function AppRoutes() {
           <Route path="user-management" element={<UserManagement />} />
           <Route path="model-management" element={<ModelManagement />} />
           <Route path="admin-management" element={<AdminManagement />} />
+          <Route path="ai-prompt-management" element={<AI_PromptManagement />} />
+          <Route path="product-management" element={<ProductManagementSU />} />
+          
 
         </Route>
       </Route>
 
       {/* ShopAdmin Layout */}
-      <Route element={<ProtectedRoute requireShopAccess />}>
+      <Route element={<ProtectedRoute allowedRoles={["USER"]} requireShopAccess />}>
+      <Route path="/shopadmin/:slug" element={<ShopAdminGuard />}>
         <Route path="/shopadmin/:slug" element={<ShopAdminLayout />}>
           <Route index element={<ShopDashboard />} />
           <Route path="products" element={<ProductManagement />} />
+        </Route>
         </Route>
       </Route>
 

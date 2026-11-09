@@ -18,6 +18,8 @@ import { openLogin } from "../store/uiSlice";
 import { logout as logoutAction } from "../store/userSlice";
 import { logout as logoutAPI } from "../services/authService";
 
+import SuspendedModal from "./SuspendedModal";
+
 // ---------- Styles (ใช้ซ้ำทั้ง desktop และ mobile) ----------
 const sectionLabel =
   "px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-secondary/50";
@@ -51,6 +53,8 @@ export default function NavBar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
+  const [suspendedBrand, setSuspendedBrand] = useState<string | null>(null);
+
   const navLinks = [
     { name: "Home", path: "/", requireAuth: false },
     { name: "Try-On", path: "/tryon", requireAuth: false },
@@ -67,8 +71,8 @@ export default function NavBar() {
 
   const brandMemberships = !isSuperAdmin
     ? user?.brandMemberships?.filter(
-        (brand) => brand.role === "OWNER" || brand.role === "ADMIN"
-      ) ?? []
+      (brand) => brand.role === "OWNER" || brand.role === "ADMIN"
+    ) ?? []
     : [];
 
   const hasDashboardAccess = isSuperAdmin || brandMemberships.length > 0;
@@ -77,10 +81,9 @@ export default function NavBar() {
 
   // Style ของ NavLink
   const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `block rounded-3xl px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-      isActive
-        ? "bg-secondary text-white"
-        : "text-secondary hover:bg-secondary/10"
+    `block rounded-3xl px-4 py-2 text-sm font-medium transition-colors duration-200 ${isActive
+      ? "bg-secondary text-white"
+      : "text-secondary hover:bg-secondary/10"
     }`;
 
   // ปิด Dropdown
@@ -138,8 +141,13 @@ export default function NavBar() {
     navigate("/superadmin");
   };
 
-  const handleShopDashboard = (slug: string) => {
+  
+  const handleShopDashboard = (slug: string, status: string, brandName: string) => {
     closeMenus();
+    if (status !== "APPROVED") {
+      setSuspendedBrand(brandName);
+      return;
+    }
     navigate(`/shopadmin/${slug}`);
   };
 
@@ -190,9 +198,8 @@ export default function NavBar() {
                 </span>
                 <IonIcon
                   icon={chevronDownOutline}
-                  className={`transition-transform duration-200 ${
-                    isProfileOpen ? "rotate-180" : ""
-                  }`}
+                  className={`transition-transform duration-200 ${isProfileOpen ? "rotate-180" : ""
+                    }`}
                 />
               </button>
 
@@ -238,7 +245,7 @@ export default function NavBar() {
                         brandMemberships.map((brand) => (
                           <button
                             key={brand.slug}
-                            onClick={() => handleShopDashboard(brand.slug)}
+                            onClick={() => handleShopDashboard(brand.slug, brand.brandStatus, brand.brandName)}
                             className={dropdownItem}
                           >
                             <IonIcon
@@ -345,17 +352,12 @@ export default function NavBar() {
                     ) : (
                       brandMemberships.map((brand) => (
                         <button
-                          key={brand.brandId}
-                          onClick={() => handleShopDashboard(brand.brandId)}
+                          key={brand.slug}
+                          onClick={() => handleShopDashboard(brand.slug, brand.brandStatus, brand.brandName)}
                           className={mobileItem}
                         >
-                          <IonIcon
-                            icon={storefrontOutline}
-                            className="text-lg"
-                          />
-                          <span className="truncate">
-                            {brand.brandName} Dashboard
-                          </span>
+                          <IonIcon icon={storefrontOutline} className="text-lg" />
+                          <span className="truncate">{brand.brandName} Dashboard</span>
                         </button>
                       ))
                     )}
@@ -385,6 +387,12 @@ export default function NavBar() {
             ) : null}
           </div>
         </nav>
+      )}
+      {suspendedBrand && (
+        <SuspendedModal
+          brandName={suspendedBrand}
+          onClose={() => setSuspendedBrand(null)}
+        />
       )}
     </header>
   );

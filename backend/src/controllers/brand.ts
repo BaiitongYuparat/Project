@@ -5,7 +5,7 @@ import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { s3 } from "../middlewares/upload";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-
+import { BrandAccessError, getBrandAccess } from "../services/brandAccessService";
 //สร้าง slug ไว้เป็น url ที่ไม่ซ้ำกัน
 const generateSlug = (brandName: string) => {
   return brandName
@@ -117,7 +117,7 @@ export const registerBrand = async (req: Request, res: Response) => {
         ebiz_reg_no: ebiz_reg_no?.trim() || null,
         status: "PENDING",
       },
-      select: { id: true, brand_name: true, status: true, created_at: true , slug: true },
+      select: { id: true, brand_name: true, status: true, created_at: true, slug: true },
     });
 
     res.status(201).json(newBrand);
@@ -270,10 +270,11 @@ export const updateBrandStatus = async (req: Request, res: Response) => {
 export const checkBrandAccess = async (req: Request, res: Response) => {
   const slugParam = req.params.slug;
   const userId = req.user?.id;
+  const userRole = req.user?.role;
 
   try {
     // ตรวจการ login
-    if (!userId) {
+    if (!userId || !userRole) {
       return res.status(401).json({
         error: "Unauthorized",
       });
@@ -286,59 +287,60 @@ export const checkBrandAccess = async (req: Request, res: Response) => {
       });
     }
 
-    //ค้นหาร้านค้าจากข้อมูล & ตรวจว่าเป็นสมาชิกของร้านจริงไหม
-    const brand = await prisma.brand.findUnique({
-      where: {
-        slug: slugParam,
-      },
-      select: {
-        id: true,
-        brand_name: true,
-        slug: true,
-        status: true,
-        members: {
-          where: {
-            user_id: userId,
-            role: {
-              in: ["OWNER", "ADMIN"],
-            },
-          },
-          select: {
-            role: true,
-          },
-        },
-      },
-    });
-
-    if (!brand) {
-      return res.status(404).json({
-        error: "Brand not found",
-      });
-    }
-    //ถ้ามีสมาชิกที่ตรงเงื่อนไข members.length > 0
-    //ถ้าไม่มีสมาชิกที่ตรงเงื่อนไข members.length == 0
-    if (brand.members.length === 0) {
-      return res.status(403).json({
-        error: "You do not have access to this brand",
-      });
-    }
+    // เรียกใช้ Service
+    const result = await getBrandAccess(
+      slugParam,
+      userId,
+    );
 
     return res.status(200).json({
       authorized: true,
-      brand: {
-        id: brand.id,
-        brand_name: brand.brand_name,
-        slug: brand.slug,
-        status: brand.status,
-      },
-      role: brand.members[0].role,
+      ...result,
     });
 
   } catch (error) {
+    if (error instanceof BrandAccessError) {
+      return res.status(error.statusCode).json({
+        error: error.message,
+        ...error.details,
+      });
+    }
     console.error("checkBrandAccess error:", error);
 
     return res.status(500).json({
       error: "Failed to check brand access",
     });
+  }
+};
+
+
+export const getAllBrandMembers = async (req: Request, res: Response) => {
+  try {
+    const members = await prisma.brandMember.findMany({
+      select: {
+        id: true,
+        role: true,
+        created_at: true,
+        user: { select: { id: true, name: true, email: true } },
+        brand: { select: { id: true, brand_name: true, status: true } },
+      },
+      orderBy: [{ brand: { brand_name: "asc" } }, { role: "asc" }, { created_at: "asc" }],
+    });
+
+    res.status(200).json(
+      members.map((m) => ({
+        id: m.id,
+        role: m.role,
+        created_at: m.created_at,
+        user_name: m.user.name,
+        email: m.user.email,
+        brand_id: m.brand.id,
+        brand_name: m.brand.brand_name,
+        brand_status: m.brand.status
+      }))
+    );
+  } catch (error) {
+    console.error("getBrandMembers error:", error);
+    res.status(500).json({ error: "Failed to fetch brand members" });
   }
 };

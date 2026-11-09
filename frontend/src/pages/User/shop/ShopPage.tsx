@@ -8,6 +8,9 @@ import { getProducts } from "../../../services/productService";
 
 import ProductGrid from "../../../components/shop/ProductGrid";
 import Button from "../../../components/Button";
+import ShopFilter from "../../../components/shop/ShopFilter";
+
+import { useNavigate } from "react-router-dom";
 
 const categories = [
   { value: "all", label: "ทั้งหมด" },
@@ -40,6 +43,8 @@ export default function ShopPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -68,7 +73,7 @@ export default function ShopPage() {
   const filteredProducts = useMemo(() => {
     let result = products.filter((product) => {
       const matchShop =
-        selectedShop === "all" || product.shop_id === selectedShop;
+        selectedShop === "all" || product.brand_id === selectedShop;
 
       const matchCategory =
         selectedCategory === "all" || product.category === selectedCategory;
@@ -138,29 +143,67 @@ export default function ShopPage() {
     <main className="min-h-screen bg-white">
       <div className="mx-auto max-w-[1400px] px-5 py-7 md:px-10 lg:px-14">
         {/* Hero Banner */}
-        <section className="mb-8 flex flex-col justify-between gap-6 rounded-2xl border border-[#DCC3B3] bg-[#F3E1D4] p-6 md:flex-row md:items-center md:px-8 md:py-7">
-          <div className="max-w-xl">
-            <p className="mb-4 text-xs font-medium text-[#806B5E]">
-              AI VIRTUAL TRY-ON · ลองเลย
-            </p>
+                {/* Hero Banner */}
+        <section className="relative mb-8 overflow-hidden rounded-2xl border border-[#DCC3B3] bg-primary p-6 md:px-8 md:py-7">
+          {/* Decorative Background */}
+          <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/30 blur-2xl" />
+          <div className="absolute -bottom-24 right-1/3 h-56 w-56 rounded-full bg-[#DDBBA6]/30 blur-2xl" />
 
-            <h1 className="text-2xl font-bold leading-tight text-[#49352D] md:text-4xl">
-              ลองก่อนซื้อ บนรูปของคุณเอง
-            </h1>
+          <div className="relative z-10 flex flex-col items-center justify-between gap-8 md:flex-row">
+            {/* Text Content */}
+            <div className="max-w-xl">
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#D9BBA8] bg-white/50 px-4 py-2">
+                <span className="h-2 w-2 rounded-full bg-[#A77D65]" />
+                <span className="text-xs font-semibold tracking-widest text-[#806B5E]">
+                  Become Our Partner
+                </span>
+              </div>
 
-            <p className="m-4 text-sm text-[#947D6D]">
-              แมตช์ชุดที่ชอบ ลองด้วย AI แล้วเลือกสไตล์ที่ใช่สำหรับคุณ
-            </p>
+              <h1 className="text-3xl font-bold leading-tight text-[#49352D] md:text-5xl">
+                เติบโตไปพร้อมกับ
+                <br />
+                <span className="text-[#A77D65]">LongDress</span>
+              </h1>
 
-            <Button
-              variant="secondary"
-              className="rounded-full hover:bg-secondary/70 hover:text-white"
-              onClick={() => {
-                "something";
-              }}
-            >
-              เริ่มลองใส่เลย
-            </Button>
+              <p className="mt-5 max-w-lg text-sm leading-7 text-[#806B5E] md:text-base">
+                ให้ร้านค้าของคุณเป็นที่รู้จักมากขึ้น
+                เปิดโอกาสให้ลูกค้าได้ค้นพบสินค้า
+                และทดลองสวมใส่เสื้อผ้าด้วยเทคโนโลยี AI
+                ก่อนตัดสินใจซื้อ
+              </p>
+
+              {/* CTA */}
+              <div className="mt-7">
+                <Button
+                  variant="secondary"
+                  className="rounded-full bg-[#806B5E] px-8 py-3 text-white shadow-lg shadow-[#806B5E]/20 transition-all duration-300 hover:-translate-y-1 hover:bg-[#634B3F] hover:shadow-xl"
+                  onClick={() => navigate("/brand/register")}
+                >
+                  สมัครเป็นร้านค้าเลย
+                  <span className="ml-2">→</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Illustration */}
+            <div className="relative hidden h-64 w-72 shrink-0 items-center justify-center md:flex">
+              <div className="absolute h-60 w-60 rounded-full border border-white/60" />
+              <div className="absolute h-48 w-48 rounded-full bg-white/30" />
+
+              <div className="relative z-10 flex h-48 w-48 flex-col items-center justify-center rounded-full border-4 border-white/70 bg-[#E8CDBD] shadow-xl">
+                <p className="mt-3 text-xs font-semibold tracking-widest text-[#694D3F]">
+                  YOUR BRAND
+                </p>
+              </div>
+
+              <div className="absolute right-0 top-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-2xl shadow-lg">
+                ✨
+              </div>
+
+              <div className="absolute bottom-5 left-0 flex h-12 w-12 items-center justify-center rounded-full bg-white text-xl shadow-lg">
+                ♡
+              </div>
+            </div>
           </div>
         </section>
 
@@ -181,7 +224,7 @@ export default function ShopPage() {
 
             <button
               type="button"
-              className="rounded-full border border-[#DCC3B3] bg-[#F3E1D4] px-6 py-3 text-sm font-medium text-[#49352D] hover:bg-[#E8CEBD]"
+              className="rounded-full border border-[#DCC3B3] bg-primary px-6 py-3 text-sm font-medium text-[#49352D] hover:bg-[#E8CEBD]"
               onClick={() => setSearch(search.trim())}
             >
               ค้นหาด้วยรูป
@@ -190,7 +233,7 @@ export default function ShopPage() {
             <button
               type="button"
               onClick={() => setSelectedShop("all")}
-              className="rounded-full border border-[#DCC3B3] bg-[#F3E1D4] px-6 py-3 text-sm font-medium text-[#49352D] hover:bg-[#E8CEBD]"
+              className="rounded-full border border-[#DCC3B3] bg-primary px-6 py-3 text-sm font-medium text-[#49352D] hover:bg-[#E8CEBD]"
             >
               ♡ รายการโปรด ({favorites.length})
             </button>
@@ -207,7 +250,7 @@ export default function ShopPage() {
               className={`rounded-full border px-4 py-2 text-sm transition ${
                 selectedCategory === category.value
                   ? "border-[#3E2C25] bg-[#3E2C25] text-white"
-                  : "border-[#DCC3B3] bg-white text-[#49352D] hover:bg-[#F3E1D4]"
+                  : "border-[#DCC3B3] bg-white text-[#49352D] hover:bg-primary"
               }`}
             >
               {category.label}
@@ -227,7 +270,7 @@ export default function ShopPage() {
               className={`rounded-full border px-4 py-2 text-sm transition ${
                 selectedGender === gender.value
                   ? "border-[#3E2C25] bg-[#3E2C25] text-white"
-                  : "border-[#DCC3B3] bg-white text-[#49352D] hover:bg-[#F3E1D4]"
+                  : "border-[#DCC3B3] bg-white text-[#49352D] hover:bg-primary"
               }`}
             >
               {gender.label}
@@ -242,25 +285,9 @@ export default function ShopPage() {
               เลือกชิ้นที่ใช่ แล้วลองเลย
             </h2>
 
-            <div className="mt-3">
-              <label className="mb-1 block text-xs text-[#947D6D]">
-                เลือกร้านค้า
-              </label>
-
-              <select
-                value={selectedShop}
-                onChange={(e) => setSelectedShop(e.target.value)}
-                className="rounded-full border border-[#DCC3B3] bg-white px-4 py-2 text-sm text-[#49352D] outline-none focus:border-[#49352D]"
-              >
-                <option value="all">ทุกร้านค้า</option>
-
-                {shops.map((shop) => (
-                  <option key={shop.id} value={shop.id}>
-                    {shop.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <ShopFilter shops={shops}
+              selectedShop={selectedShop}
+              onChange={setSelectedShop}/>
           </div>
 
           <div className="flex items-center gap-2 text-sm text-[#947D6D]">

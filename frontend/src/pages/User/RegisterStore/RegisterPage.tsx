@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { registerBrand } from "../../../services/brandService";
+import { registerBrand } from "../../../services/ShopAdmin/brandService";
 import Input from "../../../components/Input";
 import Button from "../../../components/Button";
 
@@ -91,7 +91,9 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className="mx-auto my-10 max-w-md p-4">
+        <div className="min-h-screen bg-[#FAF7F4] px-4 py-8 sm:px-6 sm:py-12">
+        <div className="mx-auto w-full max-w-xl">
+            
             <h1 className="mb-6 text-2xl font-bold">ร่วมเป็นส่วนหนึ่งของ LongDress</h1>
 
             <form onSubmit={onSubmit} className="grid gap-4">
@@ -170,6 +172,16 @@ export default function RegisterPage() {
 
 
             </form>
+             <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="mt-6 inline-flex items-center gap-2 rounded-full
+                px-4 py-2 text-sm font-medium text-[#806B5E]
+                transition-all hover:bg-[#F3E1D4] hover:text-[#49352D]"
+            >
+                <span className="text-lg">←</span>
+                ย้อนกลับ
+            </button>
             {showSuccess && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
                     <div
@@ -229,10 +241,12 @@ export default function RegisterPage() {
                         >
                             ตกลง
                         </Button>
+                        
                     </div>
                 </div>
             )}
 
+        </div>
         </div>
     );
 }

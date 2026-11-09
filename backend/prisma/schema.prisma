@@ -31,7 +31,7 @@ enum TryOnStatus {
 }
 
 enum BrandMemberRole {
-  OWNER  //เจ้าของร้าน
+  OWNER //เจ้าของร้าน
   ADMIN //แอดมินลูกน้องเจ้าของร้าน
 }
 
@@ -40,6 +40,12 @@ enum InviteStatus {
   ACCEPTED
   EXPIRED
   CANCELLED
+}
+
+enum ProductImageQualityStatus {
+  PENDING
+  PASSED
+  FAILED
 }
 
 model User {
@@ -160,6 +166,7 @@ model Product {
   category    String
   price       Decimal?           @db.Decimal(10, 2)
   description String?
+  sku String?
   is_active   Boolean            @default(true)
   created_at  DateTime           @default(now()) @db.Timestamp(6)
   updated_at  DateTime           @updatedAt @db.Timestamp(6)
@@ -172,6 +179,7 @@ model Product {
 
   @@index([brand_id])
   @@index([category])
+  @@unique([brand_id, sku])
   @@map("products")
 }
 
@@ -192,14 +200,16 @@ model ProductSizeChart {
 
 // รูปภาพของสินค้า
 model ProductImage {
-  id          String   @id @default(uuid())
-  product_id  String
-  s3_key      String
-  sort_order  Int      @default(0)
-  uploaded_at DateTime @default(now()) @db.Timestamp(6)
-  product     Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  id             String                    @id @default(uuid())
+  product_id     String
+  quality_status ProductImageQualityStatus @default(PENDING)
+  quality_reason String?
+  s3_key         String
+  sort_order     Int                       @default(0)
+  uploaded_at    DateTime                  @default(now()) @db.Timestamp(6)
+  product        Product                   @relation(fields: [product_id], references: [id], onDelete: Cascade)
 
-  @@index([product_id])
+  @@index([product_id, quality_status])
   @@map("product_images")
 }
 
