@@ -165,40 +165,60 @@ export const confirmBodyImages = async (req: Request, res: Response) => {
             return res.status(403).json({ message: "You do not have permission" });
         }
 
-        const oldUrlsToDelete: string[] = [];
+        // ย้ายไฟล์ใน S3 ก่อน ทำนอก transaction
+        const movedKeys: Partial<Record<AngleType, string>> = {};
         const newKeys: string[] = [];
 
-        const savedImages = await prisma.$transaction(async (tx) => {
-            const results = [];
-
+        try {
             for (const angle of anglesToUpdate) {
                 const tempKey = tempKeys[angle] as string;
                 const newKey = await moveS3Object(tempKey, userId);
+                movedKeys[angle] = newKey;
                 newKeys.push(newKey);
-
-                const newUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${newKey}`;
-
-                const existing = await tx.image.findUnique({
-                    where: { body_id_angle: { body_id: bodyId, angle } },
-                    select: { s3: true },
-                });
-                if (existing?.s3) oldUrlsToDelete.push(existing.s3);
-
-                const saved = await tx.image.upsert({
-                    where: { body_id_angle: { body_id: bodyId, angle } },
-                    update: { s3: newUrl, quality_status: "APPROVED", uploaded_at: new Date() },
-                    create: { body_id: bodyId, angle, s3: newUrl, quality_status: "APPROVED" },
-                });
-
-                results.push(saved);
             }
-            return results;
-        }).catch(async (error) => {
-            console.error("Transaction failed, cleaning up S3:", error);
+        } catch (s3Error) {
+            // S3 copy ล้มเหลว → ลบ newKeys ที่ copy ไปแล้ว
+            console.error("S3 move failed:", s3Error);
             await removeMultipleFromS3(newKeys);
-            throw error;
-        });
+            return res.status(500).json({ message: "Failed to process images" });
+        }
 
+        //  บันทึก DB ใน transaction (เร็ว ไม่มี S3 call)
+        const oldUrlsToDelete: string[] = [];
+
+        let savedImages;
+        try {
+            savedImages = await prisma.$transaction(async (tx) => {
+                const results = [];
+
+                for (const angle of anglesToUpdate) {
+                    const newKey = movedKeys[angle]!;
+                    const newUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${newKey}`;
+
+                    const existing = await tx.image.findUnique({
+                        where: { body_id_angle: { body_id: bodyId, angle } },
+                        select: { s3: true },
+                    });
+                    if (existing?.s3) oldUrlsToDelete.push(existing.s3);
+
+                    const saved = await tx.image.upsert({
+                        where: { body_id_angle: { body_id: bodyId, angle } },
+                        update: { s3: newUrl, quality_status: "APPROVED", uploaded_at: new Date() },
+                        create: { body_id: bodyId, angle, s3: newUrl, quality_status: "APPROVED" },
+                    });
+
+                    results.push(saved);
+                }
+                return results;
+            });
+        } catch (dbError) {
+            // DB ล้มเหลว → ลบ newKeys ที่ copy ไปแล้ว
+            console.error("DB transaction failed, cleaning up S3:", dbError);
+            await removeMultipleFromS3(newKeys);
+            return res.status(500).json({ message: "Failed to save images" });
+        }
+
+        // ลบรูปเก่าหลัง DB สำเร็จ
         for (const oldUrl of oldUrlsToDelete) {
             const oldKey = keyFromUrl(oldUrl);
             if (oldKey && !newKeys.includes(oldKey)) {
@@ -215,7 +235,6 @@ export const confirmBodyImages = async (req: Request, res: Response) => {
         return res.status(500).json({ message: "Internal server error" });
     }
 };
-
 export const getBodyImages = async (req: Request, res: Response) => {
     if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -233,7 +252,6 @@ export const getBodyImages = async (req: Request, res: Response) => {
             return res.status(403).json({ message: "You do not have permission" });
         }
 
-        
         const images = await prisma.image.findMany({
             where: { body_id: bodyId },
         });
@@ -255,7 +273,6 @@ export const getBodyImages = async (req: Request, res: Response) => {
                 return { ...img, s3: presignedUrl };
             })
         );
-        
 
         return res.status(200).json({ data: imagesWithPresignedUrl });
     } catch (error) {
