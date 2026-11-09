@@ -332,3 +332,4 @@ model BodyType {
 
   @@map("body_type")
 }
+

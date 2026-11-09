@@ -12,6 +12,7 @@ import {
     sparklesOutline,
     pricetagsOutline,
     bodyOutline,
+   settingsOutline
 } from "ionicons/icons";
 
 
@@ -41,15 +42,20 @@ const menuItems = [
         path: "/ai-prompt-management",
         icon: sparklesOutline
     },
-    {
-        name: "Product Management",
-        path: "/product-management",
-        icon: pricetagsOutline
-    },
+    // {
+    //     name: "Product Management",
+    //     path: "/product-management",
+    //     icon: pricetagsOutline
+    // },
     {
         name: "Model Management",
         path: "/model-management",
         icon: bodyOutline
+    },
+    {
+        name: "System",
+        path: "/system",
+        icon: settingsOutline
     }
 ]
 

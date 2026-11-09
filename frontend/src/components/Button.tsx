@@ -1,8 +1,8 @@
 import React from "react";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    variant ?: 'primary' | 'secondary' | 'danger' | 'outline';
-    size ?: 'sm' | 'md' | 'lg';
+    variant?: 'primary' | 'secondary' | 'danger' | 'outline' | 'delete'
+    size?: 'sm' | 'md' | 'lg';
     children: React.ReactNode;
 }
 
@@ -21,7 +21,7 @@ const Button: React.FC<ButtonProps> = ({
     border
     disabled:opacity-60 disabled:cursor-not-allowed
     `;
-    let variantStyles:string ='';
+    let variantStyles: string = '';
     switch (variant) {
         case 'primary':
             variantStyles = `
@@ -40,7 +40,7 @@ const Button: React.FC<ButtonProps> = ({
             `;
             break;
         case 'danger':
-            variantStyles =  `
+            variantStyles = `
             bg-red-600 text-white border-red-600
             hover:bg-red-700 hover:border-red-700
             focus:ring-red-500
@@ -55,6 +55,16 @@ const Button: React.FC<ButtonProps> = ({
             disabled:hover:bg-transparent disabled:hover:text-blue-600 disabled:text-blue-600/60 disabled:border-blue-600/60 
             `;
             break;
+        case 'delete':
+            variantStyles = `
+            bg-stone-800 text-white
+            hover:bg-black hover:border-black
+            focus:ring-stone-500
+            disabled:hover:bg-stone-800 disabled:hover:border-stone-800
+            `;
+            break;
+
+
         default:
             variantStyles = `
             bg-transparent text-secondary text-bold 
@@ -87,7 +97,7 @@ const Button: React.FC<ButtonProps> = ({
         <button
             type="button"
             className={combinedClassName}
-            disabled = {disabled}
+            disabled={disabled}
             {...props}
         >
             {children}
