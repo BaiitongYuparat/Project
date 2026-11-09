@@ -1,5 +1,5 @@
 import api from "../api";
-import type { RegisterBrandResponse , CheckBrandAccessResponse } from "../../types/brand";
+import type { RegisterBrandResponse , CheckBrandAccessResponse, BrandMember, BrandMembersResponse } from "../../types/brand";
 
 const baseUrl = "/brands";
 
@@ -20,6 +20,39 @@ export async function checkBrandAccess(
 ): Promise<CheckBrandAccessResponse> {
   const response = await api.get<CheckBrandAccessResponse>(
     `${baseUrl}/${encodeURIComponent(slug)}/access`
+  );
+
+  return response.data;
+}
+
+export async function getBrandMembers(
+  slug: string
+): Promise<BrandMembersResponse> {
+  const response = await api.get<BrandMembersResponse>(
+    `${baseUrl}/${encodeURIComponent(slug)}/members`
+  );
+
+  return response.data;
+}
+
+export async function addBrandMember(
+  slug: string,
+  email: string
+): Promise<{ message: string; member: BrandMember }> {
+  const response = await api.post(
+    `${baseUrl}/${encodeURIComponent(slug)}/members`,
+    { email }
+  );
+
+  return response.data;
+}
+
+export async function removeBrandMember(
+  slug: string,
+  memberId: string
+): Promise<{ message: string }> {
+  const response = await api.delete(
+    `${baseUrl}/${encodeURIComponent(slug)}/members/${encodeURIComponent(memberId)}`
   );
 
   return response.data;

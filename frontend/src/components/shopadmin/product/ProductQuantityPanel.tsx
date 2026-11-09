@@ -2,7 +2,7 @@ import { useState } from "react";
 import { IonIcon } from "@ionic/react";
 import { imageOutline, informationCircleOutline } from "ionicons/icons";
 
-import type { Product } from "../../../services/ShopAdmin/productService";
+import type { ImageView, Product } from "../../../types/product";
 
 interface ProductQualityPanelProps {
   product: Product | null;
@@ -14,6 +14,16 @@ const qualityConfig: Record<QualityStatus, { label: string; style: string }> = {
   PENDING: { label: "รอตรวจ", style: "bg-[#FDEEDD] text-[#A35A0F]" },
   PASSED: { label: "ผ่าน", style: "bg-[#E4EFDD] text-[#3D6A2B]" },
   FAILED: { label: "ไม่ผ่าน", style: "bg-[#FDE5E2] text-[#B53A2D]" },
+};
+const getViewLabel = (view: ImageView) => {
+  const labels: Record<ImageView, string> = {
+    FRONT: "ด้านหน้า",
+    BACK: "ด้านหลัง",
+    LEFT: "ด้านซ้าย",
+    RIGHT: "ด้านขวา",
+  };
+
+  return labels[view] ?? "ไม่ระบุมุม";
 };
 
 const DEFAULT_NOTE =
@@ -80,7 +90,13 @@ export default function ProductQualityPanel({
         </div>
 
         <StatusBadge status={overallStatus} />
+
       </div>
+      {overallStatus === "FAILED" && (
+    <p className="mt-3 p-2 text-xs rounded-lg bg-red-50 px-3 py-2  text-red-600">
+      หมายเหตุ: รูปภาพสินค้าทุกรูปควรผ่านการตรวจสอบก่อนจึงจะสามารถนำไปใช้งานได้
+    </p>
+  )}
 
       {/* Main Image */}
       <div className="mt-4 flex h-64 items-center justify-center overflow-hidden rounded-xl bg-[#EFE6D2]">
@@ -119,7 +135,7 @@ export default function ProductQualityPanel({
                     : "text-gray-900"
                 }
               >
-                รูปภาพที่ {index + 1}
+                {getViewLabel(image.view)}
               </span>
 
               <StatusBadge status={getStatus(image.quality_status)} />
