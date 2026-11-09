@@ -233,6 +233,7 @@ export const getBodyImages = async (req: Request, res: Response) => {
             return res.status(403).json({ message: "You do not have permission" });
         }
 
+        
         const images = await prisma.image.findMany({
             where: { body_id: bodyId },
         });
@@ -255,6 +256,7 @@ export const getBodyImages = async (req: Request, res: Response) => {
             })
         );
         
+
         return res.status(200).json({ data: imagesWithPresignedUrl });
     } catch (error) {
         console.error(error);

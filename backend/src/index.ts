@@ -9,7 +9,7 @@ import { authMiddleware } from "./middlewares/auth";
 
 import imageRoutes from "./routes/imageRoutes";
 import clothingRoutes from "./routes/clothingRoutes";
-
+import bodyTypeRoutes from './routes/bodyTypeRoutes'; 
 
 import userconsentRoutes from "./routes/userconsentRoutes";
 import brandRoutes from "./routes/brandRoutes";
@@ -25,7 +25,8 @@ app.use("/body", authMiddleware, bodyRoutes);
 app.use("/images", authMiddleware, imageRoutes);
 app.use("/clothings", authMiddleware, clothingRoutes);
 app.use("/userconsent", authMiddleware, userconsentRoutes);
-app.use("/brands", brandRoutes); 
+app.use("/brands", brandRoutes);
+app.use("/body-type", authMiddleware, bodyTypeRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

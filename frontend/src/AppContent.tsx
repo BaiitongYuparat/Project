@@ -8,6 +8,8 @@ import type { User, BrandMembership } from "./types/user";
 
 import { getCurrentUser } from "./services/authService";
 import { getBody } from "./services/bodyService";
+import { getBodyType } from "./services/bodyTypeService";
+import { setBodyType } from "./store/bodyTypeSlice";
 
 import { login, logout, setAuthChecked } from "./store/userSlice";
 
@@ -105,6 +107,13 @@ export default function AppContent() {
     try {
       const body = await getBody();
       dispatch(setBody(body));
+      try {
+        const bodyType = await getBodyType();
+        dispatch(setBodyType(bodyType));
+      } catch (error) {
+        // ยังไม่มี body type ก็ไม่เป็นไร
+        console.log("No body type yet");
+      }
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         dispatch(openBody());

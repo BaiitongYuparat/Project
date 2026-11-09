@@ -53,6 +53,7 @@ model User {
   gender       Gender?
   body         Body[]
   userConsents UserConsent[]
+  bodyType     BodyType?
 
   // Brand
   brandMembers     BrandMember[]
@@ -309,4 +310,15 @@ model Model {
   @@index([body_type])
   @@index([is_active, is_selectable])
   @@map("try_on_models")
+}
+
+model BodyType {
+  id          String   @id @default(uuid())
+  user_id     String   @unique  
+  body_type   String    
+  description String?  
+  analyzed_at DateTime @default(now()) @db.Timestamp(6)
+  user        User     @relation(fields: [user_id], references: [id])
+
+  @@map("body_type")
 }
