@@ -7,7 +7,7 @@ const bucketName = process.env.AWS_S3_BUCKET_NAME!;
 // สร้าง URL สำหรับดูรูปภาพ
 export const getImageUrl = async (
   key: string,
-  expiresIn: number = 3600
+  expiresIn: number =  86400
 ): Promise<string> => {
   return getSignedUrl(
     s3,
@@ -28,3 +28,4 @@ export const deleteImage = async (key: string): Promise<void> => {
     })
   );
 };
+

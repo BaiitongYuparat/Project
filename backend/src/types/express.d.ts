@@ -16,6 +16,7 @@ declare global {
         slug: string;
         status: BrandStatus;
         role: UserRole | BrandMemberRole;
+        role: string;
       };
     }
   }
