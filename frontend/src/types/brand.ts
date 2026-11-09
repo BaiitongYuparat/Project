@@ -40,9 +40,14 @@ export type BrandMember = {
   id: string;
   role: BrandMemberRole;
   created_at: string;
-  user_name: string | null;
+  name: string | null;
   email: string;
   brand_id: string;
   brand_name: string;
   brand_status: BrandStatus;
 };
+
+export interface BrandMembersResponse {
+  currentRole: BrandMemberRole
+  members: BrandMember[];
+}

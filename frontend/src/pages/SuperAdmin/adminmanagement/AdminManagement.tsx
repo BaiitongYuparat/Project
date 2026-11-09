@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { getBrandMembers } from "../../../services/SuperAdmin/brandService";
+import { getBrandMembers } from "../../../services/ShopAdmin/brandService";
 import type { BrandMemberRole, BrandMember, BrandStatus } from "../../../types/brand";
+import { useParams } from "react-router-dom";
 
 //แปลงตัวเลขเป็นรูปแบบไทย
 const formatNumber = (n: number) => n.toLocaleString("th-TH");
@@ -45,13 +46,22 @@ export default function AdminManagement() {
     const [members, setMembers] = useState<BrandMember[]>([]);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
+    const { slug } = useParams<{ slug: string }>();
+    const [currentRole, setCurrentRole] = useState<"OWNER" | "ADMIN">("ADMIN");
 
 
     const fetchBrands = async () => {
+      if (!slug) {
+        setError("ไม่พบร้านค้าที่ต้องการจัดการ");
+        setLoading(false);
+        return;
+      }
         try {
             setLoading(true);
             setError(null);
-            setMembers(await getBrandMembers());
+            const data = await getBrandMembers(slug);
+            setMembers(data.members);
+            setCurrentRole(data.currentRole);
         } catch (err) {
             console.error("Failed to fetch brands:", err);
             setError("ไม่สามารถโหลดข้อมูล Admin ร้านค้าได้");
@@ -127,7 +137,7 @@ export default function AdminManagement() {
                                     ) : (
                                         paged.map((m) => (
                                             <tr key={m.id} className="text-stone-800">
-                                                <td className="px-8 py-4">{m.user_name}</td>
+                                                <td className="px-8 py-4">{m.name}</td>
                                                 <td className="px-4 py-4">{m.brand_name}</td>
                                                 <td className="px-4 py-4">{m.email ?? "-"}</td>
                                                 <td className="px-4 py-4"><RoleBadge role={m.role} /></td>
@@ -148,7 +158,7 @@ export default function AdminManagement() {
                                 members.map((m) => (
                                     <li key={m.id} className="space-y-1 px-4 py-4 text-sm text-stone-800">
                                         <div className="flex items-center justify-between gap-2">
-                                            <span className="font-medium">{m.user_name}</span>
+                                            <span className="font-medium">{m.name}</span>
                                             <RoleBadge role={m.role} />
                                         </div>
                                         <p className="text-stone-600">{m.brand_name}</p>

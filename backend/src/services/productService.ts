@@ -12,6 +12,7 @@ const publicProductImageSelect = {
     id: true,
     s3_key: true,
     sort_order: true,
+    view:true,
   },
   orderBy: [{ sort_order: "asc" }, { id: "asc" }],
   take: 10,
@@ -22,6 +23,7 @@ const shopProductImageSelect = {
     id: true,
     s3_key: true,
     sort_order: true,
+    view: true,
     quality_status: true,
     quality_reason: true,
   },
@@ -92,8 +94,8 @@ const withShopProductImageUrls = async <
   );
 };
 
-const assertOwnKeys = (brandId: string, images: { s3_key: string }[]) => {
-  const prefix = `products/${brandId}/`;   // ปรับให้ตรงกับรูปแบบ key ที่คุณใช้
+const assertOwnKeys = (brandId: string, images: { s3_key: string}[]) => {
+  const prefix = `brand-products/${brandId}/`;
   for (const { s3_key } of images) {
     if (!s3_key.startsWith(prefix) || s3_key.includes("..")) {
       throw new Error("INVALID_IMAGE_KEY");
@@ -261,6 +263,7 @@ type CreateProductInput = {
   images: {
     s3_key: string;
     sort_order: number;
+    view: "FRONT" | "BACK" | "LEFT" | "RIGHT";
   }[];
 };
 
@@ -278,8 +281,12 @@ export const createProduct = async (
       price: data.price ?? null,
       description: data.description ?? null,
       sku: data.sku ?? null,
-      images: {
-        create: data.images,
+     images: {
+        create: data.images.map((image) => ({
+          s3_key: image.s3_key,
+          sort_order: image.sort_order,
+          view: image.view,
+        })),
       },
     },
     include: {
@@ -292,6 +299,7 @@ export const createProduct = async (
 type ProductImageInput = {
   s3_key: string;
   sort_order: number;
+  view: "FRONT" | "BACK" | "LEFT" | "RIGHT";
 };
 
 
@@ -396,6 +404,7 @@ export const updateProductWithImages = async (
           product_id: productId,
           s3_key: image.s3_key,
           sort_order: startOrder + index,
+          view:image.view,
         },
       });
 
@@ -452,15 +461,15 @@ export const deleteProduct = async (brandId: string, productId: string) => {
 
 
 
-export type ProductQuality = "PASS" | "FAIL" | "REVIEW" | "PENDING";
+export type ProductQuality = ProductImageQualityStatus
 // สรุปผลตรวจระดับสินค้า จากสถานะของรูปทุกรูป
 const summarizeQuality = (
   statuses: ProductImageQualityStatus[]
 ): ProductQuality => {
   if (statuses.length === 0) return "PENDING";
-  if (statuses.includes("FAILED")) return "FAIL";
+  if (statuses.includes("FAILED")) return "FAILED";
   if (statuses.includes("PENDING")) return "PENDING";
-  return "PASS";
+  return "PASSED";
 };
 
 // รายการสินค้าทุกร้าน สำหรับ Super Admin
@@ -495,13 +504,13 @@ export const getAdminProductStats = async () => {
     select: { images: { select: { quality_status: true } } },
   });
 
-  const stats = { total: products.length, pass: 0, fail: 0, review: 0 };
+  const stats = { total: products.length, pass: 0, fail: 0, pending: 0 };
 
   for (const p of products) {
     const q = summarizeQuality(p.images.map((i) => i.quality_status));
-    if (q === "PASS") stats.pass++;
-    else if (q === "FAIL") stats.fail++;
-    else if (q === "REVIEW") stats.review++;
+    if (q === "PASSED") stats.pass++;
+    else if (q === "FAILED") stats.fail++;
+    else stats.pending++;
   }
 
   return stats;

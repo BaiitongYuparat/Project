@@ -11,6 +11,7 @@ import {
   flagOutline,
   settingsOutline,
   storefrontOutline,
+  personOutline,
 } from "ionicons/icons";
 import { useSelector } from "react-redux";
 import type { RootState } from "../store/store";
@@ -27,9 +28,9 @@ const menuItems = [
     icon: pricetagsOutline,
   },
   {
-    name: "Try-On Analytics",
-    path: "/analytics",
-    icon: analyticsOutline,
+    name: "Admin Management",
+    path: "/admin",
+    icon: personOutline,
   },
   {
     name: "Reports",

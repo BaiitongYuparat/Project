@@ -69,6 +69,7 @@ function AppRoutes() {
         <Route path="/shopadmin/:slug" element={<ShopAdminLayout />}>
           <Route index element={<ShopDashboard />} />
           <Route path="products" element={<ProductManagement />} />
+          <Route path="admin" element={<AdminManagement />} />
         </Route>
         </Route>
       </Route>

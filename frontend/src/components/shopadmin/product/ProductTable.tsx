@@ -1,5 +1,5 @@
 
-import type { Product } from "../../../services/ShopAdmin/productService";
+import type { Product } from "../../../types/product";
 
 interface ProductTableProps {
   products: Product[];

@@ -21,10 +21,11 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
-  type Product,
-  type ProductFormData,
 } from "../../services/ShopAdmin/productService";
+import type { Product, ProductFormData } from "../../types/product";
 import Input from "../../components/Input";
+
+import type { ImageView } from "../../types/product";
 
 const MAX_IMAGES = 5;
 
@@ -200,26 +201,36 @@ export default function ProductManagement() {
   };
 
   // เลือกรูปภาพใหม่
-  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(event.target.files ?? []);
+  const handleImageChange = (
+    event: ChangeEvent<HTMLInputElement>,
+    view: ImageView,
+  ) => {
+    const file = event.target.files?.[0];
     event.target.value = "";
 
-    const existingImageCount =
-      (editingProduct?.images.length ?? 0) - form.remove_image_ids.length;
-
-    if (
-      existingImageCount + form.images.length + selectedFiles.length >
-      MAX_IMAGES
-    ) {
-      setError(`สามารถมีรูปภาพได้สูงสุด ${MAX_IMAGES} รูป`);
-      return;
-    }
+    if (!file) return;
 
     setError("");
-    setForm((previous) => ({
-      ...previous,
-      images: [...previous.images, ...selectedFiles],
-    }));
+
+    setForm((previous) => {
+      // ถ้ามีรูปมุมนี้อยู่แล้ว ให้นับเป็นการเปลี่ยนรูป
+      const oldImage = editingProduct?.images.find(
+        (image) => image.view === view,
+      );
+
+      const removeIds = oldImage
+        ? [...new Set([...previous.remove_image_ids, oldImage.id])]
+        : previous.remove_image_ids;
+
+      return {
+        ...previous,
+        images: [
+          ...previous.images.filter((image) => image.view !== view),
+          { file, view },
+        ],
+        remove_image_ids: removeIds,
+      };
+    });
   };
 
   // ลบรูปภาพเดิม
@@ -244,9 +255,16 @@ export default function ProductManagement() {
 
     if (!slug) return;
 
-    // สินค้าใหม่ต้องมีรูปภาพอย่างน้อย 1 รูป
-    if (!editingProduct && form.images.length === 0) {
-      setError("กรุณาเลือกรูปภาพสินค้าอย่างน้อย 1 รูป");
+    const hasFrontImage =
+      form.images.some((image) => image.view === "FRONT") ||
+      (editingProduct?.images.some(
+        (image) =>
+          image.view === "FRONT" && !form.remove_image_ids.includes(image.id),
+      ) ??
+        false);
+
+    if (!hasFrontImage) {
+      setError("กรุณาเพิ่มรูปภาพสินค้าด้านหน้าอย่างน้อย 1 รูป");
       return;
     }
 
@@ -285,8 +303,6 @@ export default function ProductManagement() {
     try {
       setError("");
       await deleteProduct(slug, productId);
-
-      // ไม่ต้อง set selected เอง: สินค้าที่ถูกลบจะหายจากรายการ แล้ว selectedProduct คำนวณใหม่
       await loadProducts(true);
     } catch (err) {
       console.error("Delete product error:", err);
@@ -309,12 +325,7 @@ export default function ProductManagement() {
         </div>
 
         <div className="w-full sm:w-auto">
-          <Button
-            type="button"
-            onClick={handleAdd}
-            variant="secondary"
-            className="w-full items-center text-sm justify-center gap-2 sm:w-auto md:text-md"
-          >
+          <Button type="button" onClick={handleAdd} variant="secondary">
             <IonIcon icon={addOutline} className="text-sm md:text-md" />
             เพิ่มสินค้า
           </Button>
@@ -440,3 +451,4 @@ export default function ProductManagement() {
     </div>
   );
 }
+
