@@ -5,7 +5,11 @@ import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { s3 } from "../middlewares/upload";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { BrandAccessError, getBrandAccess } from "../services/brandAccessService";
+import {
+  assertCanManageMember,
+  BrandAccessError,
+  getBrandAccess,
+} from "../services/brandAccessService";
 //สร้าง slug ไว้เป็น url ที่ไม่ซ้ำกัน
 const generateSlug = (brandName: string) => {
   return brandName
@@ -422,11 +426,17 @@ export const addBrandMember = async (
       });
     }
 
-    // เฉพาะ OWNER เท่านั้น
-    if (currentRole !== BrandMemberRole.OWNER) {
-      return res.status(403).json({
-        message: "Only OWNER can add members",
-      });
+    // OWNER / ADMIN เพิ่มสมาชิกได้ (สมาชิกใหม่จะถูกสร้างเป็น ADMIN เสมอ)
+    try {
+      assertCanManageMember(currentRole, BrandMemberRole.ADMIN);
+    } catch (error) {
+      if (error instanceof BrandAccessError) {
+        return res.status(error.statusCode).json({
+          message: error.message,
+        });
+      }
+
+      throw error;
     }
 
     if (!email || typeof email !== "string") {
@@ -530,23 +540,11 @@ export const removeBrandMember = async (
       });
     }
 
-    // เฉพาะ OWNER เท่านั้น
-    if (currentRole !== BrandMemberRole.OWNER) {
-      return res.status(403).json({
-        message: "Only OWNER can remove members",
-      });
-    }
-
-    if (!memberId) {
+    if (!memberId || typeof memberId !== "string") {
       return res.status(400).json({
         message: "Invalid member ID",
       });
     }
-    if (typeof memberId !== "string" || !memberId) {
-      return res.status(400).json({
-        message: "Invalid member ID",
-      });
-}
 
     // ค้นหาเฉพาะสมาชิกในร้านนี้
     const targetMember = await prisma.brandMember.findFirst({
@@ -566,7 +564,20 @@ export const removeBrandMember = async (
       });
     }
 
-    // ป้องกันการลบ OWNER
+    // ตรวจสิทธิ์จาก service layer: ADMIN ห้ามจัดการ OWNER
+    try {
+      assertCanManageMember(currentRole, targetMember.role);
+    } catch (error) {
+      if (error instanceof BrandAccessError) {
+        return res.status(error.statusCode).json({
+          message: error.message,
+        });
+      }
+
+      throw error;
+    }
+
+    // ป้องกันการลบ OWNER (นำ OWNER ออกให้ใช้การ demote เป็น ADMIN แทน)
     if (targetMember.role === BrandMemberRole.OWNER) {
       return res.status(403).json({
         message: "Cannot remove the brand owner",
@@ -589,6 +600,134 @@ export const removeBrandMember = async (
 
     return res.status(500).json({
       message: "Failed to remove member",
+    });
+  }
+};
+
+
+// PATCH: แก้ไข role ของสมาชิก (promote ADMIN -> OWNER / demote OWNER -> ADMIN)
+export const updateBrandMemberRole = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const brandId = req.brand?.id;
+    const currentRole = req.brand?.role;
+    const { memberId } = req.params;
+    const { role: newRole } = req.body;
+
+    if (!brandId) {
+      return res.status(403).json({
+        message: "Brand access required",
+      });
+    }
+
+    if (!memberId || typeof memberId !== "string") {
+      return res.status(400).json({
+        message: "Invalid member ID",
+      });
+    }
+
+    if (
+      newRole !== BrandMemberRole.OWNER &&
+      newRole !== BrandMemberRole.ADMIN
+    ) {
+      return res.status(400).json({
+        message: "Invalid role. Role must be OWNER or ADMIN",
+      });
+    }
+
+    // ค้นหาเฉพาะสมาชิกในร้านนี้
+    const targetMember = await prisma.brandMember.findFirst({
+      where: {
+        id: memberId,
+        brand_id: brandId,
+      },
+      select: {
+        id: true,
+        role: true,
+      },
+    });
+
+    if (!targetMember) {
+      return res.status(404).json({
+        message: "Member not found",
+      });
+    }
+
+    // ตรวจสิทธิ์จาก service layer: ADMIN ห้ามจัดการ OWNER
+    try {
+      assertCanManageMember(currentRole, targetMember.role);
+    } catch (error) {
+      if (error instanceof BrandAccessError) {
+        return res.status(error.statusCode).json({
+          message: error.message,
+        });
+      }
+
+      throw error;
+    }
+
+    if (targetMember.role === newRole) {
+      return res.status(400).json({
+        message: "Member already has this role",
+      });
+    }
+
+    // Demote OWNER -> ADMIN: ร้านต้องเหลือ OWNER อย่างน้อย 1 คนเสมอ
+    if (targetMember.role === BrandMemberRole.OWNER) {
+      const ownerCount = await prisma.brandMember.count({
+        where: {
+          brand_id: brandId,
+          role: BrandMemberRole.OWNER,
+        },
+      });
+
+      if (ownerCount <= 1) {
+        return res.status(400).json({
+          message: "Brand must have at least one OWNER",
+        });
+      }
+    }
+
+    const member = await prisma.brandMember.update({
+      where: {
+        id: targetMember.id,
+      },
+      data: {
+        role: newRole,
+      },
+      select: {
+        id: true,
+        role: true,
+        created_at: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return res.status(200).json({
+      message: "Member role updated successfully",
+      member: {
+        id: member.id,
+        user_id: member.user.id,
+        name: member.user.name,
+        email: member.user.email,
+        role: member.role,
+        created_at: member.created_at,
+      },
+    });
+
+  } catch (error) {
+    console.error("updateBrandMemberRole error:", error);
+
+    return res.status(500).json({
+      message: "Failed to update member role",
     });
   }
 };

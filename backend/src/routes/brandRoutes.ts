@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getBrands, registerBrand , deleteBrand , getBrandById  , updateBrandStatus , checkBrandAccess, getBrandMembers, addBrandMember, removeBrandMember} from "../controllers/brand";
+import { getBrands, registerBrand , deleteBrand , getBrandById  , updateBrandStatus , checkBrandAccess, getBrandMembers, addBrandMember, removeBrandMember, updateBrandMemberRole} from "../controllers/brand";
 import { uploadEbizRegistration, handleUploadError,uploadProductImages } from "../middlewares/upload";
 import { authMiddleware } from "../middlewares/auth";
 import { requireBrandAccess } from "../middlewares/brandAccess";
@@ -25,7 +25,8 @@ router.use("/:slug/members",authMiddleware,requireBrandAccess);
 
 router.get("/:slug/members",getBrandMembers);
 router.post("/:slug/members",addBrandMember);
-router.delete("/:slug/members",removeBrandMember);
+router.patch("/:slug/members/:memberId/role",updateBrandMemberRole);
+router.delete("/:slug/members/:memberId",removeBrandMember);
 
 
 export default router;

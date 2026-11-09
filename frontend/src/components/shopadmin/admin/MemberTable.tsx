@@ -1,19 +1,35 @@
 
-import type { BrandMember } from "../../../types/brand";
+import type { BrandMember, BrandMemberRole } from "../../../types/brand";
 import Button from "../../Button";
 
 interface MemberTableProps {
   members: BrandMember[];
-  currentRole: "OWNER" | "ADMIN";
-  onRemove: (memberId: string) => void;
+  currentRole: BrandMemberRole;
+  /** id ของ member ที่กำลังอัปเดต role / remove (เพื่อ disable ปุ่ม) */
+  pendingMemberId: string | null;
+  onRemove: (member: BrandMember) => void;
+  onUpdateRole: (member: BrandMember, newRole: BrandMemberRole) => void;
 }
 
 export default function MemberTable({
   members,
   currentRole,
+  pendingMemberId,
   onRemove,
+  onUpdateRole,
 }: MemberTableProps) {
-  const isOwner = currentRole === "OWNER";
+  // สิทธิ์แก้ role:
+  // - OWNER: แก้ role ได้ทุกแถว (เช่น demote OWNER คนอื่น, backend กันร้านไม่มี OWNER เหลือ)
+  // - ADMIN: แก้ได้เฉพาะแถว ADMIN เท่านั้น (ห้ามจัดการ OWNER ทุกกรณี)
+  const canEditRole = (member: BrandMember) => {
+    if (currentRole === "OWNER") return true;
+    return currentRole === "ADMIN" && member.role === "ADMIN";
+  };
+
+  // สิทธิ์ลบ: ลบได้เฉพาะแถว ADMIN (ทุกคนห้ามลบ OWNER, OWNER ควรใช้ demote แทน)
+  const canRemoveMember = (member: BrandMember) => {
+    return member.role !== "OWNER";
+  };
 
   return (
     <div className="bg-white rounded-xl border border-[#E9DFC9] overflow-hidden">
@@ -33,63 +49,86 @@ export default function MemberTable({
               <th className="px-5 py-3 font-medium">Member</th>
               <th className="px-5 py-3 font-medium">Role</th>
               <th className="px-5 py-3 font-medium">Joined Date</th>
-              {isOwner && (
-                <th className="px-5 py-3 font-medium text-right">
-                  Action
-                </th>
-              )}
+              <th className="px-5 py-3 font-medium text-right">
+                Action
+              </th>
             </tr>
           </thead>
 
           <tbody className="divide-y divide-[#E9DFC9]">
-            {members.map((member) => (
-              <tr key={member.id} className="hover:bg-[#FAF7F0]/60">
-                <td className="px-5 py-4">
-                  <p className="font-medium text-[#332F29]">
-                    {member.name || "Unnamed User"}
-                  </p>
-                  <p className="text-[#8B806E] text-xs mt-1">
-                    {member.email}
-                  </p>
-                </td>
+            {members.map((member) => {
+              const manageable = canRemoveMember(member);
+              const editable = canEditRole(member);
+              const pending = pendingMemberId === member.id;
 
-                <td className="px-5 py-4">
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      member.role === "OWNER"
-                        ? "bg-[#E9DFC9] text-[#332F29]"
-                        : "bg-blue-50 text-blue-700"
-                    }`}
-                  >
-                    {member.role}
-                  </span>
-                </td>
+              return (
+                <tr key={member.id} className="hover:bg-[#FAF7F0]/60">
+                  <td className="px-5 py-4">
+                    <p className="font-medium text-[#332F29]">
+                      {member.name || "Unnamed User"}
+                    </p>
+                    <p className="text-[#8B806E] text-xs mt-1">
+                      {member.email}
+                    </p>
+                  </td>
 
-                <td className="px-5 py-4 text-[#8B806E]">
-                  {new Date(member.created_at).toLocaleDateString()}
-                </td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          member.role === "OWNER"
+                            ? "bg-[#E9DFC9] text-[#332F29]"
+                            : "bg-blue-50 text-blue-700"
+                        }`}
+                      >
+                        {member.role}
+                      </span>
 
-                {isOwner && (
+                      {editable && (
+                        <select
+                          value={member.role}
+                          disabled={pending}
+                          onChange={(e) => {
+                            const newRole = e.target.value as BrandMemberRole;
+                            if (newRole !== member.role) {
+                              onUpdateRole(member, newRole);
+                            }
+                          }}
+                          className="text-xs border border-[#E9DFC9] rounded-md px-2 py-1 text-[#332F29] bg-white focus:outline-none focus:ring-2 focus:ring-[#E9DFC9] disabled:opacity-60 disabled:cursor-not-allowed"
+                          aria-label={`Change role for ${member.email}`}
+                        >
+                          <option value="ADMIN">ADMIN</option>
+                          <option value="OWNER">OWNER</option>
+                        </select>
+                      )}
+                    </div>
+                  </td>
+
+                  <td className="px-5 py-4 text-[#8B806E]">
+                    {new Date(member.created_at).toLocaleDateString()}
+                  </td>
+
                   <td className="px-5 py-4 text-right">
-                    {member.role !== "OWNER" && (
+                    {manageable && (
                       <Button
                         type="button"
                         variant="danger"
                         size="sm"
-                        onClick={() => onRemove(member.id)}
+                        disabled={pending}
+                        onClick={() => onRemove(member)}
                       >
-                        Remove
+                        {pending ? "Removing..." : "Remove"}
                       </Button>
                     )}
                   </td>
-                )}
-              </tr>
-            ))}
+                </tr>
+              );
+            })}
 
             {members.length === 0 && (
               <tr>
                 <td
-                  colSpan={isOwner ? 4 : 3}
+                  colSpan={4}
                   className="px-5 py-10 text-center text-[#8B806E]"
                 >
                   No members found.
