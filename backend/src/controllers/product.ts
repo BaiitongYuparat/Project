@@ -1,6 +1,6 @@
 
 import { Request, Response } from "express";
-import { createProduct, deleteProduct, getProductById, getProducts, getPublicProduct, getPublicProducts, updateProduct, updateProductWithImages } from "../services/productService";
+import { createProduct, deleteProduct, getProductById, getProducts, getPublicProduct, getPublicProducts, updateProduct, updateProductWithImages,getAdminProducts, getAdminProductStats} from "../services/productService";
 import { BrandAccessError } from "../services/brandAccessService";
 import { processProductImageQuality } from "../services/productImageQuality";
 import { deleteImage } from "../utils/s3Utils";
@@ -502,3 +502,38 @@ export const deleteProductController = async (
     return res.status(500).json({ message: "Failed to delete product" });
   }
 };
+
+// ส่งรายการสินค้าทุกร้านให้ Super Admin
+export const getAdminProductsController = async (
+  _req: Request,
+  res: Response
+) => {
+  try {
+    const products = await getAdminProducts();
+    return res.status(200).json({
+      message: "Products fetched successfully",
+      products,
+    });
+  } catch (error) {
+    console.error("Get admin products error:", error);
+    return res.status(500).json({ message: "Failed to fetch products" });
+  }
+};
+
+// ส่งตัวเลขสรุปสถานะผลตรวจรูปสำหรับการ์ดสถิติ
+export const getAdminProductStatsController = async (
+  _req: Request,
+  res: Response
+) => {
+  try {
+    const stats = await getAdminProductStats();
+    return res.status(200).json({
+      message: "Stats fetched successfully",
+      stats,
+    });
+  } catch (error) {
+    console.error("Get admin product stats error:", error);
+    return res.status(500).json({ message: "Failed to fetch stats" });
+  }
+};
+

@@ -2,6 +2,7 @@ import { prisma } from "../../lib/prisma";
 import { Prisma } from "@prisma/client";
 import { getImageUrl } from "../utils/s3Utils";
 import { deleteImage } from "../utils/s3Utils";
+import { ProductImageQualityStatus } from "@prisma/client";
 
 const publicProductImageSelect = {
     where: {
@@ -467,3 +468,59 @@ export const updateProductWithImages = async (
     newImages: result.newImages,
   };
 };
+
+export type ProductQuality = "PASS" | "FAIL" | "REVIEW" | "PENDING";
+// สรุปผลตรวจระดับสินค้า จากสถานะของรูปทุกรูป
+const summarizeQuality = (
+  statuses: ProductImageQualityStatus[]
+): ProductQuality => {
+  if (statuses.length === 0) return "PENDING";
+  if (statuses.includes("FAILED")) return "FAIL";
+  if (statuses.includes("PENDING")) return "PENDING";
+  return "PASS";
+};
+
+// รายการสินค้าทุกร้าน สำหรับ Super Admin
+export const getAdminProducts = async () => {
+  const products = await prisma.product.findMany({
+    orderBy: { created_at: "desc" },
+    include: {
+      brand: { select: { id: true, brand_name: true } },
+      images: {
+        orderBy: { sort_order: "asc" },
+        select: { s3_key: true, quality_status: true },
+      },
+    },
+  });
+
+  return Promise.all(
+    products.map(async (p) => ({
+      id: p.id,
+      name: p.name,
+      sku: p.sku,
+      is_active: p.is_active,
+      brand: { id: p.brand.id, name: p.brand.brand_name },
+      thumbnail: p.images[0] ? await getImageUrl(p.images[0].s3_key) : null,
+      quality: summarizeQuality(p.images.map((i) => i.quality_status)),
+    }))
+  );
+};
+
+// นับจำนวนสินค้าตามสถานะผลตรวจ สำหรับการ์ดสถิติด้านบนของหน้า
+export const getAdminProductStats = async () => {
+  const products = await prisma.product.findMany({
+    select: { images: { select: { quality_status: true } } },
+  });
+
+  const stats = { total: products.length, pass: 0, fail: 0, review: 0 };
+
+  for (const p of products) {
+    const q = summarizeQuality(p.images.map((i) => i.quality_status));
+    if (q === "PASS") stats.pass++;
+    else if (q === "FAIL") stats.fail++;
+    else if (q === "REVIEW") stats.review++;
+  }
+
+  return stats;
+};
+
