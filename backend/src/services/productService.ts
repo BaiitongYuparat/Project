@@ -3,32 +3,52 @@ import { Prisma } from "@prisma/client";
 import { getImageUrl } from "../utils/s3Utils";
 import { deleteImage } from "../utils/s3Utils";
 
-const imageSelect = {
+const publicProductImageSelect = {
+    where: {
+        quality_status: "PASSED"
+    },
   select: {
     id: true,
     s3_key: true,
     sort_order: true,
   },
-  orderBy: {
-    sort_order: "asc",
-  },
+  orderBy: [{ sort_order: "asc" }, { id: "asc" }],
+  take: 10,
 } satisfies Prisma.ProductImageFindManyArgs;
 
-const withImageUrls = async <
-  T extends { s3_key: string }
->(
-  images: T[]
-) => {
-  return Promise.all(
-    images.map(async (image) => ({
-      ...image,
-      image_url: await getImageUrl(image.s3_key),
-    }))
+const shopProductImageSelect = {
+  select: {
+    id: true,
+    s3_key: true,
+    sort_order: true,
+    quality_status: true,
+    quality_reason: true,
+  },
+  orderBy: [
+    { sort_order: "asc" },
+    { id: "asc" },
+  ],
+} satisfies Prisma.ProductImageFindManyArgs;
+
+type PublicImage = { id: string; sort_order: number; image_url: string | null };
+
+const withImageUrls = async (
+  images: { id: string; s3_key: string; sort_order: number }[]
+): Promise<PublicImage[]> => {
+   return Promise.all(
+    images.map(async ({ id, s3_key, sort_order }) => {
+      try {
+        return { id, sort_order, image_url: await getImageUrl(s3_key) };
+      } catch (error) {
+        console.error("Failed to build image url:", id, error);
+        return { id, sort_order, image_url: null };
+      }
+    })
   );
 };
 
 const withProductImageUrls = async <
-  T extends { images: { s3_key: string }[] }
+  T extends { images: { id: string; s3_key: string; sort_order: number }[] }
 >(
   products: T[]
 ) => {
@@ -40,7 +60,94 @@ const withProductImageUrls = async <
   );
 };
 
-//------------------------------------------- Public
+
+//------------------------------------------- Public (สำหรับลูกค้า)
+// ดึงสินค้าทั้งหมดที่ลูกค้าสามารถมองเห็นได้
+export const getPublicProducts = async () => {
+  const products = await prisma.product.findMany({
+    where: {
+      is_active: true,
+      brand: {
+        status: "APPROVED",
+      },
+      images: {
+        some: {
+            quality_status: "PASSED",
+        }
+      }
+    },
+    select: {
+      id: true,
+      brand_id: true,
+      name: true,
+      category: true,
+      price: true,
+      description: true,
+      created_at: true,
+      images: publicProductImageSelect,
+      brand: {
+        select: {
+          brand_name: true,
+          slug: true,
+        },
+      },
+    },
+    orderBy: [
+      { created_at: "desc" },
+      { id: "desc" },
+    ],
+  });
+
+  return withProductImageUrls(products);
+};
+
+// ดึงรายละเอียดสินค้า 1 รายการ
+export const getPublicProduct = async (productId: string) => {
+  const product = await prisma.product.findFirst({
+    where: {
+      id: productId,
+      is_active: true,
+      brand: {
+        status: "APPROVED",
+      },
+      images: {
+        some: {
+            quality_status: "PASSED",
+        }
+      }
+    },
+    select: {
+      id: true,
+      brand_id: true,
+      name: true,
+      category: true,
+      price: true,
+      description: true,
+      created_at: true,
+      updated_at: true,
+      images: publicProductImageSelect,
+      size_charts: true,
+      brand: {
+        select: {
+          brand_name: true,
+          slug: true,
+        },
+      },
+    },
+  });
+
+  if (!product) {
+    return null;
+  }
+
+  return {
+    ...product,
+    images: await withImageUrls(product.images),
+  };
+};
+
+//------------------------------------------- Shop Admin
+
 // ดึงสินค้าทั้งหมดของ Brand
 export const getProducts = async (brandId: string) => {
   const products = await prisma.product.findMany({
@@ -58,83 +165,15 @@ export const getProducts = async (brandId: string) => {
       is_active: true,
       created_at: true,
       updated_at: true,
-      images: imageSelect,
+      images: shopProductImageSelect,
     },
     orderBy: {
       created_at: "desc",
     },
   });
-
-  return products;
+  return withProductImageUrls(products);
 };
 
-// ดึงสินค้าทั้งหมดที่ลูกค้าสามารถมองเห็นได้
-export const getPublicProducts = async () => {
-  const products = await prisma.product.findMany({
-    where: {
-      is_active: true,
-      brand: {
-        status: "APPROVED",
-      },
-    },
-    select: {
-      id: true,
-      brand_id: true,
-      name: true,
-      category: true,
-      price: true,
-      description: true,
-      created_at: true,
-      images: imageSelect,
-      brand: {
-        select: {
-          brand_name: true,
-          slug: true,
-        },
-      },
-    },
-    orderBy: {
-      created_at: "desc",
-    },
-  });
-
-  return products;
-};
-
-// ดึงรายละเอียดสินค้า 1 รายการ
-export const getPublicProduct = async (productId: string) => {
-  const product = await prisma.product.findFirst({
-    where: {
-      id: productId,
-      is_active: true,
-      brand: {
-        status: "APPROVED",
-      },
-    },
-    select: {
-      id: true,
-      brand_id: true,
-      name: true,
-      category: true,
-      price: true,
-      description: true,
-      created_at: true,
-      updated_at: true,
-      images: imageSelect,
-      size_charts: true,
-      brand: {
-        select: {
-          brand_name: true,
-          slug: true,
-        },
-      },
-    },
-  });
-
-  return product;
-};
-
-//------------------------------------------- Shop Admin
 // ดึงรายละเอียดสินค้าของ Brand พร้อม URL รูปภาพ
 
 export const getProductById = async (
@@ -288,22 +327,10 @@ export const deleteProduct = async (brandId: string, productId: string) => {
   return { id: productId };
 };
 
-// ดึงสินค้าทั้งหมดของ Brand พร้อม URL รูปภาพ
-export const getProductsWithImageUrls = async (brandId: string) => {
-  const products = await getProducts(brandId);
-
-  return withProductImageUrls(products);
-};
 
 type ProductImageInput = {
   s3_key: string;
   sort_order: number;
-};
-
-export const getPublicProductsWithImageUrls = async () => {
-  const products = await getPublicProducts();
-
-  return withProductImageUrls(products);
 };
 
 

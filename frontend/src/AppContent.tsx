@@ -40,6 +40,8 @@ export default function AppContent() {
   const entryChoiceBrand = useSelector(
     (state: RootState) => state.ui.entryChoiceBrand,
   );
+  const isAdminPath = (pathname: string) =>
+  pathname.startsWith("/superadmin") || pathname.startsWith("/shopadmin");
 
   // ตรวจสอบ Session เมื่อเปิดเว็บไซต์
   useEffect(() => {
@@ -49,17 +51,8 @@ export default function AppContent() {
 
         dispatch(login(user));
 
-        if (user.role === "SUPER_ADMIN") {
-          dispatch(openEntryChoice(null));
-          return;
-        }
-        const ownerBrand = user.brandMemberships?.find(
-          (brand) => brand.role === "OWNER" || brand.role === "ADMIN",
-        );
-
-        if (ownerBrand) {
-          dispatch(openEntryChoice(ownerBrand));
-          return;
+         if (!isAdminPath(window.location.pathname)) {
+            await loadUserBody();
         }
 
         await loadUserBody();
