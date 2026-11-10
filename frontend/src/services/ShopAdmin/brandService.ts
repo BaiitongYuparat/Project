@@ -57,3 +57,16 @@ export async function removeBrandMember(
 
   return response.data;
 }
+
+export async function updateBrandMemberRole(
+  slug: string,
+  memberId: string,
+  role: "OWNER" | "ADMIN"
+): Promise<{ message: string }> {
+  const response = await api.patch(
+    `${baseUrl}/${encodeURIComponent(slug)}/members/${encodeURIComponent(memberId)}/role`,
+    { role }
+  );
+
+  return response.data;
+}

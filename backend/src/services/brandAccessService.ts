@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma";
-import { BrandMemberRole, BrandStatus } from "@prisma/client";
+import { BrandMemberRole, BrandStatus, UserRole } from "@prisma/client";
 
 // กำหนด Error สำหรับส่งสถานะกลับไปให้ Controller
 export class BrandAccessError extends Error {
@@ -12,6 +12,38 @@ export class BrandAccessError extends Error {
     this.name = "BrandAccessError";
   }
 }
+
+//---------------------BrandMember permission (enforce ใน service layer ตาม PROJECT.md)---------------------
+
+/**
+ * ตรวจสิทธิ์การจัดการสมาชิกของร้าน:
+ * - ทั้ง OWNER และ ADMIN จัดการ (add / remove / แก้ role) สมาชิกที่เป็น ADMIN ได้
+ * - ADMIN ห้ามจัดการสมาชิกที่เป็น OWNER ในทุกกรณี
+ */
+export const assertCanManageMember = (
+  currentRole: BrandMemberRole | UserRole | undefined,
+  targetRole: BrandMemberRole
+): void => {
+  if (
+    currentRole !== BrandMemberRole.OWNER &&
+    currentRole !== BrandMemberRole.ADMIN
+  ) {
+    throw new BrandAccessError(
+      403,
+      "You are not allowed to manage members of this brand"
+    );
+  }
+
+  if (
+    targetRole === BrandMemberRole.OWNER &&
+    currentRole !== BrandMemberRole.OWNER
+  ) {
+    throw new BrandAccessError(
+      403,
+      "ADMIN is not allowed to manage the brand OWNER"
+    );
+  }
+};
 
 export const getBrandAccess = async (
   slug: string,

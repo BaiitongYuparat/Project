@@ -9,6 +9,8 @@ import { getProducts } from "../../../services/productService";
 import ProductGrid from "../../../components/shop/ProductGrid";
 import ShopFilter from "../../../components/shop/ShopFilter";
 
+import { useFavorites } from "../../../context/FavoritesContext";
+
 import { useNavigate } from "react-router-dom";
 import HeroBannerCarousel from "../../../components/shop/HeroBannerCarousel";
 
@@ -41,7 +43,7 @@ export default function ShopPage() {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("recommended");
 
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const { favorites, toggleFavorite } = useFavorites();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -112,14 +114,6 @@ export default function ShopPage() {
     sortBy,
   ]);
 
-  const toggleFavorite = (id: string) => {
-    setFavorites((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
-    );
-  };
-
   const handleTryOn = (product: Product) => {
     // ตอนนี้ยังไม่มี Try-On Flow จริง
     alert(`คุณเลือกลองใส่: ${product.name}`);
@@ -173,7 +167,7 @@ export default function ShopPage() {
 
             <button
               type="button"
-              onClick={() => setSelectedShop("all")}
+              onClick={() => navigate("/my-outfit")}
               className="rounded-full border border-[#DCC3B3] bg-primary px-6 py-3 text-sm font-medium text-[#49352D] hover:bg-[#E8CEBD]"
             >
               ♡ รายการโปรด ({favorites.length})

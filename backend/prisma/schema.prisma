@@ -233,7 +233,7 @@ model BrandMember {
 
   @@unique([brand_id, user_id])
   @@index([user_id])
-  @@map("brand_members")
+@@map("brand_members")
 }
 
 model BrandInvite {
