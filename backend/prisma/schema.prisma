@@ -48,6 +48,13 @@ enum ProductImageQualityStatus {
   FAILED
 }
 
+enum ImageView {
+  FRONT
+  BACK
+  LEFT
+  RIGHT
+}
+
 model User {
   id           String        @id @default(uuid())
   googleId     String?       @unique
@@ -204,6 +211,7 @@ model ProductImage {
   product_id     String
   quality_status ProductImageQualityStatus @default(PENDING)
   quality_reason String?
+  view            ImageView
   s3_key         String
   sort_order     Int                       @default(0)
   uploaded_at    DateTime                  @default(now()) @db.Timestamp(6)
@@ -328,7 +336,8 @@ model BodyType {
   body_type   String    
   description String?  
   analyzed_at DateTime @default(now()) @db.Timestamp(6)
-  user        User     @relation(fields: [user_id], references: [id])
+  user        User     @relation(fields: [user_id], references: [id] ,onDelete: Cascade)
 
   @@map("body_type")
 }
+

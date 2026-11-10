@@ -1,9 +1,10 @@
 
 import { Request, Response } from "express";
-import { createProduct, deleteProduct, getProductById, getProducts, getPublicProduct, getPublicProducts, updateProduct, updateProductWithImages , getAdminProducts , getAdminProductStats} from "../services/productService";
+import { createProduct, deleteProduct, getProductById, getProducts, getPublicProduct, getPublicProducts,updateProductWithImages,getAdminProducts, getAdminProductStats} from "../services/productService";
 import { BrandAccessError } from "../services/brandAccessService";
 import { processProductImageQuality } from "../services/productImageQuality";
 import { deleteImage } from "../utils/s3Utils";
+import { ImageView } from "@prisma/client";
 
 // GET /products
 
@@ -76,6 +77,18 @@ export const getProductsController = async (
     }
 
     const products = await getProducts(brandId);
+
+    console.dir(
+    products.map((p) => ({
+        id: p.id,
+        images: p.images.map((img) => ({
+        id: img.id,
+        quality_status: img.quality_status,
+        quality_reason: img.quality_reason,
+        })),
+    })),
+    { depth: null }
+    );
 
     return res.status(200).json({
       message: "Products fetched successfully",
@@ -168,6 +181,17 @@ export const createProductController = async (
         message: "At least one product image is required",
       });
     }
+    const rawViews = req.body.views;
+
+    const views = Array.isArray(rawViews)
+    ? rawViews
+    : rawViews
+        ? [rawViews]
+        : [];
+    console.log("uploaded keys:", files.map((f) => f.key), "brandId:", brandId);
+    if (views.length !== files.length) {
+    throw new Error("IMAGE_VIEW_COUNT_MISMATCH");
+    }
 
     const product = await createProduct(brandId, {
       name: name.trim(),
@@ -178,6 +202,7 @@ export const createProductController = async (
       images: files.map((file, index) => ({
         s3_key: file.key,
         sort_order: index,
+        view: views[index],
       })),
     });
 
@@ -191,6 +216,7 @@ export const createProductController = async (
           productId: product.id,
           key: file.key,
           mimeType: file.mimetype,
+          view: image.view,
         }).catch((error) => {
         console.error("Product image quality check error:", error);
         });
@@ -201,6 +227,7 @@ export const createProductController = async (
       message: "Product created successfully",
       product,
     });
+
   } catch (error: any) {
     console.error("Create product error:", error);
 
@@ -230,6 +257,13 @@ export const updateProductController = async (
   try {
     const brandId = req.brand?.id;
     const id = req.params.id;
+    const rawViews = req.body.views;
+
+    const views: ImageView[] = Array.isArray(rawViews)
+    ? rawViews
+    : rawViews
+        ? [rawViews]
+        : [];
 
     if (!brandId) {
       return res.status(403).json({
@@ -393,6 +427,7 @@ export const updateProductController = async (
       files.map((file, index) => ({
         s3_key: file.key,
         sort_order: index,
+        view: views[index],
       })),
       removeImageIds
     );
@@ -416,6 +451,7 @@ export const updateProductController = async (
           productId: id,
           key: file.key,
           mimeType: file.mimetype,
+          view: image.view,
         }).catch((error) => {
           console.error(
             "Product image quality check error:",

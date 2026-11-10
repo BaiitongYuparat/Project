@@ -3,7 +3,7 @@ import { loginWithGoogle } from "../services/authService";
 import { useState } from "react";
 import { useDispatch } from 'react-redux'
 import { login } from "../store/userSlice";
-import { closeLogin } from "../store/uiSlice";
+import { closeLogin, openSuspended } from "../store/uiSlice";
 import type { User } from "../types/user";
 
 type LoginModalProps = {
@@ -18,12 +18,16 @@ export default function LoginModal({ onLoginSuccess }: LoginModalProps) {
     setIsLoading(true);
     try {
       const result = await loginWithGoogle(idToken);
-      console.log("ข้อมูลที่ได้จาก Backend:",result)
+      console.log("ข้อมูลที่ได้จาก Backend:", result)
       dispatch(login(result.user))
 
-     await onLoginSuccess(result.user);
-    } catch (error) {
+      await onLoginSuccess(result.user);
+    } catch (error: any) {
       console.log("Login Failed", error);
+      if (error?.response?.data?.code === "USER_SUSPENDED") {
+        dispatch(closeLogin());
+        dispatch(openSuspended());
+      }
     } finally {
       setIsLoading(false);
     }

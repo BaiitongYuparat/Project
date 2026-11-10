@@ -1,4 +1,4 @@
-import type { Gender } from "../services/userService"
+import type { Gender } from "../types/user"
 
 const OPTIONS: { label: string; value: Gender }[] = [
   { label: "ผู้หญิง", value: "FEMALE" },

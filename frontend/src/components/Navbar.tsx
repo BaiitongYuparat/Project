@@ -14,9 +14,10 @@ import {
 
 import Button from "./Button";
 import type { RootState } from "../store/store";
-import { openLogin } from "../store/uiSlice";
+import { openLogin, closeSuspended } from "../store/uiSlice";
 import { logout as logoutAction } from "../store/userSlice";
 import { logout as logoutAPI } from "../services/authService";
+
 
 import SuspendedModal from "./SuspendedModal";
 
@@ -54,6 +55,9 @@ export default function NavBar() {
   const profileRef = useRef<HTMLDivElement>(null);
 
   const [suspendedBrand, setSuspendedBrand] = useState<string | null>(null);
+
+  const [userSuspendedOpen, setUserSuspendedOpen] = useState(false);
+  const suspendedOpen = useSelector((state: RootState) => state.ui.isSuspendedOpen);
 
   const navLinks = [
     { name: "Home", path: "/", requireAuth: false },
@@ -141,7 +145,7 @@ export default function NavBar() {
     navigate("/superadmin");
   };
 
-  
+
   const handleShopDashboard = (slug: string, status: string, brandName: string) => {
     closeMenus();
     if (status !== "APPROVED") {
@@ -150,6 +154,10 @@ export default function NavBar() {
     }
     navigate(`/shopadmin/${slug}`);
   };
+
+  useEffect(() => {
+    if (user?.status === "suspended") setUserSuspendedOpen(true);
+  }, [user]);
 
   return (
     <header className="relative z-50 h-16 bg-white px-4 shadow-md shadow-black/20 sm:px-6">
@@ -392,6 +400,16 @@ export default function NavBar() {
         <SuspendedModal
           brandName={suspendedBrand}
           onClose={() => setSuspendedBrand(null)}
+        />
+      )}
+      {(userSuspendedOpen || suspendedOpen) && (
+        <SuspendedModal
+          title="บัญชีของคุณถูกระงับ"
+          onClose={() => {
+            setUserSuspendedOpen(false);
+            dispatch(closeSuspended());
+            if (user) handleLogout();
+          }}
         />
       )}
     </header>

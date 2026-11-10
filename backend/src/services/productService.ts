@@ -12,6 +12,7 @@ const publicProductImageSelect = {
     id: true,
     s3_key: true,
     sort_order: true,
+    view:true,
   },
   orderBy: [{ sort_order: "asc" }, { id: "asc" }],
   take: 10,
@@ -22,6 +23,7 @@ const shopProductImageSelect = {
     id: true,
     s3_key: true,
     sort_order: true,
+    view: true,
     quality_status: true,
     quality_reason: true,
   },
@@ -34,7 +36,7 @@ const shopProductImageSelect = {
 type PublicImage = { id: string; sort_order: number; image_url: string | null };
 
 const withImageUrls = async (
-  images: { id: string; s3_key: string; sort_order: number }[]
+  images: { id: string; s3_key: string; sort_order: number, }[]
 ): Promise<PublicImage[]> => {
    return Promise.all(
     images.map(async ({ id, s3_key, sort_order }) => {
@@ -48,6 +50,7 @@ const withImageUrls = async (
   );
 };
 
+type WithImageUrl<I> = Omit<I, "s3_key"> & { image_url: string | null };
 const withProductImageUrls = async <
   T extends { images: { id: string; s3_key: string; sort_order: number }[] }
 >(
@@ -61,6 +64,45 @@ const withProductImageUrls = async <
   );
 };
 
+const withShopImageUrls = async <I extends { id: string; s3_key: string }>(
+  images: I[]
+): Promise<WithImageUrl<I>[]> => {
+  return Promise.all(
+    images.map(async ({ s3_key, ...rest }) => {
+      try {
+        return { ...rest, image_url: await getImageUrl(s3_key) };
+      } catch (error) {
+        console.error("Failed to build image url:", rest.id, error);
+        return { ...rest, image_url: null };
+      }
+    })
+  );
+};
+
+const withShopProductImageUrls = async <
+  T extends { images: { id: string; s3_key: string }[] }
+>(
+  products: T[]
+): Promise<
+  (Omit<T, "images"> & { images: WithImageUrl<T["images"][number]>[] })[]
+> => {
+  return Promise.all(
+    products.map(async (product) => ({
+      ...product,
+      images: await withShopImageUrls(product.images),
+    }))
+  );
+};
+
+const assertOwnKeys = (brandId: string, images: { s3_key: string}[]) => {
+  const prefix = `brand-products/${brandId}/`;
+  for (const { s3_key } of images) {
+    if (!s3_key.startsWith(prefix) || s3_key.includes("..")) {
+      throw new Error("INVALID_IMAGE_KEY");
+    }
+  }
+};
+
 
 //------------------------------------------- Public (สำหรับลูกค้า)
 // ดึงสินค้าทั้งหมดที่ลูกค้าสามารถมองเห็นได้
@@ -72,9 +114,8 @@ export const getPublicProducts = async () => {
         status: "APPROVED",
       },
       images: {
-        some: {
-            quality_status: "PASSED",
-        }
+        some: {},
+        every: { quality_status: "PASSED" },
       }
     },
     select: {
@@ -112,9 +153,8 @@ export const getPublicProduct = async (productId: string) => {
         status: "APPROVED",
       },
       images: {
-        some: {
-            quality_status: "PASSED",
-        }
+        some: {},
+        every: { quality_status: "PASSED" },
       }
     },
     select: {
@@ -172,7 +212,7 @@ export const getProducts = async (brandId: string) => {
       created_at: "desc",
     },
   });
-  return withProductImageUrls(products);
+  return withShopProductImageUrls(products);
 };
 
 // ดึงรายละเอียดสินค้าของ Brand พร้อม URL รูปภาพ
@@ -198,18 +238,7 @@ export const getProductById = async (
       created_at: true,
       updated_at: true,
 
-      images: 
-      { select: {
-            id: true,
-            s3_key: true,
-            sort_order: true,
-            quality_status: true,
-            quality_reason: true,
-        },
-        orderBy: {
-            sort_order: "asc",
-        },},
-
+      images: shopProductImageSelect,
       size_charts: true,
     },
   });
@@ -220,7 +249,7 @@ export const getProductById = async (
 
   return {
     ...product,
-    images: await withImageUrls(product.images),
+    images: await withShopImageUrls(product.images),
     };
 };
 
@@ -234,6 +263,7 @@ type CreateProductInput = {
   images: {
     s3_key: string;
     sort_order: number;
+    view: "FRONT" | "BACK" | "LEFT" | "RIGHT";
   }[];
 };
 
@@ -242,6 +272,7 @@ export const createProduct = async (
   brandId: string,
   data: CreateProductInput
 ) => {
+  assertOwnKeys(brandId, data.images);
   return await prisma.product.create({
     data: {
       brand_id: brandId,
@@ -250,8 +281,12 @@ export const createProduct = async (
       price: data.price ?? null,
       description: data.description ?? null,
       sku: data.sku ?? null,
-      images: {
-        create: data.images,
+     images: {
+        create: data.images.map((image) => ({
+          s3_key: image.s3_key,
+          sort_order: image.sort_order,
+          view: image.view,
+        })),
       },
     },
     include: {
@@ -261,77 +296,10 @@ export const createProduct = async (
 };
 
 // แก้ไขสินค้า
-export const updateProduct = async (
-  brandId: string,
-  productId: string,
-  data: {
-    name?: string;
-    category?: string;
-    price?: number | null;
-    description?: string | null;
-    sku?: string | null;
-    is_active?: boolean;
-  }
-) => {
-  // ตรวจสอบก่อนว่าสินค้าเป็นของ Brand นี้จริง
-  const product = await prisma.product.findFirst({
-    where: {
-      id: productId,
-      brand_id: brandId,
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  if (!product) {
-    return null;
-  }
-
-  return await prisma.product.update({
-    where: {
-      id: productId,
-    },
-    data: {
-      ...(data.name !== undefined && { name: data.name }),
-      ...(data.category !== undefined && { category: data.category }),
-      ...(data.price !== undefined && { price: data.price }),
-      ...(data.description !== undefined && {
-        description: data.description,
-      }),
-      ...(data.sku !== undefined && { sku: data.sku }),
-      ...(data.is_active !== undefined && {
-        is_active: data.is_active,
-      }),
-    },
-  });
-};
-
-// ลบสินค้า
-export const deleteProduct = async (brandId: string, productId: string) => {
-  const product = await prisma.product.findFirst({
-    where: { id: productId, brand_id: brandId },
-    select: { id: true, images: { select: { s3_key: true } } },
-  });
-  if (!product) return null;
-
-  await prisma.product.delete({ where: { id: productId } });
-
-  for (const { s3_key } of product.images) {
-    try {
-      await deleteImage(s3_key);
-    } catch (error) {
-      console.error("Failed to delete image from S3:", s3_key, error);
-    }
-  }
-
-  return { id: productId };
-};
-
-
 type ProductImageInput = {
   s3_key: string;
   sort_order: number;
+  view: "FRONT" | "BACK" | "LEFT" | "RIGHT";
 };
 
 
@@ -351,6 +319,7 @@ export const updateProductWithImages = async (
 ) => {
   const result = await prisma.$transaction(async (tx) => {
 
+    assertOwnKeys(brandId, newImages);
      // Lock สินค้าไว้ ป้องกันการแก้ไขพร้อมกัน
     const locked = await tx.$queryRaw<{ id: string }[]>`
     SELECT id
@@ -435,6 +404,7 @@ export const updateProductWithImages = async (
           product_id: productId,
           s3_key: image.s3_key,
           sort_order: startOrder + index,
+          view:image.view,
         },
       });
 
@@ -468,16 +438,38 @@ export const updateProductWithImages = async (
     newImages: result.newImages,
   };
 };
+// ลบสินค้า
+export const deleteProduct = async (brandId: string, productId: string) => {
+  const product = await prisma.product.findFirst({
+    where: { id: productId, brand_id: brandId },
+    select: { id: true, images: { select: { s3_key: true } } },
+  });
+  if (!product) return null;
 
-export type ProductQuality = "PASS" | "FAIL" | "REVIEW" | "PENDING";
+  await prisma.product.delete({ where: { id: productId } });
+
+  for (const { s3_key } of product.images) {
+    try {
+      await deleteImage(s3_key);
+    } catch (error) {
+      console.error("Failed to delete image from S3:", s3_key, error);
+    }
+  }
+
+  return { id: productId };
+};
+
+
+
+export type ProductQuality = ProductImageQualityStatus
 // สรุปผลตรวจระดับสินค้า จากสถานะของรูปทุกรูป
 const summarizeQuality = (
   statuses: ProductImageQualityStatus[]
 ): ProductQuality => {
   if (statuses.length === 0) return "PENDING";
-  if (statuses.includes("FAILED")) return "FAIL";
+  if (statuses.includes("FAILED")) return "FAILED";
   if (statuses.includes("PENDING")) return "PENDING";
-  return "PASS";
+  return "PASSED";
 };
 
 // รายการสินค้าทุกร้าน สำหรับ Super Admin
@@ -512,13 +504,13 @@ export const getAdminProductStats = async () => {
     select: { images: { select: { quality_status: true } } },
   });
 
-  const stats = { total: products.length, pass: 0, fail: 0, review: 0 };
+  const stats = { total: products.length, pass: 0, fail: 0, pending: 0 };
 
   for (const p of products) {
     const q = summarizeQuality(p.images.map((i) => i.quality_status));
-    if (q === "PASS") stats.pass++;
-    else if (q === "FAIL") stats.fail++;
-    else if (q === "REVIEW") stats.review++;
+    if (q === "PASSED") stats.pass++;
+    else if (q === "FAILED") stats.fail++;
+    else stats.pending++;
   }
 
   return stats;

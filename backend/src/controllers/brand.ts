@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import { Request, Response } from "express";
-import { Prisma } from "@prisma/client";
+import { BrandMemberRole, Prisma } from "@prisma/client";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { s3 } from "../middlewares/upload";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
@@ -342,5 +342,253 @@ export const getAllBrandMembers = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("getBrandMembers error:", error);
     res.status(500).json({ error: "Failed to fetch brand members" });
+  }
+};
+
+//---------------------shop admin-------------------------
+
+
+// GET: ดึงสมาชิกทั้งหมดของร้าน
+export const getBrandMembers = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const brandId = req.brand?.id;
+
+    if (!brandId) {
+      return res.status(403).json({
+        message: "Brand access required",
+      });
+    }
+
+    const members = await prisma.brandMember.findMany({
+      where: {
+        brand_id: brandId,
+      },
+      select: {
+        id: true,
+        role: true,
+        created_at: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: [
+        { role: "asc" },
+        { created_at: "asc" },
+      ],
+    });
+
+    return res.status(200).json({
+      currentRole: req.brand?.role,
+      members: members.map((m) => ({
+        id: m.id,
+        user_id: m.user.id,
+        name: m.user.name,
+        email: m.user.email,
+        role: m.role,
+        created_at: m.created_at,
+      })),
+    });
+
+  } catch (error) {
+    console.error("getBrandMembers error:", error);
+
+    return res.status(500).json({
+      message: "Failed to fetch brand members",
+    });
+  }
+};
+
+
+// POST: เพิ่มสมาชิกเข้าร้าน
+export const addBrandMember = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const brandId = req.brand?.id;
+    const currentRole = req.brand?.role;
+    const { email } = req.body;
+
+    if (!brandId) {
+      return res.status(403).json({
+        message: "Brand access required",
+      });
+    }
+
+    // เฉพาะ OWNER เท่านั้น
+    if (currentRole !== BrandMemberRole.OWNER) {
+      return res.status(403).json({
+        message: "Only OWNER can add members",
+      });
+    }
+
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({
+        message: "Email is required",
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // ค้นหา User จาก Email
+    const user = await prisma.user.findUnique({
+      where: {
+        email: normalizedEmail,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    // ตรวจสอบสมาชิกซ้ำ
+    const existingMember = await prisma.brandMember.findUnique({
+      where: {
+        brand_id_user_id: {
+          brand_id: brandId,
+          user_id: user.id,
+        },
+      },
+    });
+
+    if (existingMember) {
+      return res.status(409).json({
+        message: "User is already a member of this brand",
+      });
+    }
+
+    // เพิ่มเป็น ADMIN
+    const member = await prisma.brandMember.create({
+      data: {
+        brand_id: brandId,
+        user_id: user.id,
+        role: BrandMemberRole.ADMIN,
+      },
+      select: {
+        id: true,
+        role: true,
+        created_at: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return res.status(201).json({
+      message: "Member added successfully",
+      member: {
+        id: member.id,
+        user_id: member.user.id,
+        name: member.user.name,
+        email: member.user.email,
+        role: member.role,
+        created_at: member.created_at,
+      },
+    });
+
+  } catch (error) {
+    console.error("addBrandMember error:", error);
+
+    return res.status(500).json({
+      message: "Failed to add member",
+    });
+  }
+};
+
+
+// DELETE: นำสมาชิกออกจากร้าน
+export const removeBrandMember = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const brandId = req.brand?.id;
+    const currentRole = req.brand?.role;
+    const { memberId } = req.params;
+
+    if (!brandId) {
+      return res.status(403).json({
+        message: "Brand access required",
+      });
+    }
+
+    // เฉพาะ OWNER เท่านั้น
+    if (currentRole !== BrandMemberRole.OWNER) {
+      return res.status(403).json({
+        message: "Only OWNER can remove members",
+      });
+    }
+
+    if (!memberId) {
+      return res.status(400).json({
+        message: "Invalid member ID",
+      });
+    }
+    if (typeof memberId !== "string" || !memberId) {
+      return res.status(400).json({
+        message: "Invalid member ID",
+      });
+}
+
+    // ค้นหาเฉพาะสมาชิกในร้านนี้
+    const targetMember = await prisma.brandMember.findFirst({
+      where: {
+        id: memberId,
+        brand_id: brandId,
+      },
+      select: {
+        id: true,
+        role: true,
+      },
+    });
+
+    if (!targetMember) {
+      return res.status(404).json({
+        message: "Member not found",
+      });
+    }
+
+    // ป้องกันการลบ OWNER
+    if (targetMember.role === BrandMemberRole.OWNER) {
+      return res.status(403).json({
+        message: "Cannot remove the brand owner",
+      });
+    }
+
+    // ลบเฉพาะความสัมพันธ์ BrandMember
+    await prisma.brandMember.delete({
+      where: {
+        id: targetMember.id,
+      },
+    });
+
+    return res.status(200).json({
+      message: "Member removed successfully",
+    });
+
+  } catch (error) {
+    console.error("removeBrandMember error:", error);
+
+    return res.status(500).json({
+      message: "Failed to remove member",
+    });
   }
 };

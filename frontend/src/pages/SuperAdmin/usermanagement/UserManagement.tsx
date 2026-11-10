@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { getUsers, } from "../../../services/userService";
+import { getUsers, deleteUser, updateUserStatus } from "../../../services/userService";
 import type { User, UserRole } from "../../../types/user";
+import Button from "../../../components/Button";
 
 const formatNumber = (n: number) => n.toLocaleString("th-TH");
 
@@ -34,6 +35,20 @@ function RoleBadge({ role }: { role?: UserRole | null }) {
     return (
         <span className={`inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ${s.className}`}>
             {s.label}
+        </span>
+    );
+}
+
+function StatusBadge({ status }: { status?: string | null }) {
+    const suspended = status === "suspended";
+    return (
+        <span
+            className={`inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ${suspended
+                ? "bg-red-50 text-red-700 ring-red-200"
+                : "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                }`}
+        >
+            {suspended ? "ถูกระงับ" : "ใช้งานปกติ"}
         </span>
     );
 }
@@ -107,6 +122,33 @@ export default function UserManagement() {
     //from และ to คือตัวเลขสำหรับข้อความ "แสดง X–Y จาก Z ผู้ใช้
     const from = visible.length === 0 ? 0 : startIdx + 1; // ลำดับแถวแรกที่แสดง
     const to = Math.min(startIdx + pageSize, visible.length); // ลำดับแถวสุดท้ายที่แสดง
+
+
+    const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+    const handleAction = async (type: "suspend" | "unsuspend" | "delete", user: User) => {
+        try {
+            setActionLoadingId(user.id);
+
+            if (type === "delete") {
+                await deleteUser(user.id);
+                setUsers((prev) => prev.filter((u) => u.id !== user.id));
+                console.log(`[User] deleted: ${user.email}`);
+            } else {
+                const status = type === "suspend" ? "suspended" : "active";
+                await updateUserStatus(user.id, status);
+                setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status } : u)));
+                console.log(`[User] ${status}: ${user.email}`);
+            }
+        } catch (err: any) {
+            console.error(
+                "[User] action failed:",
+                err?.response?.data?.error ?? err?.response?.data?.message ?? err
+            );
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
 
     return (
         <div className="space-y-5">
@@ -205,6 +247,31 @@ export default function UserManagement() {
                                         </div>
 
                                     </div>
+                                    <div className="mt-3 flex items-center gap-2">
+                                        <StatusBadge status={user.status} />
+                                        {user.role !== "SUPER_ADMIN" && (
+                                            <div className="ml-auto flex gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant={user.status === "suspended" ? "secondary" : "outline"}
+                                                    disabled={actionLoadingId === user.id}
+                                                    onClick={() =>
+                                                        handleAction(user.status === "suspended" ? "unsuspend" : "suspend", user)
+                                                    }
+                                                >
+                                                    {user.status === "suspended" ? "ปลดระงับ" : "ระงับ"}
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="danger"
+                                                    disabled={actionLoadingId === user.id}
+                                                    onClick={() => handleAction("delete", user)}
+                                                >
+                                                    ลบ
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
 
                                 </li>
                             ))}
@@ -233,13 +300,39 @@ export default function UserManagement() {
                                             <td className="px-4 py-4">
                                                 <RoleBadge role={user.role} />
                                             </td>
-
+                                            <td className="px-4 py-4">
+                                                <StatusBadge status={user.status} />
+                                            </td>
+                                            <td className="px-8 py-4">
+                                                {user.role !== "SUPER_ADMIN" && (
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            variant={user.status === "suspended" ? "secondary" : "outline"}
+                                                            disabled={actionLoadingId === user.id}
+                                                            onClick={() =>
+                                                                handleAction(user.status === "suspended" ? "unsuspend" : "suspend", user)
+                                                            }
+                                                        >
+                                                            {user.status === "suspended" ? "ปลดระงับ" : "ระงับ"}
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="danger"
+                                                            disabled={actionLoadingId === user.id}
+                                                            onClick={() => handleAction("delete", user)}
+                                                        >
+                                                            ลบ
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
-        
+
                         <div className="flex flex-col gap-3 border-t border-stone-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 md:px-8">
                             <p className="text-sm text-stone-500">
                                 แสดง {formatNumber(from)}–{formatNumber(to)} จาก {formatNumber(visible.length)} ผู้ใช้
@@ -290,6 +383,7 @@ export default function UserManagement() {
                     </>
                 )}
             </div>
+
         </div>
     );
 }

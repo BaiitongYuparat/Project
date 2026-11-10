@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { getBrandById, updateBrandStatus } from "../../../services/SuperAdmin/brandService";
+import { useEffect, useState, } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { getBrandById, updateBrandStatus, deleteBrand } from "../../../services/SuperAdmin/brandService";
 import type { BrandDetail, BrandStatus } from "../../../types/brand";
 import Button from "../../../components/Button";
 
@@ -39,6 +39,8 @@ export default function StoreDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+  const navigate = useNavigate();
+  const [deleting, setDeleting] = useState(false);
 
   // ดึงข้อมูลร้านค้าเมื่อ component ถูก mount หรือ id เปลี่ยน
   useEffect(() => {
@@ -89,6 +91,23 @@ export default function StoreDetail() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!id || !brand) return;
+
+    const confirmText = `ยืนยันการลบร้าน ${brand.brand_name} ?\nการลบไม่สามารถย้อนกลับได้`;
+    if (!window.confirm(confirmText)) return;
+
+    try {
+      setDeleting(true);
+      setError(null);
+      await deleteBrand(id);
+      navigate("/superadmin/store-management");
+    } catch (err) {
+      console.error(err);
+      setError("ไม่สามารถลบร้านค้าได้");
+      setDeleting(false);
+    }
+  };
   return (
     <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-6 md:p-8">
       <Link
@@ -155,23 +174,31 @@ export default function StoreDetail() {
           )}
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             {brand.status !== "REJECTED" && (
-              <Button
-                variant="danger"
-                onClick={() => handleStatusChange("REJECTED")}
-                disabled={updating}
-              >
-                {brand.status === "APPROVED" ? "ระงับ" : "ปฏิเสธ"}
-              </Button>
+             <Button
+  variant="danger"
+  onClick={() => handleStatusChange("REJECTED")}
+  disabled={updating || deleting}
+>
+  {brand.status === "APPROVED" ? "ระงับ" : "ปฏิเสธ"}
+</Button>
             )}
             {brand.status !== "APPROVED" && (
-              <Button
-                variant="secondary"
-                onClick={() => handleStatusChange("APPROVED")}
-                disabled={updating}
-              >
-                {updating ? "กำลังบันทึก..." : "อนุมัติ"}
-              </Button>
+             <Button
+  variant="secondary"
+  onClick={() => handleStatusChange("APPROVED")}
+  disabled={updating || deleting}
+>
+  {updating ? "กำลังบันทึก..." : "อนุมัติ"}
+</Button>
             )}
+
+            <Button
+  variant="delete"
+  onClick={handleDelete}
+  disabled={updating || deleting}
+>
+  {deleting ? "กำลังลบ..." : "ลบ"}
+</Button>
           </div>
         </>
       )}

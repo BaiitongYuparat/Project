@@ -8,6 +8,7 @@ const uiSlice = createSlice({
     isBodyOpen: false,
     isEntryChoiceOpen: false,
     entryChoiceBrand: null as BrandMembership | null,
+    isSuspendedOpen: false,
   },
   reducers: {
     openLogin: (state) => {
@@ -34,6 +35,12 @@ const uiSlice = createSlice({
       state.isEntryChoiceOpen = false;
       state.entryChoiceBrand = null;
     },
+    openSuspended: (state) => {     
+      state.isSuspendedOpen = true;
+    },
+    closeSuspended: (state) => {     
+      state.isSuspendedOpen = false;
+    },
       },
     });
 
@@ -44,6 +51,9 @@ export const {
   closeBody,
   openEntryChoice,
   closeEntryChoice,
+  openSuspended,  
+  closeSuspended,  
+
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

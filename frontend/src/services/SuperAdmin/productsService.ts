@@ -14,7 +14,7 @@ export interface AdminProductRow {
   is_active: boolean;
   brand: { id: string; name: string };
   thumbnail: string | null;
-  quality: "PASS" | "FAIL" | "REVIEW" | "PENDING";
+  quality: "PASS" | "FAIL" | "PENDING";
 }
 
 export async function getProductStats(): Promise<AdminProductStats> {
