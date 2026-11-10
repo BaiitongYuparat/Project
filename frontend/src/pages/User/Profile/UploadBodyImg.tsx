@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
+import { IonIcon } from "@ionic/react";
+import {
+  arrowUpOutline,
+  arrowDownOutline,
+  arrowBackOutline,
+  arrowForwardOutline,
+} from "ionicons/icons";
 import type { RootState } from "../../../store/store";
 import {
   getBodyImages,
@@ -7,6 +14,7 @@ import {
   saveBodyImages,
   type SavedImage,
 } from "../../../services/bodyService";
+import BodyPhotoHints from "./BodyPhotoHints";
 
 const ANGLES = [
   { key: "front", label: "หน้า" },
@@ -137,6 +145,8 @@ export default function UploadBodyImg() {
           อัพโหลดรูปร่างกาย 4 มุม เพื่อให้ AI ลองเสื้อผ้าได้แม่นยำขึ้น
         </p>
       </div>
+
+      <BodyPhotoHints />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {ANGLES.map((angle) => {

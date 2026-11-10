@@ -18,41 +18,65 @@ export const checkBodyImage = async (
     const data = Buffer.from(bytes).toString("base64");
 
     const prompt = `
-You are a STRICT body-image validator for a virtual try-on fashion app.
-Your default answer is REJECT. Only APPROVE when ALL conditions are perfectly met.
-When in doubt about ANY field → mark it false/fail.
+คุณคือผู้ตรวจรูปถ่ายร่างกายสำหรับแอปลองเสื้อผ้าเสมือนจริง ในโหมดเข้มงวดสุดขีด
+คำตอบเริ่มต้นคือ REJECT อนุมัติ (APPROVE) เฉพาะเมื่อผ่านเงื่อนไขครบทุกข้อเท่านั้น
+ถ้าไม่แน่ใจในเรื่องใดแม้เพียงเล็กน้อย ให้ถือว่าไม่ผ่าน (ค่า false) ทันที ห้ามเดา ห้ามประนีประนอม
 
-STEP 1 — Observe these facts literally from the image:
+ขั้นที่ 1 — สังเกตข้อมูลจริงจากภาพเท่านั้น ห้ามใช้ชื่อมุมที่ส่งมามาเดาคำตอบ ให้ตรวจหัวข้อต่อไปนี้
 
-face_visible: Can you see the person's face (eyes/nose/mouth clearly)?
-back_of_head_visible: Can you see the back of the head/hair (not face)?
-both_eyes_visible: Are BOTH eyes visible at the same time?
-nose_points_to: Where does the nose tip point within the image frame?
-  IMPORTANT — from the VIEWER/CAMERA perspective looking at the photo:
-  "toward_camera"    = nose pointing straight at the lens (front view)
-  "away_from_camera" = nose pointing away from lens (back view)
-  "left"             = nose tip points toward the LEFT edge of the photo
-  "right"            = nose tip points toward the RIGHT edge of the photo
-both_shoulders_equal: Are both shoulders visible and roughly equal distance from camera?
-head_in_frame: Is the top of the head fully visible (not cut off)?
-feet_in_frame: Are both feet/ankles fully visible at the bottom (not cut off)?
+ตรวจรายละเอียดใบหน้าและร่างกาย:
+face_visible:
+ เห็นใบหน้าชัดเจน (ตา จมูก ปาก) หรือไม่
+back_of_head_visible:
+ เห็นท้ายทอยหรือทรงผมด้านหลังศีรษะ (ไม่ใช่ใบหน้า) หรือไม่
+both_eyes_visible:
+ เห็นตาทั้งสองข้างในภาพพร้อมกันหรือไม่
+nose_points_to:
+ จากมุมมองของกล้อง (ผู้ชมภาพ) ปลายจมูกชี้ไปทิศไหน:
+  "toward_camera"    = จมูกชี้ตรงเข้าหาเลนส์ (ถ่ายหน้า)
+  "away_from_camera" = จมูกชี้ออกจากเลนส์ (ถ่ายหลัง)
+  "left"             = ปลายจมูกชี้ไปทางขอบซ้ายของภาพ (ถ่ายโปรไฟล์ซ้าย)
+  "right"            = ปลายจมูกชี้ไปทางขอบขวาของภาพ (ถ่ายโปรไฟล์ขวา)
+both_shoulders_equal:
+ ไหล่ทั้งสองข้างเห็นครบและระยะห่างจากกล้องใกล้เคียงกันหรือไม่
+head_in_frame:
+ ยอดศีรษะเห็นครบในภาพ ไม่โดนขอบบนตัดหรือไม่
+feet_in_frame:
+ ข้อเท้าและปลายเท้าทั้งสองข้างอยู่ในภาพครบ ไม่โดนขอบล่างตัดหรือไม่
 
-is_real_person: Is this a real human body? REJECT if: mannequin, drawing, statue, animal, object, or no person at all.
+ตรวจเนื้อหาและท่าทาง:
+is_real_person:
+ ต้องเป็นคนจริงเพียง 1 คนเท่านั้น
+  REJECT ถ้า: ตุ๊กตา หุ่นแสดง รูปวาด รูปปั้น สัตว์ วัตถุ หรือไม่มีคนในภาพ
+  REJECT ถ้า: มีคนมากกว่า 1 คน หรือตัวคนถูกเจือจางจนแยกไม่ออก
+is_standing_straight:
+ ยืนตัวตรงโดยเท้าทั้งสองข้างแตะพื้น หรือไม่
+  REJECT ถ้า: ท่านั่ง ย่อตัว นอน พิงแรง เอนตัวมาก กระโดด ก้าวเท้าลอย หรือทิ้งน้ำหนักเอียงข้างเดียวหนักผิดปกติ
+no_pose:
+ เป็นท่าธรรมชาติแขนแนบลำตัว หรือไม่:
+  REJECT ถ้า: แขนยกสูงกว่าระดับเอว มือจับเอว แขนขวางขึ้น โพสแฟชั่น เต้น หรือเท้าหนึ่งยกลอย
+  ALLOW ถ้า: แขนพักลงแนบลำตัวตามธรรมชาติ หรือเอียงแขนเล็กน้อยเท่านั้น
 
-is_standing_straight: Is the person standing upright with both feet on the ground?
-  REJECT if: sitting, crouching, lying down, leaning heavily, jumping, or any non-standing pose.
+ตรวจคุณภาพภาพ (clear_enough) ให้ตรวจแยกรายข้อ — ข้อใดข้อใดใน 4 ข้อนี้ไม่ผ่าน ให้ค่า false:
+ เงื่อนไขเสมอ: ห้ามเดาว่า "น่าจะชัด" หรือ "คงอ่านออก" ให้ตัดสินจากสิ่งที่เห็นในภาพเท่านั้น
+ 1) ความสว่างต้องพอ:
+   ภาพมืดถึงขั้นที่รายละเอียดสำคัญ (ใบหน้า แขน เท้า ลายเสื้อผ้า) จมอยู่ในเงามืด
+   หรือแยกคนจากพื้นหลังยาก หรือต้องเดาว่าตัวคนอยู่ตรงไหน → false
+ 2) ความสว่างต้องไม่จ้าเกิน:
+   มีพื้นที่ขาวจ้า/แสงแรงจนเกิด overexposed หรือรายละเอียดผิว/ผ้าซีดลอย (washed out)
+   หรือมีแสงด้านหลังตัวคน (backlit) จนตัวคนกลายเป็นเงาดำ → false
+ 3) ความคมชัด:
+   ภาพเบลอ สั่นมือ (motion blur) โฟกัสไม่ตรงตัวคน หรือความละเอียดต่ำ
+   จนไม่เห็นรายละเอียดใบหน้า/รอยเสื้อผ้าชัด → false
+ 4) ความเปรียบเทียบสี (contrast):
+   ภาพซีดหม่น ตัวคนกลืนกับพื้นหลัง หรือมี noise/grain เยอะ
+   จนอ่านรายละเอียดตัวคนได้ยาก → false
 
-no_pose: Is the person in a neutral standing position with no special poses?
-  REJECT if: arms raised above waist, hands on hips in exaggerated way, leg raised, dancing, or any fashion/model pose.
-  ALLOW: arms naturally hanging at sides, slight natural arm position.
+ขั้นที่ 2 — ตัดสินมุมภาพที่ถ่ายจริง โดยเทียบกับมุมที่ร้องขอ "${angle.toUpperCase()}":
 
-clear_enough: Is the image well-lit, in focus, and the person clearly distinguishable from background?
-
-STEP 2 — Determine angle for "${angle.toUpperCase()}":
-
-NOTE on left/right:
-  LEFT profile  = person faces LEFT  = nose points to the LEFT  side of the photo
-  RIGHT profile = person faces RIGHT = nose points to the RIGHT side of the photo
+หมายเหตุ ซ้าย/ขวา:
+ LEFT profile  = คนหันซ้าย = ปลายจมูกชี้ไปทางซ้ายของภาพ
+ RIGHT profile = คนหันขวา  = ปลายจมูกชี้ไปทางขวาของภาพ
 
 front → face_visible=true  AND both_eyes_visible=true  AND nose_points_to="toward_camera"  AND both_shoulders_equal=true
 back  → face_visible=false AND back_of_head_visible=true AND nose_points_to="away_from_camera"
@@ -61,8 +85,11 @@ right → face_visible=true  AND both_eyes_visible=false AND nose_points_to="rig
 
 full_body_visible → head_in_frame=true AND feet_in_frame=true
 
-STEP 3 — Write reason in English. List every check that failed with a specific description.
-If all passed, confirm each check passed.
+ขั้นที่ 3 — เขียน reason เป็นภาษาไทยให้ชัดเจน:
+ระบุทุกข้อที่ไม่ผ่าน พร้อมคำอธิบายโดยละเอียด เช่น
+  "ภาพมืดเกินไป แยกตัวคนจากพื้นหลังได้ยาก"
+  "ถ่ายมุมหน้าแต่ผู้ใช้ขอมุมหลัง"
+ถ้าผ่านทุกข้อ ให้ยืนยันสั้นๆ ว่าผ่านทุกเงื่อนไข
 `;
 
     const response = await ai.models.generateContent({
@@ -154,7 +181,7 @@ If all passed, confirm each check passed.
         if (!r.no_pose)
             failReasons.push("กรุณาวางแขนแนบลำตัวตามธรรมชาติ ไม่ต้องโพสท่าพิเศษ");
         if (!r.clear_enough)
-            failReasons.push("ภาพดูไม่ค่อยชัด ลองถ่ายในที่ที่มีแสงสว่างเพียงพอ");
+            failReasons.push("ภาพมืดเกินไปหรือไม่ค่อยชัด กรุณาถ่ายใหม่ในที่ที่มีแสงสว่างเพียงพอ ภาพไม่เบลอ");
         if (!fullBodyVisible) {
             if (!r.head_in_frame)
                 failReasons.push("กรุณาถ่ายให้เห็นศีรษะครบในภาพ");
