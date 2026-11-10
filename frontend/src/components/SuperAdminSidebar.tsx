@@ -32,11 +32,11 @@ const menuItems = [
         path: "/user-management",
         icon: peopleOutline
     },
-    {
-        name: "Admin Management",
-        path: "/admin-management",
-        icon: shieldCheckmarkOutline
-    },
+    // {
+    //     name: "Admin Management",
+    //     path: "/admin-management",
+    //     icon: shieldCheckmarkOutline
+    // },
     {
         name: "AI Prompt Management",
         path: "/ai-prompt-management",

@@ -113,9 +113,9 @@ export const getPublicProducts = async () => {
       brand: {
         status: "APPROVED",
       },
+      // สินค้าจะถูกแสดงหากมีอย่างน้อย 1 รูปผ่าน QC (แสดงเฉพาะรูปที่ PASSED)
       images: {
-        some: {},
-        every: { quality_status: "PASSED" },
+        some: { quality_status: "PASSED" },
       }
     },
     select: {
@@ -152,9 +152,9 @@ export const getPublicProduct = async (productId: string) => {
       brand: {
         status: "APPROVED",
       },
+      // สินค้าจะถูกแสดงหากมีอย่างน้อย 1 รูปผ่าน QC (แสดงเฉพาะรูปที่ PASSED)
       images: {
-        some: {},
-        every: { quality_status: "PASSED" },
+        some: { quality_status: "PASSED" },
       }
     },
     select: {

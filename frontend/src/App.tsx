@@ -1,12 +1,15 @@
 import "./App.css";
 import { BrowserRouter } from "react-router-dom";
 import AppContent from "./AppContent";
+import { FavoritesProvider } from "./context/FavoritesContext";
 
 function App() {
 
   return (
     <BrowserRouter>
-      <AppContent />
+      <FavoritesProvider>
+        <AppContent />
+      </FavoritesProvider>
     </BrowserRouter>
   );
 }

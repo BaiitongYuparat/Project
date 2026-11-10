@@ -336,7 +336,7 @@ export const getAllBrandMembers = async (req: Request, res: Response) => {
         id: m.id,
         role: m.role,
         created_at: m.created_at,
-        user_name: m.user.name,
+        name: m.user.name,
         email: m.user.email,
         brand_id: m.brand.id,
         brand_name: m.brand.brand_name,

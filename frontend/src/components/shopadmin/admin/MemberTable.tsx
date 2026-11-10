@@ -26,6 +26,14 @@ export default function MemberTable({
     return currentRole === "ADMIN" && member.role === "ADMIN";
   };
 
+  // เงื่อนไขเพิ่มเติม: แถวของสมาชิกที่เป็น OWNER **จะไม่มี dropdown เปลี่ยน role**
+  // (ใครก็ตาม รวมถึงตัว OWNER เอง เปลี่ยนเป็น ADMIN ไม่ได้ → กัน demote owner)
+  // ผู้ที่มีสิทธิ์ (OWNER / ADMIN กับแถว ADMIN) ยังเปลี่ยน role ให้ "แถว ADMIN" ได้เหมือนเดิม
+  const canEditRowRole = (member: BrandMember) => {
+    if (member.role !== "ADMIN") return false;
+    return canEditRole(member);
+  };
+
   // สิทธิ์ลบ: ลบได้เฉพาะแถว ADMIN (ทุกคนห้ามลบ OWNER, OWNER ควรใช้ demote แทน)
   const canRemoveMember = (member: BrandMember) => {
     return member.role !== "OWNER";
@@ -58,7 +66,7 @@ export default function MemberTable({
           <tbody className="divide-y divide-[#E9DFC9]">
             {members.map((member) => {
               const manageable = canRemoveMember(member);
-              const editable = canEditRole(member);
+              const editable = canEditRowRole(member);
               const pending = pendingMemberId === member.id;
 
               return (

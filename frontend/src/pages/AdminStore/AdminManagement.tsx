@@ -54,7 +54,7 @@ function CurrentRoleBadge({ role }: { role: BrandMemberRole }) {
   );
 }
 
-export default function AdminManagement() {
+export default function ShopAdminManagement() {
   const { slug } = useParams<{ slug: string }>();
 
   const [members, setMembers] = useState<BrandMember[]>([]);
