@@ -2,7 +2,7 @@ import api from "./api";
 
 const URL_API = "/user";
 
-export type Gender = "MALE" | "FEMALE" | "UNSPECIFIED";
+export type Gender = "MALE" | "FEMALE";
 
 export type User = {
     id: string;

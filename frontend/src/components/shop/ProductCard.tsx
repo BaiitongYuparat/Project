@@ -7,10 +7,18 @@ interface ProductCardProps {
   onTryOn: (product: Product) => void;
 }
 
-const genderLabel = {
-  WOMEN: "ผู้หญิง",
-  MEN: "ผู้ชาย",
-  UNISEX: "Unisex",
+// ตอนนี้สินค้ายังไม่มีข้อมูลเพศในฐานข้อมูล จึงแสดง Unisex เป็นค่าเริ่มต้น
+// (ถ้า backend เพิ่ม field gender แล้ว ให้แสดงตามค่าจริงแทน)
+const genderLabel = "Unisex";
+
+// คีย์ต้องตรงกับค่า category ที่ shop admin บันทึกลง DB
+const categoryLabel: Record<string, string> = {
+  top: "เสื้อ",
+  bottom: "กางเกง",
+  dress: "เดรส",
+  skirt: "กระโปรง",
+  accessories: "กระเป๋า",
+  accessory: "กระเป๋า",
 };
 
 export default function ProductCard({
@@ -26,7 +34,7 @@ export default function ProductCard({
       {/* Gender + Favorite */}
       <div className="mb-2 flex items-center justify-between px-1">
         <span className="rounded-full bg-[#F4E2D6] px-3 py-1 text-xs text-[#503C32]">
-          {product.gender ? genderLabel[product.gender] : "Unisex"}
+          {genderLabel}
         </span>
 
         <button
@@ -51,14 +59,7 @@ export default function ProductCard({
             />
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-[#947D6D]">
-              {product.category === "TOP" && "เสื้อ"}
-              {product.category === "BOTTOM" && "กางเกง"}
-              {product.category === "DRESS" && "เดรส"}
-              {product.category === "SKIRT" && "กระโปรง"}
-              {product.category === "ACCESSORY" && "กระเป๋า"}
-              {!["TOP", "BOTTOM", "DRESS", "SKIRT", "ACCESSORY"].includes(
-                product.category,
-              ) && "สินค้า"}
+              {categoryLabel[product.category.toLowerCase()] ?? "สินค้า"}
             </div>
           )}
         </div>

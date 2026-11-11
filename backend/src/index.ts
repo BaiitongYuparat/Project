@@ -22,7 +22,7 @@ app.use(express.json());
 app.use(cookieParser());
 // เว็บร้านค้า (5173) + แอปผู้ดูแลแยก (5174) — ตอน production เพิ่ม domain ของแอปผู้ดูแลที่นี่
 app.use(cors({
-  origin: ["http://localhost:5175", "http://localhost:5176"],
+  origin: ["http://localhost:5173", "http://localhost:5174"],
   credentials: true,
 }));
 

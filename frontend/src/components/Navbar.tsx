@@ -53,16 +53,13 @@ export default function NavBar() {
   const [userSuspendedOpen, setUserSuspendedOpen] = useState(false);
   const suspendedOpen = useSelector((state: RootState) => state.ui.isSuspendedOpen);
 
+  // ทุกหน้าเข้าดูได้โดยไม่ต้อง login — การใช้งานฟีเจอร์ภายในหน้าค่อยเด้งให้ login (useRequireAuth)
   const navLinks = [
-    { name: "Home", path: "/", requireAuth: false },
-    { name: "Try-On", path: "/tryon", requireAuth: false },
-    { name: "AI Stylist", path: "/ai", requireAuth: false },
-    { name: "My Outfit", path: "/my-outfit", requireAuth: true },
+    { name: "Home", path: "/" },
+    { name: "Try-On", path: "/tryon" },
+    { name: "AI Stylist", path: "/ai" },
+    { name: "My Outfit", path: "/my-outfit" },
   ];
-
-  const filteredNavLinks = navLinks.filter(
-    (link) => !link.requireAuth || user !== null
-  );
 
   const displayName = user?.name ?? user?.email ?? "User";
 
@@ -142,7 +139,7 @@ export default function NavBar() {
           className="hidden items-center gap-1 md:flex lg:gap-2"
         >
           {authChecked &&
-            filteredNavLinks.map((link) => (
+            navLinks.map((link) => (
               <NavLink
                 key={link.path}
                 to={link.path}
@@ -239,7 +236,7 @@ export default function NavBar() {
           <div className="flex flex-col gap-1">
             {/* Navigation Links */}
             {authChecked &&
-              filteredNavLinks.map((link) => (
+              navLinks.map((link) => (
                 <NavLink
                   key={link.path}
                   to={link.path}

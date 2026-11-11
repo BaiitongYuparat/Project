@@ -2,9 +2,16 @@ import { Request, Response } from "express"
 import { prisma } from "../../lib/prisma"
 
 // เรียกผ่าน /admin (adminRoutes) — Super Admin เท่านั้น
+// User Management แสดงเฉพาะ shopper — ตัดบัญชีเจ้าของร้าน/แอดมิน (ตาราง Admin) ออก
 export const getUsers = async (req: Request, res: Response) => {
     try {
-        const users = await prisma.user.findMany()
+        const adminEmails = (
+            await prisma.admin.findMany({ select: { email: true } })
+        ).map((a) => a.email);
+
+        const users = await prisma.user.findMany({
+            where: { email: { notIn: adminEmails } },
+        });
         res.json(users)
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch users' })
@@ -48,7 +55,8 @@ export const deleteUser = async (req: Request, res: Response) => {
     res.json({ message: "User deleted successfully" });
   } catch (error: any) {
     console.error(error);
-    if (error.code === "P2003") {
+    
+    if (error.code === "P2003" || error.code === "P2010") {
       return res.status(409).json({
         error: "Cannot delete user with related data",
       });
@@ -61,6 +69,10 @@ export const updateUser = async (req: Request, res: Response) => {
     const id = req.user!.id as string
     const { name, email, gender } = req.body;
     try {
+        
+        if (gender !== undefined && !["MALE", "FEMALE"].includes(gender)) {
+            return res.status(400).json({ error: "Invalid gender, must be MALE or FEMALE" });
+        }
         const user = await prisma.user.update({
             where: { id: id },
             data: {
@@ -80,6 +92,10 @@ export const updateUser = async (req: Request, res: Response) => {
 export const createUser = async (req: Request, res: Response) => {
     const { name, email, gender, } = req.body;
     try {
+       
+        if (gender !== undefined && !["MALE", "FEMALE"].includes(gender)) {
+            return res.status(400).json({ error: "Invalid gender, must be MALE or FEMALE" });
+        }
         const user = await prisma.user.create({
             data: {
                 email,

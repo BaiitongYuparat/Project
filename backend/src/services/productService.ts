@@ -257,6 +257,7 @@ export const getProductById = async (
 type CreateProductInput = {
   name: string;
   category: string;
+  gender: "MALE" | "FEMALE";
   price?: number | null;
   description?: string | null;
   sku?: string | null;
@@ -278,6 +279,7 @@ export const createProduct = async (
       brand_id: brandId,
       name: data.name,
       category: data.category,
+      gender: data.gender,
       price: data.price ?? null,
       description: data.description ?? null,
       sku: data.sku ?? null,
@@ -309,6 +311,7 @@ export const updateProductWithImages = async (
   data: {
     name?: string;
     category?: string;
+    gender?: "MALE" | "FEMALE";
     price?: number | null;
     description?: string | null;
     sku?: string | null;
@@ -369,6 +372,7 @@ export const updateProductWithImages = async (
       data: {
         ...(data.name !== undefined && { name: data.name }),
         ...(data.category !== undefined && { category: data.category }),
+        ...(data.gender !== undefined && { gender: data.gender }),
         ...(data.price !== undefined && { price: data.price }),
         ...(data.description !== undefined && {
           description: data.description,

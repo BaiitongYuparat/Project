@@ -8,6 +8,7 @@ import {
   type SavedImage,
 } from "../../../services/bodyService";
 import BodyPhotoHints from "./BodyPhotoHints";
+import { useRequireAuth } from "../../../hooks/useRequireAuth";
 
 const ANGLES = [
   { key: "front", label: "หน้า" },
@@ -21,7 +22,7 @@ type FileMap      = Partial<Record<AngleKey, File>>;
 type VerifyStatus = "idle" | "verifying" | "passed" | "failed";
 type StatusMap    = Partial<Record<AngleKey, VerifyStatus>>;
 type TempKeyMap   = Partial<Record<AngleKey, string>>;
-type ErrorMap     = Partial<Record<AngleKey, string>>;  // ✅ เปลี่ยนจาก string[]
+type ErrorMap     = Partial<Record<AngleKey, string>>; 
 
 export default function UploadBodyImg() {
   const body = useSelector((state: RootState) => state.body.body);
@@ -33,6 +34,8 @@ export default function UploadBodyImg() {
   const [success,     setSuccess]     = useState(false);
   const [savedImages, setSavedImages] = useState<Record<string, string>>({});
   const inputRefs = useRef<Partial<Record<AngleKey, HTMLInputElement>>>({});
+
+  const requireAuth = useRequireAuth();
 
   useEffect(() => {
     if (!body?.id) return;
@@ -47,6 +50,7 @@ export default function UploadBodyImg() {
 
   const handleFileChange = async (angle: AngleKey, file: File | undefined) => {
     if (!file) return;
+    if (!requireAuth()) return;
 
     setFiles((prev)  => ({ ...prev, [angle]: file }));
     setStatus((prev) => ({ ...prev, [angle]: "verifying" }));
@@ -80,6 +84,8 @@ export default function UploadBodyImg() {
   );
 
   const handleSubmit = async () => {
+    if (!requireAuth()) return;
+
     if (!body?.id) {
       setAngleErrors({ front: "ไม่พบข้อมูลร่างกาย กรุณากรอกข้อมูลสัดส่วนก่อน" });
       return;
@@ -162,7 +168,9 @@ export default function UploadBodyImg() {
             >
               <div
                 className="relative flex h-40 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-primary"
-                onClick={() => inputRefs.current[angle.key]?.click()}
+                onClick={() =>
+                  requireAuth(() => inputRefs.current[angle.key]?.click())
+                }
               >
                 {angleStatus === "verifying" && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/50">
@@ -201,7 +209,9 @@ export default function UploadBodyImg() {
 
               <button
                 className="rounded-lg border border-orange-800/30 py-1 text-sm hover:bg-primary disabled:opacity-50"
-                onClick={() => inputRefs.current[angle.key]?.click()}
+                onClick={() =>
+                  requireAuth(() => inputRefs.current[angle.key]?.click())
+                }
                 disabled={angleStatus === "verifying"}
               >
                 {file || savedImages[angle.key] ? "เปลี่ยนรูป" : "อัพโหลดรูป"}

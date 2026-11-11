@@ -10,7 +10,6 @@ datasource db {
 enum Gender {
   MALE
   FEMALE
-  UNSPECIFIED
 }
 
 enum BrandStatus {
@@ -185,6 +184,7 @@ model Product {
   brand_id    String
   name        String
   category    String
+  gender      Gender?
   price       Decimal?           @db.Decimal(10, 2)
   description String?
   sku String?
@@ -200,6 +200,7 @@ model Product {
 
   @@index([brand_id])
   @@index([category])
+  @@index([gender])
   @@unique([brand_id, sku])
   @@map("products")
 }

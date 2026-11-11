@@ -10,25 +10,33 @@ import type { Gender } from "../../../types/user";
 import Button from "../../../components/Button";
 import { openBody } from "../../../store/uiSlice";
 import BodyModal from "../../../components/BodyModal";
+import { useRequireAuth } from "../../../hooks/useRequireAuth";
 
 export default function BodyPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const dispatch = useDispatch();
   const body = useSelector((state: RootState) => state.body.body);
+  const user = useSelector((state: RootState) => state.user.user);
   const [gender, setGender] = useState<Gender | "">("");
   const isBodyOpen = useSelector((state: RootState) => state.ui.isBodyOpen);
 
-  // โหลดเพศเดิมของผู้ใช้
+  const requireAuth = useRequireAuth();
+
+  // โหลดเพศเดิมของผู้ใช้ (ข้ามไว้ก่อนถ้ายังไม่ login)
   useEffect(() => {
+    if (user === null) return;
+
     getMe()
       .then((u) => {
         if (u.gender) setGender(u.gender);
       })
       .catch((e) => console.error("Load user failed:", e));
-  }, []);
+  }, [user]);
 
   const handleSaveBody = async (data: BodyFormValues) => {
+    if (!requireAuth()) return;
+
     if (!gender) {
       setError("กรุณาเลือกเพศก่อนบันทึก เพื่อใช้ในการวิเคราะห์รูปร่าง");
       return;
@@ -75,7 +83,9 @@ export default function BodyPage() {
       ) : (
         <div>
           <p>ยังไม่มีข้อมูลร่างกาย</p>
-          <Button onClick={() => dispatch(openBody())}>เพิ่มข้อมูล</Button>
+          <Button onClick={() => requireAuth(() => dispatch(openBody()))}>
+            เพิ่มข้อมูล
+          </Button>
         </div>
       )}
       {isBodyOpen && <BodyModal isOpen={isBodyOpen} />}

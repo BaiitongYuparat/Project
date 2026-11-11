@@ -30,6 +30,7 @@ import type { ImageView } from "../../types/product";
 const initialForm: ProductFormData = {
   name: "",
   category: "",
+  gender: "",
   price: "",
   description: "",
   sku: "",
@@ -156,6 +157,7 @@ export default function ProductManagement() {
     setForm({
       name: product.name,
       category: product.category,
+      gender: product.gender ?? "",
       price: product.price === null ? "" : String(product.price),
       description: product.description ?? "",
       sku: product.sku ?? "",
@@ -263,6 +265,11 @@ export default function ProductManagement() {
 
     if (!hasFrontImage) {
       setError("กรุณาเพิ่มรูปภาพสินค้าด้านหน้าอย่างน้อย 1 รูป");
+      return;
+    }
+
+    if (form.gender !== "MALE" && form.gender !== "FEMALE") {
+      setError("กรุณาเลือกเพศของสินค้า (ชาย หรือ หญิง)");
       return;
     }
 

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Product } from "../../../services/productService";
 import { getProducts } from "../../../services/productService";
 import { useFavorites } from "../../../context/FavoritesContext";
+import { useRequireAuth } from "../../../hooks/useRequireAuth";
 
 import OutfitSkeleton from "../../../components/myoutfit/OutfitSkeleton";
 import SavedOutfits from "../../../components/myoutfit/SavedOutfits";
@@ -22,6 +23,8 @@ export default function MyOutfitPage() {
   const [loadedTab, setLoadedTab] = useState<TabKey | null>(null);
 
   const { favorites, toggleFavorite } = useFavorites();
+
+  const requireAuth = useRequireAuth();
 
   // โหลดข้อมูลของแท็บปัจจุบัน (กัน race condition ด้วย cancelled flag)
   useEffect(() => {
@@ -61,9 +64,18 @@ export default function MyOutfitPage() {
     [products, favorites],
   );
 
+  // ทุก action ที่ต้องใช้บัญชี — ถ้ายังไม่ login จะเด้ง LoginModal แทน
   const handleTryOn = (product: Product) => {
+    if (!requireAuth()) return;
+
     // ตอนนี้ยังไม่มี Try-On Flow จริง
     alert(`คุณเลือกลองใส่: ${product.name}`);
+  };
+
+  const handleToggleFavorite = (productId: string) => {
+    if (!requireAuth()) return;
+
+    toggleFavorite(productId);
   };
 
   return (
@@ -118,7 +130,7 @@ export default function MyOutfitPage() {
             <SavedOutfits
               products={favoriteProducts}
               favorites={favorites}
-              onToggleFavorite={toggleFavorite}
+              onToggleFavorite={handleToggleFavorite}
               onTryOn={handleTryOn}
             />
           ) : (

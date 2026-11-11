@@ -1,4 +1,4 @@
-export type Gender = "MALE" | "FEMALE" | "UNSPECIFIED"
+export type Gender = "MALE" | "FEMALE"
 
 export type Model = {
   id: string;

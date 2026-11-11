@@ -10,26 +10,34 @@ import ProductGrid from "../../../components/shop/ProductGrid";
 import ShopFilter from "../../../components/shop/ShopFilter";
 
 import { useFavorites } from "../../../context/FavoritesContext";
+import { useRequireAuth } from "../../../hooks/useRequireAuth";
 
 import { useNavigate } from "react-router-dom";
 import HeroBannerCarousel from "../../../components/shop/HeroBannerCarousel";
 
 
 
+// ค่า value ต้องตรงกับที่ฟอร์มสร้างสินค้าฝั่ง shop admin (ProductFormModal) บันทึกลง DB
 const categories = [
   { value: "all", label: "ทั้งหมด" },
-  { value: "TOP", label: "เสื้อ" },
-  { value: "BOTTOM", label: "กางเกง" },
-  { value: "DRESS", label: "เดรส" },
-  { value: "SKIRT", label: "กระโปรง" },
-  { value: "ACCESSORY", label: "กระเป๋า" },
+  { value: "top", label: "เสื้อ" },
+  { value: "bottom", label: "กางเกง" },
+  { value: "dress", label: "เดรส" },
+  { value: "skirt", label: "กระโปรง" },
+  { value: "accessories", label: "กระเป๋า" },
 ];
 
+// ปรับค่าหมวดหมู่ที่เก็บใน DB ให้เทียบกันได้ เช่น "accessory" = "accessories"
+const normalizeCategory = (category?: string) => {
+  const value = category?.trim().toLowerCase() ?? "";
+  return value === "accessory" ? "accessories" : value;
+};
+
+// ค่า value ต้องตรงกับ enum Gender ใน Prisma schema (MALE / FEMALE — ไม่มี unisex แล้ว)
 const genders = [
-  { value: "all", label: "ทุกเพศ" },
-  { value: "WOMEN", label: "ผู้หญิง" },
-  { value: "MEN", label: "ผู้ชาย" },
-  { value: "UNISEX", label: "Unisex" },
+  { value: "all", label: "ทั้งหมด" },
+  { value: "MALE", label: "ชาย" },
+  { value: "FEMALE", label: "หญิง" },
 ];
 
 export default function ShopPage() {
@@ -48,6 +56,8 @@ export default function ShopPage() {
   const [error, setError] = useState("");
 
   const navigate = useNavigate();
+
+  const requireAuth = useRequireAuth();
 
   useEffect(() => {
     const loadData = async () => {
@@ -80,8 +90,10 @@ export default function ShopPage() {
         selectedShop === "all" || product.brand_id === selectedShop;
 
       const matchCategory =
-        selectedCategory === "all" || product.category === selectedCategory;
+        selectedCategory === "all" ||
+        normalizeCategory(product.category) === selectedCategory;
 
+      // สินค้าที่ยังไม่ได้ระบุเพศ (gender = null) จะแสดงเฉพาะตอนเลือก "ทั้งหมด"
       const matchGender =
         selectedGender === "all" || product.gender === selectedGender;
 
@@ -114,9 +126,18 @@ export default function ShopPage() {
     sortBy,
   ]);
 
+  // ทุก action ที่ต้องใช้บัญชี — ถ้ายังไม่ login จะเด้ง LoginModal แทน
   const handleTryOn = (product: Product) => {
+    if (!requireAuth()) return;
+
     // ตอนนี้ยังไม่มี Try-On Flow จริง
     alert(`คุณเลือกลองใส่: ${product.name}`);
+  };
+
+  const handleToggleFavorite = (productId: string) => {
+    if (!requireAuth()) return;
+
+    toggleFavorite(productId);
   };
 
   if (isLoading) {
@@ -244,9 +265,15 @@ export default function ShopPage() {
         <ProductGrid
           products={filteredProducts}
           favorites={favorites}
-          onToggleFavorite={toggleFavorite}
+          onToggleFavorite={handleToggleFavorite}
           onTryOn={handleTryOn}
         />
+
+        {filteredProducts.length === 0 && (
+          <div className="py-16 text-center text-sm text-[#947D6D]">
+            ไม่พบสินค้าที่ตรงกับตัวกรอง
+          </div>
+        )}
       </div>
     </main>
   );

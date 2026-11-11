@@ -35,6 +35,7 @@ export const createProduct = async (
 
   formData.append("name", data.name);
   formData.append("category", data.category);
+  formData.append("gender", data.gender);
   formData.append("price", data.price);
   formData.append("description", data.description);
   formData.append("sku", data.sku);
@@ -61,6 +62,7 @@ export const updateProduct = async (
 
   formData.append("name", data.name);
   formData.append("category", data.category);
+  formData.append("gender", data.gender);
   formData.append("price", data.price);
   formData.append("description", data.description);
   formData.append("sku", data.sku);

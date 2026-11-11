@@ -11,11 +11,14 @@ export interface ProductImage {
   view: ImageView;
 }
 
+export type ProductGender = "MALE" | "FEMALE";
+
 export interface Product {
   id: string;
   brand_id: string;
   name: string;
   category: string;
+  gender: ProductGender | null;
   price: number | string | null;
   description: string | null;
   sku: string | null;
@@ -28,6 +31,7 @@ export interface Product {
 export interface ProductFormData {
   name: string;
   category: string;
+  gender: ProductGender | "";
   price: string;
   description: string;
   sku: string;

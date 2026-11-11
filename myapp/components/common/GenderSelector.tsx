@@ -9,7 +9,6 @@ type Props = {
 const OPTIONS: { label: string; value: Gender }[] = [
   { label: "ผู้หญิง", value: "FEMALE" },
   { label: "ผู้ชาย", value: "MALE" },
-  { label: "ไม่ระบุ", value: "UNSPECIFIED" },
 ]
 
 export default function GenderSelector({ value, onChange }: Props) {

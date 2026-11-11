@@ -149,7 +149,7 @@ export const createProductController = async (
       return res.status(403).json({ message: "Brand access required" });
     }
 
-    const { name, category, price, description, sku } = req.body;
+    const { name, category, gender, price, description, sku } = req.body;
 
     if (
       typeof name !== "string" ||
@@ -159,6 +159,12 @@ export const createProductController = async (
     ) {
       return res.status(400).json({
         message: "Product name and category are required",
+      });
+    }
+
+    if (gender !== "MALE" && gender !== "FEMALE") {
+      return res.status(400).json({
+        message: "Product gender is required (MALE or FEMALE)",
       });
     }
 
@@ -196,6 +202,7 @@ export const createProductController = async (
     const product = await createProduct(brandId, {
       name: name.trim(),
       category: category.trim(),
+      gender,
       price: price === "" ? null : price,
       description: description?.trim() || null,
       sku: sku?.trim() || null,
@@ -280,6 +287,7 @@ export const updateProductController = async (
     const {
       name,
       category,
+      gender,
       price,
       description,
       sku,
@@ -303,6 +311,13 @@ export const updateProductController = async (
     ) {
       return res.status(400).json({
         message: "Invalid product category",
+      });
+    }
+
+    // ตรวจสอบเพศของสินค้า (MALE / FEMALE เท่านั้น — ไม่มี unisex แล้ว)
+    if (gender !== undefined && gender !== "MALE" && gender !== "FEMALE") {
+      return res.status(400).json({
+        message: "Invalid product gender",
       });
     }
 
@@ -400,6 +415,10 @@ export const updateProductController = async (
 
         ...(category !== undefined && {
           category: category.trim(),
+        }),
+
+        ...(gender !== undefined && {
+          gender,
         }),
 
         ...(price !== undefined && {

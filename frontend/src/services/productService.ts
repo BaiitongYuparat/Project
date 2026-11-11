@@ -15,7 +15,7 @@ export interface Product {
     sort_order: number;
     image_url?: string;
   }[];
-gender?: "WOMEN" | "MEN" | "UNISEX";
+  gender?: "MALE" | "FEMALE" | null;
   color?: string;
   fit?: string;
 }

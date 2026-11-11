@@ -29,7 +29,7 @@ function AppRoutes() {
           <Route path="BodyPage" element={<BodyPage />} />
           <Route path="UploadBodyImg" element={<UploadBodyImg />} />
         </Route>
-         <Route path="/my-outfit" element={<MyOutfitPage />} />
+        <Route path="/my-outfit" element={<MyOutfitPage />} />
       </Route>
       <Route path="/brand/register" element={<RegisterPage />} />
     </Routes>

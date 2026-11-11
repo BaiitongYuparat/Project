@@ -148,16 +148,8 @@ export default function ProductFormModal({
               placeholder="เช่น เสื้อเชิ้ตแขนยาว"
             />
 
-            {/* SKU and Category */}
+            {/* Category and Gender */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Input
-                label="SKU"
-                name="sku"
-                value={form.sku}
-                onChange={onChange}
-                placeholder="รหัสสินค้า"
-              />
-
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-[#332F29]">
                   หมวดหมู่ <span className="text-red-500">*</span>
@@ -181,19 +173,50 @@ export default function ProductFormModal({
                   ))}
                 </select>
               </label>
+
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-[#332F29]">
+                  เพศ <span className="text-red-500">*</span>
+                </span>
+
+                <select
+                  name="gender"
+                  value={form.gender}
+                  onChange={onChange}
+                  required
+                  className="w-full rounded-lg border border-[#E9DFC9] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2453D4]"
+                >
+                  <option value="" disabled>
+                    เลือกเพศ
+                  </option>
+
+                  <option value="MALE">ชาย</option>
+                  <option value="FEMALE">หญิง</option>
+                </select>
+              </label>
             </div>
 
-            {/* Price */}
-            <Input
-              label="ราคา (บาท)"
-              name="price"
-              type="number"
-              value={form.price ?? ""}
-              onChange={onChange}
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-            />
+            {/* SKU and Price */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input
+                label="SKU"
+                name="sku"
+                value={form.sku}
+                onChange={onChange}
+                placeholder="รหัสสินค้า"
+              />
+
+              <Input
+                label="ราคา (บาท)"
+                name="price"
+                type="number"
+                value={form.price ?? ""}
+                onChange={onChange}
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+              />
+            </div>
 
             {/* Description */}
             <div>

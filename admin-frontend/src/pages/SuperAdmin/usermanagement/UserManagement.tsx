@@ -124,6 +124,24 @@ export default function UserManagement() {
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
     const handleAction = async (type: "suspend" | "unsuspend" | "delete", user: User) => {
+        // ยืนยันก่อนทำรายการ
+        const displayName = user.name ?? user.email ?? "-";
+        let confirmMessage: string;
+        switch (type) {
+            case "delete":
+                console.log(`ยืนยันการลบผู้ใช้: ${user.email}`);
+                confirmMessage = `ยืนยันการลบผู้ใช้ ${displayName} `;
+                break;
+            case "suspend":
+                console.log(`ยืนยันการระงับผู้ใช้: ${user.email}`);
+                confirmMessage = `ยืนยันการระงับผู้ใช้ ${displayName} ?`;
+                break;
+            default:
+                console.log(`ยืนยันการปลดระงับผู้ใช้: ${user.email}`);
+                confirmMessage = `ยืนยันการปลดระงับผู้ใช้ ${displayName} ?`;
+        }
+        if (!window.confirm(confirmMessage)) return;
+
         try {
             setActionLoadingId(user.id);
 
@@ -184,7 +202,7 @@ export default function UserManagement() {
                     <option value="ALL">เพศ: ทั้งหมด</option>
                     <option value="male">ชาย</option>
                     <option value="female">หญิง</option>
-                    <option value="other">อื่นๆ / ไม่ระบุ</option>
+                    <option value="other">ไม่ระบุ</option>
                 </select>
 
             </div>

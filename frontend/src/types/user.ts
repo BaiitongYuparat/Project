@@ -1,4 +1,4 @@
-export type Gender = "MALE" | "FEMALE" | "UNSPECIFIED";
+export type Gender = "MALE" | "FEMALE";
 
 // บทบาทร้านค้า (ใช้ทั้งฝั่ง shopper และ admin)
 export type BrandMemberRole = "OWNER" | "ADMIN";

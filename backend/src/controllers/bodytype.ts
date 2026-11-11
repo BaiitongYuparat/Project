@@ -52,7 +52,12 @@ export const analyzeAndSaveBodyType = async (req: Request, res: Response) => {
              where: { id: userId },
             select: { gender: true },
         })
-           
+
+        // เพศจำเป็นสำหรับการวิเคราะห์รูปร่าง (มีแค่ MALE / FEMALE)
+        if (!user?.gender) {
+            return res.status(400).json({ message: "Gender is required before analyzing body type" });
+        }
+
         // วิเคราะห์ด้วย Gemini
         const result = await analyzeBodyType({
             height: Number(body.height),
@@ -60,7 +65,7 @@ export const analyzeAndSaveBodyType = async (req: Request, res: Response) => {
             chest: Number(body.chest),
             waist: Number(body.waist),
             hips: Number(body.hips),
-            gender: user?.gender ?? "UNSPECIFIED",
+            gender: user.gender,
         });
 
         // upsert ลง DB (1 user = 1 record)
@@ -85,45 +90,3 @@ export const analyzeAndSaveBodyType = async (req: Request, res: Response) => {
     }
 };
 
-// ────────────────────────────────────────────
-// background trigger หลัง createBody / updateBody
-// ไม่ต้องรอผล ไม่ throw error ให้ caller
-// ────────────────────────────────────────────
-export const triggerBodyTypeAnalysis = async (userId: string) => {
-    try {
-        const body = await prisma.body.findFirst({
-            where: { user_id: userId },
-            orderBy: { recorded_at: "desc" },
-        });
-
-        if (!body?.height || !body?.weight || !body?.chest || !body?.waist || !body?.hips) {
-            return;
-        }
-
-        const result = await analyzeBodyType({
-            height: Number(body.height),
-            weight: Number(body.weight),
-            chest: Number(body.chest),
-            waist: Number(body.waist),
-            hips: Number(body.hips),
-        });
-
-        await prisma.bodyType.upsert({
-            where: { user_id: userId },
-            update: {
-                body_type: result.body_type,
-                description: result.description,
-                analyzed_at: new Date(),
-            },
-            create: {
-                user_id: userId,
-                body_type: result.body_type,
-                description: result.description,
-            },
-        });
-
-        console.log(`Body type analyzed for user ${userId}: ${result.body_type}`);
-    } catch (error) {
-        console.error(`Body type analysis failed for user ${userId}:`, error);
-    }
-};

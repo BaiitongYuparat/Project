@@ -1,6 +1,5 @@
 import { prisma } from "../../lib/prisma";
 import { Request, Response } from "express";
-import { triggerBodyTypeAnalysis } from "./bodytype";
 
 export const getBodyData = async (req: Request, res: Response) => {
     const userId = req.user!.id as string;
@@ -44,7 +43,6 @@ export const createBody = async (req: Request, res: Response) => {
                 hips,
             },
         });
-        triggerBodyTypeAnalysis(req.user!.id); // วิเคราะห์ body type ในเบื้องหลัง ไม่รอผล
         res.status(201).json(newBody);
     } catch (error) {
         console.error(error);
@@ -67,7 +65,6 @@ export const updateBody = async (req: Request, res: Response) => {
             where: { id: latest.id },
             data: { weight, height, chest, waist, hips },
         });
-        triggerBodyTypeAnalysis(userId); // วิเคราะห์ body type ในเบื้องหลัง ไม่รอผล
         res.status(200).json(updated);
     } catch (error) {
         console.error(error);
