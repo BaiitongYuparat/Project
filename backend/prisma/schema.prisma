@@ -285,7 +285,7 @@ model Product {
   brand_id    String
   name        String
   category    String
-  gender      Gender?
+  gender      ProductGender      @default(UNISEX)
   fabric      String? // เนื้อผ้า (ร้านกรอกเอง)
   seasons     String[]           @default([]) // ฤดู (multi-select)
   occasions   String[]           @default([]) // โอกาส (multi-select)
