@@ -19,9 +19,9 @@ enum BrandStatus {
   REJECTED
 }
 
-enum UserRole {
-  SUPER_ADMIN
-  USER
+enum AdminRole {
+  SUPER_ADMIN // ผู้ดูแลระบบแพลตฟอร์ม
+  SHOP_ADMIN // ผู้ดูแลร้าน (OWNER/ADMIN ของร้าน)
 }
 
 enum TryOnStatus {
@@ -55,23 +55,37 @@ enum ImageView {
   RIGHT
 }
 
+// บัญชีฝั่งผู้ดูแล (Super Admin + เจ้าของ/แอดมินร้าน) — แยกตารางออกจาก User เพื่อแยกระบบ login
+model Admin {
+  id         String    @id @default(uuid())
+  googleId   String?   @unique
+  name       String?
+  email      String    @unique
+  status     String    @default("active")
+  role       AdminRole @default(SHOP_ADMIN)
+  created_at DateTime  @default(now()) @db.Timestamp(6)
+
+  // Brand
+  brandMembers     BrandMember[]
+  sentBrandInvites BrandInvite[] @relation("BrandInviteInviter")
+
+  @@map("Admin")
+}
+
 model User {
-  id           String        @id @default(uuid())
-  googleId     String?       @unique
+  id           String   @id @default(uuid())
+  googleId     String?  @unique
   name         String?
-  email        String        @unique
-  status       String        @default("active")
-  role         UserRole      @default(USER)
-  created_at   DateTime      @default(now()) @db.Timestamp(6)
+  email        String   @unique
+  status       String   @default("active")
+  created_at   DateTime @default(now()) @db.Timestamp(6)
   gender       Gender?
   body         Body[]
   userConsents UserConsent[]
   bodyType     BodyType?
 
   // Brand
-  brandMembers     BrandMember[]
-  brandCustomers   BrandCustomer[]
-  sentBrandInvites BrandInvite[]   @relation("BrandInviteInviter")
+  brandCustomers BrandCustomer[]
 
   // Analytics
   tryOnLogs     TryOnLog[]
@@ -224,16 +238,16 @@ model ProductImage {
 model BrandMember {
   id         String          @id @default(uuid())
   brand_id   String
-  user_id    String
+  admin_id   String
   role       BrandMemberRole @default(ADMIN)
   created_at DateTime        @default(now()) @db.Timestamp(6)
 
   brand Brand @relation(fields: [brand_id], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  admin Admin @relation(fields: [admin_id], references: [id], onDelete: Cascade)
 
-  @@unique([brand_id, user_id])
-  @@index([user_id])
-  @@map("brand_members")
+  @@unique([brand_id, admin_id])
+  @@index([admin_id])
+@@map("brand_members")
 }
 
 model BrandInvite {
@@ -248,7 +262,7 @@ model BrandInvite {
   created_at DateTime        @default(now()) @db.Timestamp(6)
 
   brand   Brand @relation(fields: [brand_id], references: [id], onDelete: Cascade)
-  inviter User  @relation("BrandInviteInviter", fields: [invited_by], references: [id], onDelete: Restrict)
+  inviter Admin @relation("BrandInviteInviter", fields: [invited_by], references: [id], onDelete: Restrict)
 
   @@index([brand_id, status])
   @@index([email])

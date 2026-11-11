@@ -3,7 +3,7 @@ import { DeleteObjectCommand, GetObjectCommand, CopyObjectCommand } from "@aws-s
 import { prisma } from "../../lib/prisma";
 import { s3 } from "../middlewares/upload";
 import { isGeminiEnabled } from "../../lib/gemini";
-import { checkBodyImage } from "../services/geminiService";
+import { checkBodyImage } from "../services/bodyImageValidationService";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 interface MulterS3File extends Express.Multer.File {
@@ -96,7 +96,7 @@ export const verifyBodyImage = async (req: Request, res: Response) => {
             });
         }
 
-        // เรียก checkBodyImage จาก geminiService แทน
+        // เรียก checkBodyImage จาก bodyImageValidationService แทน
         const result = await checkBodyImage(file.key, file.mimetype, angle);
 
         if (result.status === "REJECTED") {

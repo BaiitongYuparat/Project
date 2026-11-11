@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { IonIcon } from "@ionic/react";
-import { arrowForward, chevronBack, chevronForward } from "ionicons/icons";
+import { arrowForward, chevronForward } from "ionicons/icons";
 
 type Align = "left" | "center" | "right";
 

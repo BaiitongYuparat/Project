@@ -4,7 +4,7 @@ import {
   getBrandAccess,
   BrandAccessError,
 } from "../services/brandAccessService";
-import { UserRole } from "@prisma/client";
+import { AdminRole } from "@prisma/client";
 
 export const requireBrandAccess = async (
   req: Request,
@@ -12,18 +12,18 @@ export const requireBrandAccess = async (
   next: NextFunction
 ) => {
   try {
-    const userId = req.user?.id;
-    const userRole = req.user?.role;
+    const adminId = req.admin?.id;
+    const adminRole = req.admin?.role;
     const { slug } = req.params;
 
-    if (!userId || !userRole) {
+    if (!adminId || !adminRole) {
       return res.status(401).json({
         message: "Unauthorized",
       });
     }
 
     // ไม่อนุญาตให้ Super Admin เข้า Shop Dashboard
-    if (userRole === UserRole.SUPER_ADMIN) {
+    if (adminRole === AdminRole.SUPER_ADMIN) {
       return res.status(403).json({
         message: "Super Admin cannot access Brand Dashboard",
       });
@@ -37,7 +37,7 @@ export const requireBrandAccess = async (
 
     const result = await getBrandAccess(
       slug,
-      userId,
+      adminId,
     );
 
     // แนบข้อมูล Brand และ Role ให้ Controller ใช้ต่อ

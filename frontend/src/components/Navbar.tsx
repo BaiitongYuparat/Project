@@ -8,8 +8,6 @@ import {
   logOutOutline,
   menuOutline,
   personOutline,
-  shieldCheckmarkOutline,
-  storefrontOutline,
 } from "ionicons/icons";
 
 import Button from "./Button";
@@ -22,8 +20,6 @@ import { logout as logoutAPI } from "../services/authService";
 import SuspendedModal from "./SuspendedModal";
 
 // ---------- Styles (ใช้ซ้ำทั้ง desktop และ mobile) ----------
-const sectionLabel =
-  "px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-secondary/50";
 
 const dropdownItem =
   "flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-secondary transition-colors hover:bg-secondary/10 focus:outline-none focus-visible:bg-secondary/10";
@@ -54,8 +50,6 @@ export default function NavBar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  const [suspendedBrand, setSuspendedBrand] = useState<string | null>(null);
-
   const [userSuspendedOpen, setUserSuspendedOpen] = useState(false);
   const suspendedOpen = useSelector((state: RootState) => state.ui.isSuspendedOpen);
 
@@ -69,17 +63,6 @@ export default function NavBar() {
   const filteredNavLinks = navLinks.filter(
     (link) => !link.requireAuth || user !== null
   );
-
-  // ตรวจสอบสิทธิ์ Dashboard
-  const isSuperAdmin = user?.role === "SUPER_ADMIN";
-
-  const brandMemberships = !isSuperAdmin
-    ? user?.brandMemberships?.filter(
-      (brand) => brand.role === "OWNER" || brand.role === "ADMIN"
-    ) ?? []
-    : [];
-
-  const hasDashboardAccess = isSuperAdmin || brandMemberships.length > 0;
 
   const displayName = user?.name ?? user?.email ?? "User";
 
@@ -137,22 +120,6 @@ export default function NavBar() {
   const handleProfile = () => {
     closeMenus();
     navigate("/pages/profile");
-  };
-
-  // ไปหน้า Dashboard
-  const handleAdminDashboard = () => {
-    closeMenus();
-    navigate("/superadmin");
-  };
-
-
-  const handleShopDashboard = (slug: string, status: string, brandName: string) => {
-    closeMenus();
-    if (status !== "APPROVED") {
-      setSuspendedBrand(brandName);
-      return;
-    }
-    navigate(`/shopadmin/${slug}`);
   };
 
   useEffect(() => {
@@ -233,42 +200,6 @@ export default function NavBar() {
                     Profile
                   </button>
 
-                  {/* Dashboard */}
-                  {hasDashboardAccess && (
-                    <div className="border-t border-secondary/10 pb-1">
-                      <p className={sectionLabel}>Dashboard</p>
-
-                      {isSuperAdmin ? (
-                        <button
-                          onClick={handleAdminDashboard}
-                          className={dropdownItem}
-                        >
-                          <IonIcon
-                            icon={shieldCheckmarkOutline}
-                            className="text-lg"
-                          />
-                          Admin Dashboard
-                        </button>
-                      ) : (
-                        brandMemberships.map((brand) => (
-                          <button
-                            key={brand.slug}
-                            onClick={() => handleShopDashboard(brand.slug, brand.brandStatus, brand.brandName)}
-                            className={dropdownItem}
-                          >
-                            <IonIcon
-                              icon={storefrontOutline}
-                              className="text-lg"
-                            />
-                            <span className="truncate">
-                              {brand.brandName} Dashboard
-                            </span>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
-
                   {/* Logout */}
                   <div className="border-t border-secondary/10">
                     <button
@@ -341,37 +272,6 @@ export default function NavBar() {
                   Profile
                 </button>
 
-                {/* Dashboard */}
-                {hasDashboardAccess && (
-                  <div className="mt-1 border-t border-secondary/10 pt-1">
-                    <p className={sectionLabel}>Dashboard</p>
-
-                    {isSuperAdmin ? (
-                      <button
-                        onClick={handleAdminDashboard}
-                        className={mobileItem}
-                      >
-                        <IonIcon
-                          icon={shieldCheckmarkOutline}
-                          className="text-lg"
-                        />
-                        Admin Dashboard
-                      </button>
-                    ) : (
-                      brandMemberships.map((brand) => (
-                        <button
-                          key={brand.slug}
-                          onClick={() => handleShopDashboard(brand.slug, brand.brandStatus, brand.brandName)}
-                          className={mobileItem}
-                        >
-                          <IonIcon icon={storefrontOutline} className="text-lg" />
-                          <span className="truncate">{brand.brandName} Dashboard</span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-
                 {/* Logout */}
                 <div className="mt-1 border-t border-secondary/10 pt-1">
                   <button
@@ -395,12 +295,6 @@ export default function NavBar() {
             ) : null}
           </div>
         </nav>
-      )}
-      {suspendedBrand && (
-        <SuspendedModal
-          brandName={suspendedBrand}
-          onClose={() => setSuspendedBrand(null)}
-        />
       )}
       {(userSuspendedOpen || suspendedOpen) && (
         <SuspendedModal

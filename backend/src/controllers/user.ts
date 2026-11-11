@@ -1,7 +1,7 @@
 import { Request, Response } from "express"
 import { prisma } from "../../lib/prisma"
-import { UserRole } from "@prisma/client";
 
+// เรียกผ่าน /admin (adminRoutes) — Super Admin เท่านั้น
 export const getUsers = async (req: Request, res: Response) => {
     try {
         const users = await prisma.user.findMany()
@@ -29,25 +29,18 @@ export const getUsersId = async (req: Request, res: Response) => {
 };
 
 
+// เรียกผ่าน /admin (adminRoutes) — ลบบัญชี shopper
 export const deleteUser = async (req: Request, res: Response) => {
   try {
-    const targetId = (req.params.id as string | undefined) ?? req.user!.id;
-    const isSelf = targetId === req.user!.id;
+    const targetId = req.params.id as string | undefined;
 
-    // ลบคนอื่นได้เฉพาะ SUPER_ADMIN
-    if (!isSelf && req.user!.role !== UserRole.SUPER_ADMIN) {
-      return res.status(403).json({ error: "Access denied" });
+    if (!targetId) {
+      return res.status(400).json({ error: "User id is required" });
     }
 
-    // กันลบ Super Admin คนอื่น
-    if (!isSelf) {
-      const target = await prisma.user.findUnique({ where: { id: targetId } });
-      if (!target) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      if (target.role === UserRole.SUPER_ADMIN) {
-        return res.status(403).json({ error: "Cannot delete a Super Admin" });
-      }
+    const target = await prisma.user.findUnique({ where: { id: targetId } });
+    if (!target) {
+      return res.status(404).json({ error: "User not found" });
     }
 
     await prisma.user.delete({ where: { id: targetId } });
@@ -101,6 +94,7 @@ export const createUser = async (req: Request, res: Response) => {
     }
 }
 
+// เรียกผ่าน /admin (adminRoutes) — ระงับ/ปลดระงับบัญชี shopper
 export const updateUserStatus = async (req: Request, res: Response) => {
   try {
     const  id  = req.params.id as string;
@@ -109,15 +103,9 @@ export const updateUserStatus = async (req: Request, res: Response) => {
     if (status !== "active" && status !== "suspended") {
       return res.status(400).json({ error: "Invalid status" });
     }
-    if (id === req.user!.id) {
-      return res.status(400).json({ error: "Cannot change your own status" });
-    }
 
     const target = await prisma.user.findUnique({ where: { id } });
     if (!target) return res.status(404).json({ error: "User not found" });
-    if (target.role === UserRole.SUPER_ADMIN) {
-      return res.status(403).json({ error: "Cannot suspend a Super Admin" });
-    }
 
     const user = await prisma.user.update({ where: { id }, data: { status } });
     res.json(user);
