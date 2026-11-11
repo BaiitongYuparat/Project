@@ -20,6 +20,8 @@ interface EntryInput {
 export interface SizeChartPayload {
   name: string;
   gender?: "UNISEX" | "MALE" | "FEMALE";
+  // ตารางไซส์เดียว (Free Size) — ใช้ได้กับทุกหมวด แต่ละ entry มี 0–1 แถวได้
+  is_freesize?: boolean;
   entries: EntryInput[];
 }
 
@@ -103,6 +105,7 @@ export const createBrandSizeChart = async (
       brand_id: brandId,
       name: payload.name.trim(),
       gender: payload.gender ?? "UNISEX",
+      is_freesize: payload.is_freesize ?? false,
       entries: {
         create: payload.entries.map((entry) => ({
           category: entry.category,
@@ -155,6 +158,7 @@ export const updateBrandSizeChart = async (
         data: {
           name: payload.name.trim(),
           gender: payload.gender ?? "UNISEX",
+          is_freesize: payload.is_freesize ?? false,
           entries: {
             create: payload.entries.map((entry) => ({
               category: entry.category,
@@ -224,9 +228,38 @@ export const resolveSizeChartForProduct = async (
     return { error: "SIZE_CHART_NOT_FOUND" as const };
   }
 
+  // pajamas = สินค้า 1 ชุด → ตารางต้องมี entry ทั้งท่อนบน (top) และท่อนล่าง (bottom)
+  if (category === "pajamas") {
+    const entries = await prisma.brandSizeChartEntry.findMany({
+      where: { chart_id: chartId, category: { in: ["top", "bottom"] } },
+      include: {
+        rows: {
+          orderBy: { sort_order: "asc" },
+        },
+      },
+    });
+
+    const top = entries.find((entry) => entry.category === "top");
+    const bottom = entries.find((entry) => entry.category === "bottom");
+
+    // freesize = ไซส์เดียว แถวอาจว่าง (0 แถว) ได้ — ขอแค่ entry มีอยู่ครบทั้งคู่
+    if (
+      chart.is_freesize
+        ? !top || !bottom
+        : !top?.rows.length || !bottom?.rows.length
+    ) {
+      return { error: "SIZE_CHART_CATEGORY_MISSING" as const };
+    }
+
+    return {
+      rows: [...(top?.rows ?? []), ...(bottom?.rows ?? [])],
+      chartName: chart.name,
+    };
+  }
+
   const entry = chart.entries[0];
 
-  if (!entry || entry.rows.length === 0) {
+  if (!entry || (chart.is_freesize ? false : entry.rows.length === 0)) {
     return { error: "SIZE_CHART_CATEGORY_MISSING" as const };
   }
 

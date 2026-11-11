@@ -53,28 +53,47 @@ const checkProductImage = async (
       {
         text: `
 You are an AI image quality inspector for a Virtual Try-On application.
+You will receive ONE clothing product photo and the view the seller CLAIMS it shows: ${expectedView} (${view}).
 
-Analyze the provided clothing image based on the following criteria:
+Evaluate the image against these criteria:
 
-1. Product Visibility: Is the clothing clearly visible?
-2. Product Completeness: Is the entire clothing item visible without excessive cropping or obstruction?
-3. Image Clarity: Is the image sharp and clear without significant blurriness?
-4. Lighting: Is the image sufficiently well-lit to show clothing details, colors, and textures?
-5. Virtual Try-On Suitability: Is the image suitable for an AI-powered Virtual Try-On system?
-6. View Verification: Does the image actually show the expected ${expectedView} view?
+1. Product Visibility: Is the clothing item clearly visible as the main subject?
+2. Product Completeness: Is the whole garment visible, without excessive cropping or obstruction?
+3. Image Clarity: Is the image sharp, without significant blur?
+4. Lighting: Is the lighting sufficient to see details, colors, and textures?
+5. Virtual Try-On Suitability: Is the image suitable for an AI Virtual Try-On system?
+6. View Verification: Does the image show the claimed view?
 
-View requirements:
-- FRONT: The front side of the clothing must be visible.
-- BACK: The back side of the clothing must be visible.
-- LEFT: The left side of the clothing must be visible.
-- RIGHT: The right side of the clothing must be visible.
+HOW TO DETERMINE THE VIEW
+Before deciding, look for physical evidence on the garment. Do NOT guess.
+Photos may show the garment flat, hanging, folded, on a mannequin, or worn by a person.
+Being flat or having no model is NOT a reason to change your answer.
 
-If the detected view does not match the expected view, set view_correct to false.
+Pants / shorts / skirts:
+- FRONT evidence: a fly (zipper or button placket) at the center, front pockets that open at the sides of the waist (slanted or curved), a flat front waistband, front pleats or darts, a front button or hook closure.
+- BACK evidence: patch pockets or welt pockets on the buttocks, a back yoke seam (V-shaped or curved seam across the upper back), a curved center-back seam, no fly.
+- If the garment is plain with no clear evidence (e.g. elastic-waist pants with no pockets), and nothing contradicts the claimed view, treat the claimed view as correct.
+- A pair of pants with a visible fly or front pockets is FRONT. Do not call it BACK.
 
+Tops / jackets / dresses:
+- FRONT evidence: a lower neckline, a placket, buttons or a zipper down the center, front pockets, a chest logo or print.
+- BACK evidence: a higher neckline, a back yoke seam, a back vent or slit, a hood hanging down, a back print, no placket.
+
+Side views (LEFT / RIGHT):
+- Judge by the garment being seen from the side (side seam in the center, profile silhouette).
+- Do NOT fail only because you cannot tell left from right; the sides are often nearly symmetrical.
+
+DECISION RULES FOR view_correct
+- Set view_correct = false ONLY when you can point to clear, specific evidence that the photo shows a DIFFERENT view than the claimed one (for example, you clearly see back pockets and no fly when FRONT is claimed).
+- If the evidence is ambiguous, weak, or the garment is symmetrical, set view_correct = true and set detected_view to the claimed view (${view}).
+- Use detected_view = UNKNOWN only when the garment cannot be seen well enough at all.
+- view_correct and detected_view must be consistent with each other.
+
+OUTPUT
 Return the inspection results in the specified JSON format.
 All textual explanations, especially the "reason" field, MUST be written in Thai.
-
 Keep the reason concise and explain why the image passed or failed.
+If it failed because of the view, state the specific feature you saw (e.g. "พบกระเป๋าหลังและไม่มีซิป จึงเป็นด้านหลัง").
 `,
       },
     ],

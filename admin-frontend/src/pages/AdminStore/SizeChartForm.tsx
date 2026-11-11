@@ -69,6 +69,7 @@ export default function SizeChartForm() {
   const [form, setForm] = useState<SizeChartForm>({
     name: "",
     gender: "UNISEX",
+    is_freesize: false,
     entries: [],
   });
   const [loading, setLoading] = useState(isEdit);
@@ -107,6 +108,7 @@ export default function SizeChartForm() {
         setForm({
           name: chart.name,
           gender: chart.gender ?? "UNISEX",
+          is_freesize: chart.is_freesize ?? false,
           entries: chart.entries.map((entry) => ({
             category: entry.category,
             rows: entryRowsToFormRows(entry.rows),
@@ -166,6 +168,53 @@ export default function SizeChartForm() {
     }));
   };
 
+  // เปิด/ปิดโหมด Free Size (ไซส์เดียว) — เปิดแล้วแต่ละหมวดเหลือแถวเดียว size = FREESIZE
+  // ตัววัด (รอบอก/เอว/สะโพก) ยังกรอกได้ตามปกติ เช่น ผ้ายืดยืดได้ถึง 34 นิ้ว
+  const handleToggleFreesize = () => {
+    setForm((previous) => {
+      const nextFreesize = !previous.is_freesize;
+
+      return {
+        ...previous,
+        is_freesize: nextFreesize,
+        // เปิดโหมด → ทุกหมวดเหลือแถวเดียว (เก็บตัววัดของแถวแรกไว้)
+        entries: nextFreesize
+          ? previous.entries.map((entry) => ({
+              ...entry,
+              rows: [
+                {
+                  ...(entry.rows[0] ?? { ...EMPTY_ROW }),
+                  size: "FREESIZE",
+                },
+              ],
+            }))
+          : previous.entries,
+      };
+    });
+  };
+
+  // preset: สร้างตาราง pajamas — เปิด entry ทั้งท่อนบน (top) และท่อนล่าง (bottom) พร้อมกัน
+  const handlePresetPajamas = () => {
+    setForm((previous) => {
+      const nextEntries = [...previous.entries];
+
+      for (const category of ["top", "bottom"]) {
+        if (!nextEntries.some((entry) => entry.category === category)) {
+          nextEntries.push({
+            category,
+            rows: [
+              previous.is_freesize
+                ? { ...EMPTY_ROW, size: "FREESIZE" }
+                : { ...EMPTY_ROW },
+            ],
+          });
+        }
+      }
+
+      return { ...previous, entries: nextEntries };
+    });
+  };
+
   const handleAddRow = (category: string) => {
     updateEntry(category, (entry) => ({
       ...entry,
@@ -218,9 +267,14 @@ export default function SizeChartForm() {
     if (form.entries.length === 0) return "เลือกอย่างน้อย 1 หมวดหมู่";
 
     for (const entry of form.entries) {
-      const hasSize = entry.rows.some((row) => row.size.trim());
+      const filledRows = entry.rows.filter((row) => row.size.trim());
 
-      if (!hasSize) {
+      // Free Size = ไซส์เดียว → แถวเดียวเท่านั้น (ตัววัดว่างได้)
+      if (form.is_freesize && filledRows.length > 1) {
+        return `หมวด "${entry.category}" แบบ Free Size ต้องมีไซส์เดียว`;
+      }
+
+      if (!form.is_freesize && filledRows.length === 0) {
         return `หมวด "${entry.category}" ต้องมีไซส์อย่างน้อย 1 แถว`;
       }
     }
@@ -389,6 +443,20 @@ export default function SizeChartForm() {
                   );
                 })}
               </div>
+
+              {/* Free Size — ไซส์เดียว (ใช้ได้กับทุกหมวด) */}
+              <label className="mt-4 flex w-fit cursor-pointer items-center gap-2.5 rounded-xl bg-[#FCFAF6] px-3.5 py-2.5 text-sm text-[#332F29]">
+                <input
+                  type="checkbox"
+                  checked={form.is_freesize}
+                  onChange={handleToggleFreesize}
+                  className="h-4 w-4 accent-[#87947A]"
+                />
+                <span className="font-medium">Free Size (ไซส์เดียว)</span>
+                <span className="text-xs text-[#8B806E]">
+                  แต่ละหมวดเหลือแถวเดียว ชื่อ "FREESIZE" — ตัววัดยังกรอกได้
+                </span>
+              </label>
             </div>
 
             {/* Categories */}
@@ -427,6 +495,14 @@ export default function SizeChartForm() {
                   );
                 })}
               </div>
+
+              <button
+                type="button"
+                onClick={handlePresetPajamas}
+                className="mt-3 rounded-lg border border-[#DCCFB8] px-3 py-2 text-xs font-medium text-[#6B7A5E] transition-colors hover:bg-[#F8F4EA]"
+              >
+                + ตาราง pajamas (เปิด top + bottom ครบทั้งคู่)
+              </button>
             </div>
 
             {/* Per-category editors */}
@@ -485,7 +561,7 @@ export default function SizeChartForm() {
                             <td className="px-3 py-2">
                               <input
                                 type="text"
-                                value={row.size}
+                                value={form.is_freesize ? "FREESIZE" : row.size}
                                 onChange={(event) =>
                                   handleUpdateRow(
                                     entry.category,
@@ -494,8 +570,9 @@ export default function SizeChartForm() {
                                     event.target.value,
                                   )
                                 }
+                                disabled={form.is_freesize}
                                 placeholder="S, M, L..."
-                                className="w-20 rounded-lg border border-[#E9DFC9] bg-white px-2 py-1.5 text-sm outline-none transition-colors placeholder:text-[#C4BBA9] focus:border-[#87947A] focus:ring-2 focus:ring-[#87947A]/25"
+                                className="w-20 rounded-lg border border-[#E9DFC9] bg-white px-2 py-1.5 text-sm outline-none transition-colors placeholder:text-[#C4BBA9] focus:border-[#87947A] focus:ring-2 focus:ring-[#87947A]/25 disabled:bg-[#FCFAF6] disabled:text-[#786E5D]"
                               />
                             </td>
 
@@ -521,16 +598,18 @@ export default function SizeChartForm() {
                             ))}
 
                             <td className="px-3 py-2 text-right">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleRemoveRow(entry.category, rowIndex)
-                                }
-                                className="rounded-lg p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-500 focus-visible:text-red-500 md:opacity-0 md:group-hover/row:opacity-100 md:focus-visible:opacity-100"
-                                aria-label="ลบแถวไซส์"
-                              >
-                                <IonIcon icon={removeCircleOutline} />
-                              </button>
+                              {!form.is_freesize && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleRemoveRow(entry.category, rowIndex)
+                                  }
+                                  className="rounded-lg p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-500 focus-visible:text-red-500 md:opacity-0 md:group-hover/row:opacity-100 md:focus-visible:opacity-100"
+                                  aria-label="ลบแถวไซส์"
+                                >
+                                  <IonIcon icon={removeCircleOutline} />
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -539,14 +618,16 @@ export default function SizeChartForm() {
                   </div>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => handleAddRow(entry.category)}
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-[#DCCFB8] py-2.5 text-sm font-medium text-[#6B7A5E] transition-colors hover:bg-[#F8F4EA]"
-                >
-                  <IonIcon icon={addOutline} className="text-base" />
-                  เพิ่มแถวไซส์
-                </button>
+                {!form.is_freesize && (
+                  <button
+                    type="button"
+                    onClick={() => handleAddRow(entry.category)}
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-[#DCCFB8] py-2.5 text-sm font-medium text-[#6B7A5E] transition-colors hover:bg-[#F8F4EA]"
+                  >
+                    <IonIcon icon={addOutline} className="text-base" />
+                    เพิ่มแถวไซส์
+                  </button>
+                )}
               </div>
             ))}
 

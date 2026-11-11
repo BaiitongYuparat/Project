@@ -4,6 +4,7 @@ export const CATEGORY_OPTIONS = [
   { value: "top", label: "Top" },
   { value: "bottom", label: "Bottom" },
   { value: "dress", label: "Dress" },
+  { value: "pajamas", label: "Pajamas (ชุดนอน)" },
   { value: "accessories", label: "Accessories" },
 ];
 

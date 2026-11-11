@@ -12,7 +12,7 @@ const CATEGORIES = ["top", "bottom", "dress"];
 
 // แปลง body -> payload (null = รูปแบบไม่ถูกต้อง)
 const parsePayload = (body: Record<string, unknown>): SizeChartPayload | null => {
-  const { name, gender, entries } = body;
+  const { name, gender, entries, is_freesize } = body;
 
   if (typeof name !== "string" || !name.trim()) return null;
 
@@ -78,6 +78,8 @@ const parsePayload = (body: Record<string, unknown>): SizeChartPayload | null =>
   return {
     name: name.trim(),
     ...(gender ? { gender: String(gender) as "UNISEX" | "MALE" | "FEMALE" } : {}),
+    // Free Size = ไซส์เดียว (ใช้ได้กับทุกหมวด)
+    is_freesize: is_freesize === true,
     entries: normalized,
   };
 };

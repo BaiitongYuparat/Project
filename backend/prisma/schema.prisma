@@ -54,6 +54,13 @@ enum ProductGender {
   FEMALE
 }
 
+// ชนิดรูปของสินค้าแบบชุด (เช่น pajamas): SET = รูปรวมทั้งชุด (รูปหลัก), TOP/BOTTOM = รูปแยกท่อน
+enum ProductPiece {
+  SET
+  TOP
+  BOTTOM
+}
+
 // ประเภทตัวเลือกของสินค้าที่ super admin จัดการค่าได้
 enum ProductOptionType {
   SEASON
@@ -227,6 +234,8 @@ model BrandSizeChart {
   brand_id   String
   name       String
   gender     ProductGender         @default(UNISEX)
+  // ตารางไซส์เดียว (Free Size) — ยอมให้แต่ละ entry มี 0–1 แถว (size = FREESIZE, ตัววัดใส่ได้)
+  is_freesize Boolean              @default(false)
   created_at DateTime              @default(now()) @db.Timestamp(6)
   updated_at DateTime              @updatedAt @db.Timestamp(6)
   brand      Brand                 @relation(fields: [brand_id], references: [id], onDelete: Cascade)
@@ -349,6 +358,7 @@ model ProductImage {
   quality_status ProductImageQualityStatus @default(PENDING)
   quality_reason String?
   view            ImageView
+  piece           ProductPiece?
   s3_key         String
   sort_order     Int                       @default(0)
   uploaded_at    DateTime                  @default(now()) @db.Timestamp(6)
