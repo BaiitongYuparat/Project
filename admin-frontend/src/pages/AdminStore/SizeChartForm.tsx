@@ -3,7 +3,9 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { IonIcon } from "@ionic/react";
 import {
+  addOutline,
   arrowBackOutline,
+  checkmarkOutline,
   gridOutline,
   removeCircleOutline,
 } from "ionicons/icons";
@@ -290,247 +292,281 @@ export default function SizeChartForm() {
 
   return (
     <div className="min-h-screen bg-[#FAF7F0] p-4 sm:p-6 lg:p-8">
-      {/* Header */}
-      <div className="mb-6">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="mb-3 flex items-center gap-2 text-sm text-[#8B806E] hover:text-[#332F29]"
-        >
-          <IonIcon icon={arrowBackOutline} />
-          {fromProducts ? "ย้อนกลับไปกรอกฟอร์มสินค้า" : "ย้อนกลับ"}
-        </button>
+      <div className="mx-auto max-w-3xl">
+        {/* Header */}
+        <div className="mb-6">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="mb-3 flex items-center gap-2 text-sm text-[#8B806E] transition-colors hover:text-[#332F29]"
+          >
+            <IonIcon icon={arrowBackOutline} />
+            {fromProducts ? "ย้อนกลับไปกรอกฟอร์มสินค้า" : "ย้อนกลับ"}
+          </button>
 
-        {fromProducts && (
-          <p className="mb-1 text-xs text-[#6B7A5E]">
-            ข้อมูลฟอร์มสินค้าที่กรอกไว้ถูกเก็บไว้แล้ว — กลับไปแล้วจะได้ฟอร์มเดิมพร้อมเลือกตารางนี้
+          {fromProducts && (
+            <p className="mb-1 text-xs text-[#6B7A5E]">
+              ข้อมูลฟอร์มสินค้าที่กรอกไว้ถูกเก็บไว้แล้ว — กลับไปแล้วจะได้ฟอร์มเดิมพร้อมเลือกตารางนี้
+            </p>
+          )}
+
+          <h1 className="text-2xl font-bold text-[#332F29] sm:text-3xl">
+            {isEdit ? "แก้ไขตารางไซส์" : "เพิ่มตารางไซส์"}
+          </h1>
+
+          <p className="mt-2 text-base text-[#8B806E]">
+            ตั้งชื่อ collection เลือกเพศ แล้วเพิ่มตารางไซส์ในแต่ละหมวดหมู่
           </p>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            {error}
+          </div>
         )}
 
-        <h1 className="text-2xl font-bold text-[#332F29] sm:text-3xl">
-          {isEdit ? "แก้ไขตารางไซส์" : "เพิ่มตารางไซส์"}
-        </h1>
-
-        <p className="mt-2 text-base text-[#8B806E]">
-          ตั้งชื่อ collection เลือกเพศ แล้วเพิ่มตารางไซส์ในแต่ละหมวดหมู่
-        </p>
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-          {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-[#E9DFC9] bg-white text-sm text-[#8B806E]">
-          กำลังโหลด...
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="max-w-3xl space-y-5">
-          {/* Name */}
-          <label className="block rounded-2xl border border-[#E9DFC9] bg-white p-5">
-            <span className="mb-1 block text-sm font-medium text-[#332F29]">
-              ชื่อตาราง <span className="text-red-500">*</span>
-            </span>
-
-            <input
-              type="text"
-              value={form.name}
-              onChange={(event) =>
-                setForm((previous) => ({
-                  ...previous,
-                  name: event.target.value,
-                }))
-              }
-              placeholder="เช่น collection 1, Summer 2026"
-              className="w-full rounded-lg border border-[#E9DFC9] px-3 py-2.5 text-sm outline-none focus:border-[#87947A]"
-            />
-          </label>
-
-          {/* Gender */}
-          <div className="rounded-2xl border border-[#E9DFC9] bg-white p-5">
-            <p className="text-sm font-medium text-[#332F29]">เพศ</p>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {GENDER_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  aria-pressed={form.gender === option.value}
-                  onClick={() =>
-                    setForm((previous) => ({
-                      ...previous,
-                      gender: option.value,
-                    }))
-                  }
-                  className={`rounded-full px-4 py-2 text-sm transition-colors ${
-                    form.gender === option.value
-                      ? "bg-[#87947A] font-medium text-white"
-                      : "bg-[#FCFAF6] text-[#786E5D] hover:bg-[#F8F4EA]"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
+        {loading ? (
+          <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-[#E9DFC9] bg-white text-sm text-[#8B806E]">
+            กำลังโหลด...
           </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Name */}
+            <label className="block rounded-2xl border border-[#E9DFC9] bg-white p-5 shadow-sm transition-colors focus-within:border-[#87947A]">
+              <span className="mb-1 block text-sm font-medium text-[#332F29]">
+                ชื่อตาราง <span className="text-red-500">*</span>
+              </span>
 
-          {/* Categories */}
-          <div className="rounded-2xl border border-[#E9DFC9] bg-white p-5">
-            <p className="text-sm font-medium text-[#332F29]">
-              หมวดหมู่ที่ตารางนี้ครอบคลุม
-            </p>
+              <input
+                type="text"
+                value={form.name}
+                onChange={(event) =>
+                  setForm((previous) => ({
+                    ...previous,
+                    name: event.target.value,
+                  }))
+                }
+                placeholder="เช่น collection 1, Summer 2026"
+                className="w-full rounded-lg border border-[#E9DFC9] px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-[#C4BBA9] focus:border-[#87947A] focus:ring-2 focus:ring-[#87947A]/25"
+              />
+            </label>
 
-            <div className="mt-3 flex flex-wrap gap-2">
-              {CATEGORY_OPTIONS.map((category) => {
-                const active = form.entries.some(
-                  (entry) => entry.category === category,
-                );
+            {/* Gender */}
+            <div className="rounded-2xl border border-[#E9DFC9] bg-white p-5 shadow-sm">
+              <p className="text-sm font-medium text-[#332F29]">เพศ</p>
 
-                return (
-                  <button
-                    key={category}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => toggleCategory(category)}
-                    className={`rounded-full px-4 py-2 text-sm capitalize transition-colors ${
-                      active
-                        ? "bg-[#87947A] font-medium text-white"
-                        : "bg-[#FCFAF6] text-[#786E5D] hover:bg-[#F8F4EA]"
-                    }`}
-                  >
-                    {category}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {GENDER_OPTIONS.map((option) => {
+                  const active = form.gender === option.value;
 
-          {/* Per-category editors */}
-          {form.entries.map((entry) => (
-            <div
-              key={entry.category}
-              className="rounded-2xl border border-[#E9DFC9] bg-white p-5"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="flex items-center gap-2 text-sm font-medium capitalize text-[#332F29]">
-                  <IonIcon icon={gridOutline} />
-                  ตารางไซส์ — {entry.category}
-                </p>
-
-                <button
-                  type="button"
-                  onClick={() => applyStandardTemplate(entry.category)}
-                  className="rounded-lg border border-[#E9DFC9] px-3 py-2 text-xs text-[#6B7A5E] hover:bg-[#F8F4EA]"
-                >
-                  เริ่มจากตาราง standard
-                </button>
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() =>
+                        setForm((previous) => ({
+                          ...previous,
+                          gender: option.value,
+                        }))
+                      }
+                      className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm transition-all ${
+                        active
+                          ? "bg-[#87947A] font-medium text-white shadow-sm"
+                          : "bg-[#FCFAF6] text-[#786E5D] hover:bg-[#F8F4EA]"
+                      }`}
+                    >
+                      <IonIcon
+                        icon={checkmarkOutline}
+                        className={`text-xs transition-opacity ${
+                          active ? "opacity-100" : "hidden"
+                        }`}
+                        aria-hidden
+                      />
+                      {option.label}
+                    </button>
+                  );
+                })}
               </div>
+            </div>
 
-              {/* Rows */}
-              {entry.rows.length > 0 && (
-                <div className="mt-4 overflow-x-auto">
-                  <table className="w-full min-w-[480px] text-left text-sm">
-                    <thead className="text-xs text-[#786E5D]">
-                      <tr>
-                        <th className="px-2 py-2 font-medium">ไซส์</th>
+            {/* Categories */}
+            <div className="rounded-2xl border border-[#E9DFC9] bg-white p-5 shadow-sm">
+              <p className="text-sm font-medium text-[#332F29]">
+                หมวดหมู่ที่ตารางนี้ครอบคลุม
+              </p>
 
-                        {MEASURE_COLUMNS.map((column) => (
-                          <th
-                            key={column.field}
-                            className="px-2 py-2 font-medium"
-                          >
-                            {column.label} (ซม.)
-                          </th>
-                        ))}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {CATEGORY_OPTIONS.map((category) => {
+                  const active = form.entries.some(
+                    (entry) => entry.category === category,
+                  );
 
-                        <th className="px-2 py-2" />
-                      </tr>
-                    </thead>
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => toggleCategory(category)}
+                      className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm capitalize transition-all ${
+                        active
+                          ? "bg-[#87947A] font-medium text-white shadow-sm"
+                          : "bg-[#FCFAF6] text-[#786E5D] hover:bg-[#F8F4EA]"
+                      }`}
+                    >
+                      <IonIcon
+                        icon={checkmarkOutline}
+                        className={`text-xs transition-opacity ${
+                          active ? "opacity-100" : "hidden"
+                        }`}
+                        aria-hidden
+                      />
+                      {category}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-                    <tbody className="divide-y divide-[#F0E8DA]">
-                      {entry.rows.map((row, rowIndex) => (
-                        <tr key={rowIndex}>
-                          <td className="px-2 py-2">
-                            <input
-                              type="text"
-                              value={row.size}
-                              onChange={(event) =>
-                                handleUpdateRow(
-                                  entry.category,
-                                  rowIndex,
-                                  "size",
-                                  event.target.value,
-                                )
-                              }
-                              placeholder="S, M, L..."
-                              className="w-20 rounded-lg border border-[#E9DFC9] px-2 py-1.5 text-sm outline-none focus:border-[#87947A]"
-                            />
-                          </td>
+            {/* Per-category editors */}
+            {form.entries.map((entry) => (
+              <div
+                key={entry.category}
+                className="rounded-2xl border border-[#E9DFC9] bg-white p-5 shadow-sm"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="flex items-center gap-2.5 text-sm font-medium capitalize text-[#332F29]">
+                    <span
+                      className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#FCFAF6] text-[#87947A]"
+                      aria-hidden
+                    >
+                      <IonIcon icon={gridOutline} className="text-base" />
+                    </span>
+                    ตารางไซส์ — {entry.category}
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => applyStandardTemplate(entry.category)}
+                    className="rounded-lg border border-[#E9DFC9] px-3 py-2 text-xs font-medium text-[#6B7A5E] transition-colors hover:border-[#DCCFB8] hover:bg-[#F8F4EA]"
+                  >
+                    เริ่มจากตาราง standard
+                  </button>
+                </div>
+
+                {/* Rows */}
+                {entry.rows.length > 0 && (
+                  <div className="mt-4 overflow-x-auto rounded-xl border border-[#F0E8DA]">
+                    <table className="w-full min-w-[480px] text-left text-sm">
+                      <thead className="bg-[#FCFAF6] text-[11px] uppercase tracking-wide text-[#786E5D]">
+                        <tr>
+                          <th className="px-3 py-2.5 font-semibold">ไซส์</th>
 
                           {MEASURE_COLUMNS.map((column) => (
-                            <td key={column.field} className="px-2 py-2">
+                            <th
+                              key={column.field}
+                              className="px-3 py-2.5 font-semibold"
+                            >
+                              {column.label} (ซม.)
+                            </th>
+                          ))}
+
+                          <th className="px-3 py-2.5" />
+                        </tr>
+                      </thead>
+
+                      <tbody className="divide-y divide-[#F0E8DA]">
+                        {entry.rows.map((row, rowIndex) => (
+                          <tr
+                            key={rowIndex}
+                            className="group/row transition-colors hover:bg-[#FCFAF6]"
+                          >
+                            <td className="px-3 py-2">
                               <input
-                                type="number"
-                                min="0"
-                                step="0.1"
-                                value={row[column.field]}
+                                type="text"
+                                value={row.size}
                                 onChange={(event) =>
                                   handleUpdateRow(
                                     entry.category,
                                     rowIndex,
-                                    column.field,
+                                    "size",
                                     event.target.value,
                                   )
                                 }
-                                className="w-20 rounded-lg border border-[#E9DFC9] px-2 py-1.5 text-sm outline-none focus:border-[#87947A]"
+                                placeholder="S, M, L..."
+                                className="w-20 rounded-lg border border-[#E9DFC9] bg-white px-2 py-1.5 text-sm outline-none transition-colors placeholder:text-[#C4BBA9] focus:border-[#87947A] focus:ring-2 focus:ring-[#87947A]/25"
                               />
                             </td>
-                          ))}
 
-                          <td className="px-2 py-2 text-right">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleRemoveRow(entry.category, rowIndex)
-                              }
-                              className="rounded-lg p-2 text-red-500 hover:bg-red-50"
-                              aria-label="ลบแถวไซส์"
-                            >
-                              <IonIcon icon={removeCircleOutline} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                            {MEASURE_COLUMNS.map((column) => (
+                              <td key={column.field} className="px-3 py-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.1"
+                                  value={row[column.field]}
+                                  onChange={(event) =>
+                                    handleUpdateRow(
+                                      entry.category,
+                                      rowIndex,
+                                      column.field,
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="—"
+                                  className="w-20 rounded-lg border border-[#E9DFC9] bg-white px-2 py-1.5 text-sm outline-none transition-colors placeholder:text-[#C4BBA9] focus:border-[#87947A] focus:ring-2 focus:ring-[#87947A]/25"
+                                />
+                              </td>
+                            ))}
 
-              <button
-                type="button"
-                onClick={() => handleAddRow(entry.category)}
-                className="mt-3 rounded-lg border border-dashed border-[#DCCFB8] px-3 py-2 text-sm text-[#6B7A5E] hover:bg-[#F8F4EA]"
-              >
-                + เพิ่มแถวไซส์
-              </button>
+                            <td className="px-3 py-2 text-right">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleRemoveRow(entry.category, rowIndex)
+                                }
+                                className="rounded-lg p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-500 focus-visible:text-red-500 md:opacity-0 md:group-hover/row:opacity-100 md:focus-visible:opacity-100"
+                                aria-label="ลบแถวไซส์"
+                              >
+                                <IonIcon icon={removeCircleOutline} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => handleAddRow(entry.category)}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-[#DCCFB8] py-2.5 text-sm font-medium text-[#6B7A5E] transition-colors hover:bg-[#F8F4EA]"
+                >
+                  <IonIcon icon={addOutline} className="text-base" />
+                  เพิ่มแถวไซส์
+                </button>
+              </div>
+            ))}
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 pb-4">
+              <Button type="button" onClick={handleBack} variant="outline">
+                ยกเลิก
+              </Button>
+
+              <Button type="submit" disabled={saving} variant="secondary">
+                {saving
+                  ? "กำลังบันทึก..."
+                  : isEdit
+                    ? "บันทึกการแก้ไข"
+                    : "สร้างตาราง"}
+              </Button>
             </div>
-          ))}
-
-          {/* Footer */}
-          <div className="flex justify-end gap-3 pb-4">
-            <Button type="button" onClick={handleBack} variant="danger">
-              ยกเลิก
-            </Button>
-
-            <Button type="submit" disabled={saving} variant="secondary">
-              {saving ? "กำลังบันทึก..." : isEdit ? "บันทึกการแก้ไข" : "สร้างตาราง"}
-            </Button>
-          </div>
-        </form>
-      )}
+          </form>
+        )}
+      </div>
     </div>
   );
 }
