@@ -24,6 +24,7 @@ const categories = [
   { value: "bottom", label: "กางเกง" },
   { value: "dress", label: "เดรส" },
   { value: "skirt", label: "กระโปรง" },
+  { value: "pajamas", label: "ชุดนอน" },
   { value: "accessories", label: "กระเป๋า" },
 ];
 

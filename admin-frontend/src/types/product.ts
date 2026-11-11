@@ -2,6 +2,9 @@ export type ImageView = "FRONT" | "BACK" | "LEFT" | "RIGHT";
 
 export type ProductGender = "UNISEX" | "MALE" | "FEMALE";
 
+// ชนิดรูปของสินค้าแบบชุด (เช่น pajamas): SET = รูปรวมทั้งชุด (รูปหลัก)
+export type ProductPiece = "SET" | "TOP" | "BOTTOM";
+
 export type QualityStatus = "PENDING" | "PASSED" | "FAILED";
 
 export interface ProductImage {
@@ -13,6 +16,7 @@ export interface ProductImage {
   quality_status: QualityStatus;
   quality_reason?: string | null;
   view: ImageView;
+  piece?: ProductPiece | null;
   // FAILED เพราะระบบตรวจล้มเหลว (AI error / ปิดบริการ) ไม่ใช่รูปไม่ผ่านจริง
   quality_error?: boolean;
 }
@@ -55,6 +59,8 @@ export interface ReferencedSizeChart {
   id: string;
   name: string;
   gender: ProductGender;
+  // Free Size = ไซส์เดียว (แต่ละ entry มี 0–1 แถว, size = FREESIZE)
+  is_freesize?: boolean;
   entries: BrandSizeChartEntry[];
 }
 
@@ -74,6 +80,8 @@ export interface SizeChartEntryForm {
 export interface SizeChartForm {
   name: string;
   gender: ProductGender;
+  // Free Size = ไซส์เดียว (ใช้ได้กับทุกหมวด)
+  is_freesize: boolean;
   entries: SizeChartEntryForm[];
 }
 
@@ -127,6 +135,8 @@ export interface Product {
 export interface ProductImageForm {
   file: File;
   view: ImageView;
+  // ชนิดรูป (ใช้กับสินค้าแบบชุด เช่น pajamas)
+  piece?: ProductPiece | null;
 }
 
 // สีในฟอร์ม — id = null คือสีใหม่, legacy = กลุ่มรูปเดิมที่ยังไม่มีสี

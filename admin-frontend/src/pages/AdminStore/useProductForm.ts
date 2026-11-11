@@ -17,6 +17,7 @@ import {
   updateProduct,
 } from "../../services/ShopAdmin/productService";
 import {
+  chartMatchesCategory,
   createBrandSizeChart,
   getBrandSizeCharts,
   sortChartsForProduct,
@@ -33,6 +34,7 @@ import type {
   ProductFormDraft,
   ProductGender,
   ProductOptions,
+  ProductPiece,
   SizeChartForm,
   SizeChartRowForm,
   SizeChartTemplate,
@@ -185,13 +187,23 @@ const pickBestChart = (
   if (!category) return sorted[0] ?? null;
 
   return (
-    sorted.find((chart) =>
-      chart.entries.some(
-        (entry) => entry.category === category && entry.rows.length > 0,
-      ),
-    ) ?? null
+    sorted.find((chart) => chartMatchesCategory(chart, category)) ?? null
   );
 };
+
+// หมวดที่สินค้าต้องใช้ entry จากตาราง (pajamas = top + bottom)
+export const requiredChartCategories = (category: string): string[] =>
+  category === "pajamas" ? ["top", "bottom"] : [category];
+
+// รวมแถวของ entry ที่ต้องใช้ — คืน null ถ้าขาดส่วนใดส่วนหนึ่งหรือไม่มีแถว
+// ไม่ตรวจเงื่อนไขซ้ำ — ให้ผู้เรียกเช็ก chartMatchesCategory ก่อน
+const getChartRowsForCategory = (
+  chart: BrandSizeChart,
+  category: string,
+): BrandSizeChartEntryRow[] =>
+  requiredChartCategories(category).flatMap(
+    (cat) => chart.entries.find((entry) => entry.category === cat)?.rows ?? [],
+  );
 
 // สินค้าจาก DB → ฟอร์ม (โหมดแก้ไข)
 const productToForm = (product: Product): ProductFormData => {
@@ -535,13 +547,14 @@ export function useProductForm(
     [charts, form.size_chart_id],
   );
 
-  const selectedEntry = useMemo(
-    () =>
-      selectedChart?.entries.find(
-        (entry) => entry.category === form.category,
-      ) ?? null,
-    [selectedChart, form.category],
-  );
+  const selectedEntry = useMemo(() => {
+  if (!selectedChart) return null;
+  if (!chartMatchesCategory(selectedChart, form.category)) return null;
+
+  const rows = getChartRowsForCategory(selectedChart, form.category);
+
+  return { category: form.category, rows };
+}, [selectedChart, form.category]);
 
   // ---------- handlers (ฟอร์ม) ----------
 
@@ -678,26 +691,25 @@ export function useProductForm(
     });
   };
 
-  const handleOverrideFromChart = (chartId: string) => {
-    const chart = charts.find((item) => item.id === chartId);
+const handleOverrideFromChart = (chartId: string) => {
+  const chart = charts.find((item) => item.id === chartId);
 
-    if (!chart) return;
+  if (!chart || !chartMatchesCategory(chart, form.category)) return;
 
-    const entry = chart.entries.find(
-      (item) => item.category === form.category,
-    );
+  const rows = getChartRowsForCategory(chart, form.category);
 
-    if (!entry || entry.rows.length === 0) return;
+  // freesize ที่ไม่มีแถว → ไม่มีอะไรให้คัดลอก
+  if (rows.length === 0) return;
 
-    sizeChartTouched.current = true;
-    setActiveTemplateId(null);
+  sizeChartTouched.current = true;
+  setActiveTemplateId(null);
 
-    setForm((previous) => ({
-      ...previous,
-      size_chart_id: null,
-      size_chart: chartRowsToFormRows(entry.rows),
-    }));
-  };
+  setForm((previous) => ({
+    ...previous,
+    size_chart_id: null,
+    size_chart: chartRowsToFormRows(rows),
+  }));
+};
 
   // ---------- inline สร้างตารางกลาง (step 2) ----------
 
@@ -716,7 +728,17 @@ export function useProductForm(
       }
 
       for (const entry of chartForm.entries) {
-        if (!entry.rows.some((row) => row.size.trim())) {
+        const filledRows = entry.rows.filter((row) => row.size.trim());
+
+        // Free Size = ไซส์เดียว → แถวเดียวเท่านั้น (ตัววัดว่างได้)
+        if (chartForm.is_freesize && filledRows.length > 1) {
+          return {
+            ok: false,
+            error: `หมวด "${entry.category}" แบบ Free Size ต้องมีไซส์เดียว`,
+          };
+        }
+
+        if (!chartForm.is_freesize && filledRows.length === 0) {
           return {
             ok: false,
             error: `หมวด "${entry.category}" ต้องมีไซส์อย่างน้อย 1 แถว`,
@@ -810,26 +832,59 @@ export function useProductForm(
 
     setError("");
 
+    setForm((previous) => {
+      // pajamas: รูปแรกของสินค้า = รูปรวมทั้งชุด (SET) อัตโนมัติ
+      const isPajamas = previous.category === "pajamas";
+      const hasSetImage = previous.colors.some(
+        (color) =>
+          color.new_images.some((image) => image.piece === "SET") ||
+          color.existing_images.some((image) => image.piece === "SET"),
+      );
+      const defaultPiece: ProductPiece | null =
+        isPajamas && !hasSetImage ? "SET" : null;
+
+      return {
+        ...previous,
+        colors: previous.colors.map((color, index) => {
+          if (index !== colorIndex) return color;
+
+          const oldImage = color.existing_images.find(
+            (image) => image.view === view,
+          );
+
+          const removedImageIds = oldImage
+            ? [...new Set([...color.removed_image_ids, oldImage.id])]
+            : color.removed_image_ids;
+
+          return {
+            ...color,
+            removed_image_ids: removedImageIds,
+            new_images: [
+              ...color.new_images.filter((image) => image.view !== view),
+              { file, view, piece: defaultPiece },
+            ],
+          };
+        }),
+      };
+    });
+  };
+
+  // เปลี่ยนชนิดรูปของรูปใหม่ (ใช้กับสินค้าแบบชุด เช่น pajamas)
+  const handleColorImagePieceChange = (
+    colorIndex: number,
+    view: ProductColorForm["new_images"][number]["view"],
+    piece: ProductPiece,
+  ) => {
     setForm((previous) => ({
       ...previous,
       colors: previous.colors.map((color, index) => {
         if (index !== colorIndex) return color;
 
-        const oldImage = color.existing_images.find(
-          (image) => image.view === view,
-        );
-
-        const removedImageIds = oldImage
-          ? [...new Set([...color.removed_image_ids, oldImage.id])]
-          : color.removed_image_ids;
-
         return {
           ...color,
-          removed_image_ids: removedImageIds,
-          new_images: [
-            ...color.new_images.filter((image) => image.view !== view),
-            { file, view },
-          ],
+          new_images: color.new_images.map((image) =>
+            image.view === view ? { ...image, piece } : image,
+          ),
         };
       }),
     }));
@@ -881,34 +936,30 @@ export function useProductForm(
       }
 
       if (target === 1) {
-        if (requiresSizeChart(form.category)) {
-          if (form.size_chart_id) {
-            const chart = charts.find(
-              (item) => item.id === form.size_chart_id,
-            );
+  if (requiresSizeChart(form.category)) {
+    if (form.size_chart_id) {
+      const chart = charts.find((item) => item.id === form.size_chart_id);
 
-            if (!chart) {
-              return "ตารางไซส์ที่เลือกไม่ถูกต้อง โปรดเลือกใหม่";
-            }
-
-            const entry = chart.entries.find(
-              (item) => item.category === form.category,
-            );
-
-            if (!entry || entry.rows.length === 0) {
-              return `ตารางไซส์ที่เลือกไม่มีข้อมูลสำหรับหมวด "${form.category}"`;
-            }
-          } else {
-            const hasRows = form.size_chart.some((row) => row.size.trim());
-
-            if (!hasRows) {
-              return "ต้องมีตารางไซส์อย่างน้อย 1 แถวสำหรับหมวดหมู่นี้";
-            }
-          }
-        }
-
-        return null;
+      if (!chart) {
+        return "ตารางไซส์ที่เลือกไม่ถูกต้อง โปรดเลือกใหม่";
       }
+
+      if (!chartMatchesCategory(chart, form.category)) {
+        return form.category === "pajamas"
+          ? "ชุดนอนต้องใช้ตารางที่มีทั้งท่อนบน (top) และท่อนล่าง (bottom) ครบ"
+          : `ตารางไซส์ที่เลือกไม่มีข้อมูลสำหรับหมวด "${form.category}"`;
+      }
+    } else {
+      const hasRows = form.size_chart.some((row) => row.size.trim());
+
+      if (!hasRows) {
+        return "ต้องมีตารางไซส์อย่างน้อย 1 แถวสำหรับหมวดหมู่นี้";
+      }
+    }
+  }
+
+  return null;
+}
 
       if (target === 2) {
         // ต้องมีอย่างน้อย 1 สี
@@ -1096,6 +1147,7 @@ export function useProductForm(
     handleUpdateColor,
     handleRemoveColor,
     handleColorImageChange,
+    handleColorImagePieceChange,
     handleRemoveExistingImage,
     handleRemoveNewImage,
     // บันทึก

@@ -10,10 +10,13 @@ import {
 import type {
   ImageView,
   ProductColorForm,
+  ProductPiece,
 } from "../../../types/product";
 
 interface ProductColorsEditorProps {
   colors: ProductColorForm[];
+  // หมวดสินค้า — ใช้แสดงตัวเลือกชนิดรูปของสินค้าแบบชุด เช่น pajamas
+  category?: string;
   onAddColor: () => void;
   onUpdateColor: (index: number, patch: Partial<ProductColorForm>) => void;
   onRemoveColor: (index: number) => void;
@@ -21,6 +24,11 @@ interface ProductColorsEditorProps {
     colorIndex: number,
     view: ImageView,
     file: File | undefined,
+  ) => void;
+  onImagePieceChange?: (
+    colorIndex: number,
+    view: ImageView,
+    piece: ProductPiece,
   ) => void;
   onRemoveExistingImage: (colorIndex: number, imageId: string) => void;
   onRemoveNewImage: (colorIndex: number, imageIndex: number) => void;
@@ -49,10 +57,12 @@ const hasFrontImage = (color: ProductColorForm) => {
 // ส่วนแก้ไขสี & รูปสินค้า (เดิมอยู่ใน modal — ตอนนี้ฝังใน step 3 ของ wizard)
 export default function ProductColorsEditor({
   colors,
+  category,
   onAddColor,
   onUpdateColor,
   onRemoveColor,
   onImageChange,
+  onImagePieceChange,
   onRemoveExistingImage,
   onRemoveNewImage,
 }: ProductColorsEditorProps) {
@@ -99,6 +109,7 @@ export default function ProductColorsEditor({
         url: previews.get(image.file),
         isNew: true,
         newImageIndex,
+        piece: image.piece ?? null,
         existingImage: null as (typeof color.existing_images)[number] | null,
         status: "PENDING",
       };
@@ -114,6 +125,7 @@ export default function ProductColorsEditor({
         url: existingImage.image_url,
         isNew: false,
         newImageIndex: -1,
+        piece: existingImage.piece ?? null,
         existingImage,
         status: existingImage.quality_status,
       };
@@ -250,6 +262,13 @@ export default function ProductColorsEditor({
                     ต้องมีรูปภาพด้านหน้าอย่างน้อย 1 รูปต่อสี
                     เพื่อใช้งาน Virtual Try-On
                   </p>
+
+                  {category === "pajamas" && (
+                    <p className="mt-1 text-xs text-[#6B7A5E]">
+                      ชุดนอน: รูปแรกควรเป็น "รูปรวมทั้งชุด" (รูปหลัก)
+                      ตามด้วยรูปแยกท่อนบน/ท่อนล่าง — เลือกชนิดรูปได้ใต้รูปแต่ละรูป
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -318,6 +337,27 @@ export default function ProductColorsEditor({
                                 />
                               </label>
                             </div>
+
+                            {category === "pajamas" && image.isNew && (
+                              <select
+                                value={image.piece ?? ""}
+                                onChange={(event) =>
+                                  onImagePieceChange?.(
+                                    activeColorIndex,
+                                    view.key,
+                                    event.target.value as ProductPiece,
+                                  )
+                                }
+                                className="mt-2 w-full rounded-lg border border-[#E9DFC9] px-2 py-1.5 text-xs outline-none focus:border-[#87947A]"
+                              >
+                                <option value="">ไม่ระบุชนิดรูป</option>
+                                <option value="SET">
+                                  รูปรวมทั้งชุด (รูปหลัก)
+                                </option>
+                                <option value="TOP">รูปท่อนบน</option>
+                                <option value="BOTTOM">รูปท่อนล่าง</option>
+                              </select>
+                            )}
 
                             {image.status === "FAILED" &&
                               !image.isNew &&

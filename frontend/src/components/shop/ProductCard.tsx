@@ -17,6 +17,7 @@ const categoryLabel: Record<string, string> = {
   bottom: "กางเกง",
   dress: "เดรส",
   skirt: "กระโปรง",
+  pajamas: "ชุดนอน",
   accessories: "กระเป๋า",
   accessory: "กระเป๋า",
 };

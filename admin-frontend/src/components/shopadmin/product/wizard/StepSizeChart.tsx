@@ -31,6 +31,7 @@ const EMPTY_ROW: SizeChartRowForm = {
 const emptyChartForm = (gender: ProductGender): SizeChartForm => ({
   name: "",
   gender,
+  is_freesize: false,
   entries: [],
 });
 
@@ -45,6 +46,7 @@ export default function StepSizeChart({ ctl }: StepSizeChartProps) {
     top: "Top",
     bottom: "Bottom",
     dress: "Dress",
+    pajamas: "Pajamas (ชุดนอน — รวมท่อนบน+ท่อนล่าง)",
   };
 
   // ---------- inline creator handlers ----------
@@ -108,6 +110,53 @@ export default function StepSizeChart({ ctl }: StepSizeChartProps) {
           : entry,
       ),
     }));
+  };
+
+  // เปิด/ปิดโหมด Free Size (ไซส์เดียว) — ใช้ได้กับทุกหมวด ไม่ใช่เฉพาะ pajamas
+  // เปิดแล้วแต่ละหมวดเหลือแถวเดียว size = FREESIZE (ตัววัดยังกรอกได้)
+  const handleToggleFreesize = () => {
+    setChartForm((previous) => {
+      const nextFreesize = !previous.is_freesize;
+
+      return {
+        ...previous,
+        is_freesize: nextFreesize,
+        // เปิดโหมด → ทุกหมวดเหลือแถวเดียว (เก็บตัววัดของแถวแรกไว้)
+        entries: nextFreesize
+          ? previous.entries.map((entry) => ({
+              ...entry,
+              rows: [
+                {
+                  ...(entry.rows[0] ?? { ...EMPTY_ROW }),
+                  size: "FREESIZE",
+                },
+              ],
+            }))
+          : previous.entries,
+      };
+    });
+  };
+
+  // preset: เปิดหมวด pajamas — แต่ตาราง pajamas ต้องมี entry ครบทั้ง top + bottom
+  const handlePresetPajamas = () => {
+    setChartForm((previous) => {
+      let nextEntries = [...previous.entries];
+
+      for (const category of ["top", "bottom"]) {
+        if (!nextEntries.some((entry) => entry.category === category)) {
+          nextEntries.push({
+            category,
+            rows: [
+              previous.is_freesize
+                ? { ...EMPTY_ROW, size: "FREESIZE" }
+                : { ...EMPTY_ROW },
+            ],
+          });
+        }
+      }
+
+      return { ...previous, entries: nextEntries };
+    });
   };
 
   // เริ่มจากตาราง standard (preset จาก templates ของแพลตฟอร์ม)
@@ -221,12 +270,13 @@ export default function StepSizeChart({ ctl }: StepSizeChartProps) {
                   <td className="px-2 py-2">
                     <input
                       type="text"
-                      value={row.size}
+                      value={chartForm.is_freesize ? "FREESIZE" : row.size}
                       onChange={(event) =>
                         onUpdate(rowIndex, "size", event.target.value)
                       }
+                      disabled={chartForm.is_freesize}
                       placeholder="S, M, L..."
-                      className="w-20 rounded-lg border border-[#E9DFC9] px-2 py-1.5 text-sm outline-none focus:border-[#87947A]"
+                      className="w-20 rounded-lg border border-[#E9DFC9] px-2 py-1.5 text-sm outline-none focus:border-[#87947A] disabled:bg-[#FCFAF6] disabled:text-[#786E5D]"
                     />
                   </td>
 
@@ -430,6 +480,20 @@ export default function StepSizeChart({ ctl }: StepSizeChartProps) {
                 </button>
               ))}
             </div>
+
+            {/* Free Size — ไซส์เดียว (ใช้ได้กับทุกหมวด) */}
+            <label className="mt-3 flex w-fit cursor-pointer items-center gap-2.5 rounded-xl bg-[#FCFAF6] px-3.5 py-2.5 text-sm text-[#332F29]">
+              <input
+                type="checkbox"
+                checked={chartForm.is_freesize}
+                onChange={handleToggleFreesize}
+                className="h-4 w-4 accent-[#87947A]"
+              />
+              <span className="font-medium">Free Size (ไซส์เดียว)</span>
+              <span className="text-xs text-[#8B806E]">
+                แต่ละหมวดเหลือแถวเดียว ชื่อ "FREESIZE" — ตัววัดยังกรอกได้
+              </span>
+            </label>
           </div>
 
           {/* หมวดหมู่ */}
@@ -461,6 +525,14 @@ export default function StepSizeChart({ ctl }: StepSizeChartProps) {
                 );
               })}
             </div>
+
+            <button
+              type="button"
+              onClick={handlePresetPajamas}
+              className="mt-3 rounded-lg border border-[#DCCFB8] px-3 py-2 text-xs font-medium text-[#6B7A5E] transition-colors hover:bg-[#F8F4EA]"
+            >
+              + ตาราง pajamas (เปิด top + bottom ครบทั้งคู่)
+            </button>
           </div>
 
           {/* ตารางต่อหมวด */}

@@ -11,10 +11,12 @@ export default function StepImages({ ctl }: StepImagesProps) {
     <div className="space-y-4">
       <ProductColorsEditor
         colors={ctl.form.colors}
+        category={ctl.form.category}
         onAddColor={ctl.handleAddColor}
         onUpdateColor={ctl.handleUpdateColor}
         onRemoveColor={ctl.handleRemoveColor}
         onImageChange={ctl.handleColorImageChange}
+        onImagePieceChange={ctl.handleColorImagePieceChange}
         onRemoveExistingImage={ctl.handleRemoveExistingImage}
         onRemoveNewImage={ctl.handleRemoveNewImage}
       />

@@ -29,6 +29,7 @@ export const getBrandSizeChartById = async (
 const toPayload = (form: SizeChartForm) => ({
   name: form.name,
   gender: form.gender,
+  is_freesize: form.is_freesize === true,
   entries: form.entries.map((entry) => ({
     category: entry.category,
     rows: entry.rows.map((row) => ({
@@ -78,6 +79,32 @@ export const entryRowsToFormRows = (
     length: row.length === null ? "" : String(row.length),
   }));
 
+// helper: ตารางมี entry ของหมวดนั้น (พร้อมแถว) หรือไม่
+const chartHasCategory = (chart: BrandSizeChart, category: string) =>
+  chart.entries.some(
+    (entry) => entry.category === category && entry.rows.length > 0,
+  );
+
+// pajamas = สินค้า 1 ชุด → ตารางต้องมี entry ครบทั้งท่อนบน (top) และท่อนล่าง (bottom)
+// freesize = แถวอาจว่าง (0 แถว) ได้ — ขอแค่ entry มีอยู่
+export const chartMatchesCategory = (chart: BrandSizeChart, category: string) => {
+  const hasCategory = (cat: string) =>
+    chart.entries.some((entry) => entry.category === cat);
+
+  if (category === "pajamas") {
+    return chart.is_freesize
+      ? hasCategory("top") && hasCategory("bottom")
+      : hasCategory("top") &&
+          hasCategory("bottom") &&
+          chartHasCategory(chart, "top") &&
+          chartHasCategory(chart, "bottom");
+  }
+
+  return chart.is_freesize
+    ? hasCategory(category)
+    : chartHasCategory(chart, category);
+};
+
 // helper: เรียงตารางให้ตัวที่ตรงเพศ/category ขึ้นก่อน (ตัวช่วยกรอง ไม่ใช่ข้อบังคับ)
 export const sortChartsForProduct = (
   charts: BrandSizeChart[],
@@ -90,12 +117,7 @@ export const sortChartsForProduct = (
     if (chart.gender === gender) value += 2;
     else if (chart.gender === "UNISEX") value += 1;
 
-    if (
-      category &&
-      chart.entries.some(
-        (entry) => entry.category === category && entry.rows.length > 0,
-      )
-    ) {
+    if (category && chartMatchesCategory(chart, category)) {
       value += 4;
     }
 

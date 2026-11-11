@@ -123,6 +123,29 @@ const standardTemplates: SeedTemplate[] = [
       { size: "XXL", waist: 100, hips: 122, length: 109 },
     ],
   },
+  // pajamas = สินค้า 1 ชุด → ร้านใช้ template คู่ top + bottom สร้างตารางเดียวรองรับทั้งชุด
+  {
+    name: "Standard Unisex — Pajamas (Top)",
+    gender: "UNISEX",
+    category: "top",
+    rows: [
+      { size: "S", chest: 90, waist: 76, length: 67 },
+      { size: "M", chest: 96, waist: 82, length: 69 },
+      { size: "L", chest: 102, waist: 88, length: 71 },
+      { size: "XL", chest: 108, waist: 94, length: 73 },
+    ],
+  },
+  {
+    name: "Standard Unisex — Pajamas (Bottom)",
+    gender: "UNISEX",
+    category: "bottom",
+    rows: [
+      { size: "S", waist: 76, hips: 98, length: 99 },
+      { size: "M", waist: 82, hips: 104, length: 101 },
+      { size: "L", waist: 88, hips: 110, length: 103 },
+      { size: "XL", waist: 94, hips: 116, length: 105 },
+    ],
+  },
 ];
 
 const seasonOptions = [
@@ -139,6 +162,7 @@ const occasionOptions = [
   "Party",
   "Travel",
   "Sport",
+  "ชุดนอน",
 ];
 
 async function seedSizeChartTemplates() {

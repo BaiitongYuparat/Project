@@ -13,6 +13,7 @@ const publicProductImageSelect = {
     id: true,
     s3_key: true,
     sort_order: true,
+    piece: true,
     view:true,
   },
   orderBy: [{ sort_order: "asc" }, { id: "asc" }],
@@ -25,6 +26,7 @@ const shopProductImageSelect = {
     color_id: true,
     s3_key: true,
     sort_order: true,
+    piece: true,
     view: true,
     quality_status: true,
     quality_reason: true,
@@ -349,6 +351,8 @@ type ProductImageInput = {
   s3_key: string;
   sort_order: number;
   view: "FRONT" | "BACK" | "LEFT" | "RIGHT";
+  // ชนิดรูปของสินค้าแบบชุด (เช่น pajamas): SET = รูปรวมทั้งชุด (รูปหลัก)
+  piece?: "SET" | "TOP" | "BOTTOM" | null;
 };
 
 type SizeChartRowInput = {
@@ -451,6 +455,7 @@ export const createProduct = async (
             s3_key: image.s3_key,
             sort_order: image.sort_order,
             view: image.view,
+            piece: image.piece ?? null,
           },
         });
       }
@@ -519,7 +524,7 @@ export const updateProductWithImages = async (
     async (tx) => {
     assertOwnKeys(
       brandId,
-      newImages.map(({ color_index, ...image }) => image)
+      newImages.map(({ color_index, piece, ...image }) => image)
     );
     // Lock สินค้าไว้ ป้องกันการแก้ไขพร้อมกัน
     const locked = await tx.$queryRaw<{ id: string }[]>`
@@ -701,6 +706,7 @@ export const updateProductWithImages = async (
           s3_key: image.s3_key,
           sort_order: startOrder + index,
           view: image.view,
+          piece: image.piece ?? null,
         },
       });
 

@@ -183,6 +183,10 @@ type ProductGenderValue = (typeof GENDERS)[number];
 const VIEWS = ["FRONT", "BACK", "LEFT", "RIGHT"] as const;
 type ViewValue = (typeof VIEWS)[number];
 
+// ชนิดรูปของสินค้าแบบชุด (เช่น pajamas): SET = รูปรวมทั้งชุด (รูปหลัก), TOP/BOTTOM = รูปแยกท่อน
+const PIECES = ["SET", "TOP", "BOTTOM"] as const;
+type PieceValue = (typeof PIECES)[number];
+
 const parseGender = (raw: unknown): ProductGenderValue | null => {
   if (raw === undefined || raw === null || raw === "") return "UNISEX";
 
@@ -328,6 +332,33 @@ const parseViews = (raw: unknown): ViewValue[] | null => {
   return list as ViewValue[];
 };
 
+// pieces: ชนิดรูปของแต่ละไฟล์ (parallel array กับ files/views) — optional, ไม่ส่ง = ทุกรูปไม่ระบุ
+const parsePieces = (
+  raw: unknown,
+  fileCount: number
+): (PieceValue | null)[] | null => {
+  if (raw === undefined || raw === null || raw === "") {
+    return Array.from({ length: fileCount }, () => null);
+  }
+
+  const list = Array.isArray(raw) ? raw : [raw];
+
+  if (list.length !== fileCount) return null;
+
+  // FormData ส่งค่าว่างมาได้ = ไม่ระบุชนิดรูป
+  const normalized = list.map((piece) => (piece === "" ? null : piece));
+
+  if (
+    !normalized.every(
+      (piece) => piece === null || PIECES.includes(piece as PieceValue)
+    )
+  ) {
+    return null;
+  }
+
+  return normalized as (PieceValue | null)[];
+};
+
 // color_indexes: ตำแหน่งสีของแต่ละไฟล์ (parallel array กับ files/views)
 const parseColorIndexes = (
   raw: unknown,
@@ -384,6 +415,7 @@ export const createProductController = async (
       colors,
       views: rawViews,
       color_indexes,
+      pieces,
     } = req.body;
 
     if (
@@ -496,6 +528,31 @@ export const createProductController = async (
       });
     }
 
+    // pieces: ชนิดรูป (optional — ใช้กับสินค้าแบบชุด เช่น pajamas)
+    let parsedPieces = parsePieces(pieces, files.length);
+
+    if (!parsedPieces) {
+      return res.status(400).json({
+        message: "IMAGE_PIECE_COUNT_MISMATCH",
+      });
+    }
+
+    // pajamas = สินค้า 1 ชุด → ต้องมีรูปรวมทั้งชุด (SET) อย่างน้อย 1 รูป
+    // ถ้าไม่ระบุ pieces มาเลย ถือว่ารูปแรกเป็นรูปชุด
+    if (category.trim() === "pajamas") {
+      if (!parsedPieces.some((piece) => piece === "SET")) {
+        if (parsedPieces.every((piece) => piece === null)) {
+          parsedPieces = parsedPieces.map((piece, index) =>
+            index === 0 ? "SET" : piece
+          );
+        } else {
+          return res.status(400).json({
+            message: "สินค้าชุดนอนต้องมีรูปรวมทั้งชุดอย่างน้อย 1 รูป",
+          });
+        }
+      }
+    }
+
     const colorIndexes = parseColorIndexes(
       color_indexes,
       files.length,
@@ -535,6 +592,7 @@ export const createProductController = async (
             s3_key: file.key,
             sort_order: order++,
             view: views[index],
+            piece: parsedPieces[index],
           })),
       };
     });
@@ -649,6 +707,7 @@ export const updateProductController = async (
       colors,
       views: rawViews,
       color_indexes,
+      pieces,
       remove_color_ids,
     } = req.body;
 
@@ -824,6 +883,21 @@ export const updateProductController = async (
       });
     }
 
+    // pieces: ชนิดรูป (optional — ใช้กับสินค้าแบบชุด เช่น pajamas)
+    let parsedPieces: (PieceValue | null)[] = [];
+
+    if (files.length > 0) {
+      const result = parsePieces(pieces, files.length);
+
+      if (!result) {
+        return res.status(400).json({
+          message: "IMAGE_PIECE_COUNT_MISMATCH",
+        });
+      }
+
+      parsedPieces = result;
+    }
+
     let colorIndexes: number[] = [];
 
     if (files.length > 0) {
@@ -991,6 +1065,7 @@ export const updateProductController = async (
           sort_order: index,
           view: views![index],
           color_index: colorIndexes[index],
+          piece: parsedPieces[index],
         })),
         colors: parsedColors ?? [],
         removeImageIds,
