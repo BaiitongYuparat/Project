@@ -214,7 +214,7 @@ export const updateBrandStatus = async (req: Request, res: Response) => {
     const result = await prisma.$transaction(async (tx) => {
       const brand = await tx.brand.findUnique({
         where: { id },
-        select: { id: true, email: true, status: true },
+        select: { id: true, email: true, owner_name: true, status: true },
       });
       if (!brand) return null;
 
@@ -237,22 +237,26 @@ export const updateBrandStatus = async (req: Request, res: Response) => {
       let ownerLinked = false;
 
       if (status === "APPROVED" && brand.email) {
-        // หา user จากอีเมลที่ใช้สมัครร้าน
-        const user = await tx.user.findUnique({
+        // สร้าง/หาบัญชี Admin จากอีเมลที่ใช้สมัครร้าน (เจ้าของร้านจะ login ฝั่งผู้ดูแลด้วยอีเมลนี้)
+        const admin = await tx.admin.upsert({
           where: { email: brand.email },
-          select: { id: true },
+          update: {},
+          create: {
+            email: brand.email,
+            name: brand.owner_name,
+            role: "SHOP_ADMIN",
+          },
         });
 
-        if (user) {
-          await tx.brandMember.upsert({
-            where: {
-              brand_id_user_id: { brand_id: brand.id, user_id: user.id },
-            },
-            update: { role: "OWNER" },
-            create: { brand_id: brand.id, user_id: user.id, role: "OWNER" },
-          });
-          ownerLinked = true;
-        }
+        // ผูกเป็น OWNER ของร้าน
+        await tx.brandMember.upsert({
+          where: {
+            brand_id_admin_id: { brand_id: brand.id, admin_id: admin.id },
+          },
+          update: { role: "OWNER" },
+          create: { brand_id: brand.id, admin_id: admin.id, role: "OWNER" },
+        });
+        ownerLinked = true;
       }
 
       return { updatedBrand, ownerLinked };
@@ -273,12 +277,12 @@ export const updateBrandStatus = async (req: Request, res: Response) => {
 
 export const checkBrandAccess = async (req: Request, res: Response) => {
   const slugParam = req.params.slug;
-  const userId = req.user?.id;
-  const userRole = req.user?.role;
+  const adminId = req.admin?.id;
+  const adminRole = req.admin?.role;
 
   try {
-    // ตรวจการ login
-    if (!userId || !userRole) {
+    // ตรวจการ login (ฝั่งผู้ดูแล)
+    if (!adminId || !adminRole) {
       return res.status(401).json({
         error: "Unauthorized",
       });
@@ -294,7 +298,7 @@ export const checkBrandAccess = async (req: Request, res: Response) => {
     // เรียกใช้ Service
     const result = await getBrandAccess(
       slugParam,
-      userId,
+      adminId,
     );
 
     return res.status(200).json({
@@ -325,7 +329,7 @@ export const getAllBrandMembers = async (req: Request, res: Response) => {
         id: true,
         role: true,
         created_at: true,
-        user: { select: { id: true, name: true, email: true } },
+        admin: { select: { id: true, name: true, email: true } },
         brand: { select: { id: true, brand_name: true, status: true } },
       },
       orderBy: [{ brand: { brand_name: "asc" } }, { role: "asc" }, { created_at: "asc" }],
@@ -336,8 +340,8 @@ export const getAllBrandMembers = async (req: Request, res: Response) => {
         id: m.id,
         role: m.role,
         created_at: m.created_at,
-        name: m.user.name,
-        email: m.user.email,
+        name: m.admin.name,
+        email: m.admin.email,
         brand_id: m.brand.id,
         brand_name: m.brand.brand_name,
         brand_status: m.brand.status
@@ -374,7 +378,7 @@ export const getBrandMembers = async (
         id: true,
         role: true,
         created_at: true,
-        user: {
+        admin: {
           select: {
             id: true,
             name: true,
@@ -392,9 +396,9 @@ export const getBrandMembers = async (
       currentRole: req.brand?.role,
       members: members.map((m) => ({
         id: m.id,
-        user_id: m.user.id,
-        name: m.user.name,
-        email: m.user.email,
+        admin_id: m.admin.id,
+        name: m.admin.name,
+        email: m.admin.email,
         role: m.role,
         created_at: m.created_at,
       })),
@@ -447,30 +451,24 @@ export const addBrandMember = async (
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // ค้นหา User จาก Email
-    const user = await prisma.user.findUnique({
+    // สร้าง/หาบัญชี Admin จากอีเมล (เลียนแบบการยอมรับ invite: ผู้ถูกเชิญจะ login ฝั่งผู้ดูแลด้วยอีเมลนี้ได้เลย)
+    const admin = await prisma.admin.upsert({
       where: {
         email: normalizedEmail,
       },
-      select: {
-        id: true,
-        name: true,
-        email: true,
+      update: {},
+      create: {
+        email: normalizedEmail,
+        role: "SHOP_ADMIN",
       },
     });
-
-    if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
-    }
 
     // ตรวจสอบสมาชิกซ้ำ
     const existingMember = await prisma.brandMember.findUnique({
       where: {
-        brand_id_user_id: {
+        brand_id_admin_id: {
           brand_id: brandId,
-          user_id: user.id,
+          admin_id: admin.id,
         },
       },
     });
@@ -485,14 +483,14 @@ export const addBrandMember = async (
     const member = await prisma.brandMember.create({
       data: {
         brand_id: brandId,
-        user_id: user.id,
+        admin_id: admin.id,
         role: BrandMemberRole.ADMIN,
       },
       select: {
         id: true,
         role: true,
         created_at: true,
-        user: {
+        admin: {
           select: {
             id: true,
             name: true,
@@ -506,9 +504,9 @@ export const addBrandMember = async (
       message: "Member added successfully",
       member: {
         id: member.id,
-        user_id: member.user.id,
-        name: member.user.name,
-        email: member.user.email,
+        admin_id: member.admin.id,
+        name: member.admin.name,
+        email: member.admin.email,
         role: member.role,
         created_at: member.created_at,
       },
@@ -701,7 +699,7 @@ export const updateBrandMemberRole = async (
         id: true,
         role: true,
         created_at: true,
-        user: {
+        admin: {
           select: {
             id: true,
             name: true,
@@ -715,9 +713,9 @@ export const updateBrandMemberRole = async (
       message: "Member role updated successfully",
       member: {
         id: member.id,
-        user_id: member.user.id,
-        name: member.user.name,
-        email: member.user.email,
+        admin_id: member.admin.id,
+        name: member.admin.name,
+        email: member.admin.email,
         role: member.role,
         created_at: member.created_at,
       },

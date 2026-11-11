@@ -1,13 +1,10 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { BrandMembership } from "../types/user";
+import { createSlice } from "@reduxjs/toolkit";
 
 const uiSlice = createSlice({
   name: "ui",
   initialState: {
     isLoginOpen: false,
     isBodyOpen: false,
-    isEntryChoiceOpen: false,
-    entryChoiceBrand: null as BrandMembership | null,
     isSuspendedOpen: false,
   },
   reducers: {
@@ -23,37 +20,22 @@ const uiSlice = createSlice({
     closeBody: (state) => {
       state.isBodyOpen = false;
     },
-    openEntryChoice: (
-      state,
-      action: PayloadAction<BrandMembership | null>
-    ) => {
-      state.isEntryChoiceOpen = true;
-      state.entryChoiceBrand = action.payload;
-    },
-
-    closeEntryChoice: (state) => {
-      state.isEntryChoiceOpen = false;
-      state.entryChoiceBrand = null;
-    },
-    openSuspended: (state) => {     
+    openSuspended: (state) => {
       state.isSuspendedOpen = true;
     },
-    closeSuspended: (state) => {     
+    closeSuspended: (state) => {
       state.isSuspendedOpen = false;
     },
-      },
-    });
+  },
+});
 
 export const {
   openLogin,
   closeLogin,
   openBody,
   closeBody,
-  openEntryChoice,
-  closeEntryChoice,
-  openSuspended,  
-  closeSuspended,  
-
+  openSuspended,
+  closeSuspended,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

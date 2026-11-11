@@ -1,11 +1,10 @@
 import express from 'express'
-import { getUsers, getUsersId, deleteUser , updateUser  } from '../controllers/user'
+import { getUsersId, updateUser } from '../controllers/user'
 
+// Routes ฝั่ง shopper (ตาราง User) — mounted ที่ /user พร้อม authMiddleware
 const router = express.Router()
 
-router.get('/', getUsers)
 router.get('/:id', getUsersId)
-router.delete('/:id', deleteUser)
 router.put('/',updateUser)
 
 export default router

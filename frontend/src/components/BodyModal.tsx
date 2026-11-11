@@ -6,8 +6,9 @@ import { createBody } from "../services/bodyService";
 import { setBody } from "../store/bodySlice";
 import { closeBody } from "../store/uiSlice";
 import { useDispatch } from "react-redux";
-import { updateMe, type Gender } from "../services/userService";
+import { updateMe,  } from "../services/userService";
 import GenderSelector from "./GenderSelector";
+import type { Gender } from "../types/user";
 
 
 

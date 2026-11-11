@@ -4,6 +4,7 @@ import userReducer from "./userSlice";
 import uiReducer from './uiSlice'
 import bodyTypeReducer from './bodyTypeSlice';
 
+// store ฝั่งลูกค้า — session ผู้ดูแลอยู่ใน admin-frontend/ (adminSlice)
 export const store = configureStore({
   reducer: {
     user:userReducer,

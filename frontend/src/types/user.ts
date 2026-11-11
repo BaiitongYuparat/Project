@@ -1,6 +1,6 @@
 export type Gender = "MALE" | "FEMALE" | "UNSPECIFIED";
-export type UserRole = "USER" | "SUPER_ADMIN";
 
+// บทบาทร้านค้า (ใช้ทั้งฝั่ง shopper และ admin)
 export type BrandMemberRole = "OWNER" | "ADMIN";
 
 export type BrandMembership = {
@@ -11,14 +11,12 @@ export type BrandMembership = {
     slug: string;
 };
 
+// shopper เท่านั้น — บัญชีผู้ดูแลแยกไปตาราง Admin และ login คนละหน้า (/admin/login)
 export type User = {
     id: string;
     email: string;
     name: string | null;
     gender: Gender | null;
-    role: UserRole;
-    brandMemberships: BrandMembership[];
     isActive?: boolean;
     status?: "active" | "suspended" | string;
-
 }

@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import userRoutes from "./routes/userRoutes";
 import authRoutes from "./routes/authRoutes";
+import adminAuthRoutes from "./routes/adminAuthRoutes";
 import bodyRoutes from "./routes/bodyRoutes";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -19,10 +20,15 @@ import adminRoutes from "./routes/adminRoutes";
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+// เว็บร้านค้า (5173) + แอปผู้ดูแลแยก (5174) — ตอน production เพิ่ม domain ของแอปผู้ดูแลที่นี่
+app.use(cors({
+  origin: ["http://localhost:5175", "http://localhost:5176"],
+  credentials: true,
+}));
 
 app.use("/user", authMiddleware, userRoutes);
 app.use("/auth", authRoutes);
+app.use("/admin-auth", adminAuthRoutes);
 app.use("/body", authMiddleware, bodyRoutes);
 app.use("/images", authMiddleware, imageRoutes);
 app.use("/clothings", authMiddleware, clothingRoutes);
