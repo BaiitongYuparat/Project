@@ -48,6 +48,19 @@ enum ProductImageQualityStatus {
   FAILED
 }
 
+// เพศของสินค้า (แยกจาก enum Gender ของ User/Model)
+enum ProductGender {
+  UNISEX
+  MALE
+  FEMALE
+}
+
+// ประเภทตัวเลือกของสินค้าที่ super admin จัดการค่าได้
+enum ProductOptionType {
+  SEASON
+  OCCASION
+}
+
 enum ImageView {
   FRONT
   BACK
@@ -174,9 +187,97 @@ model Brand {
   customers     BrandCustomer[]
   tryOnLogs     TryOnLog[]
   productClicks ProductClick[]
+  sizeCharts    BrandSizeChart[]
 
   @@index([status])
   @@map("brands")
+}
+
+// ตารางไซส์ standard ของแพลตฟอร์ม (ให้ร้านเลือกมาแก้ต่อได้)
+model SizeChartTemplate {
+  id       String                 @id @default(uuid())
+  name     String
+  gender   ProductGender          @default(UNISEX)
+  category String? // top / bottom / dress (null = ใช้ได้ทุกหมวด)
+  rows     SizeChartTemplateRow[]
+
+  @@index([gender, category])
+  @@map("size_chart_templates")
+}
+
+// แถวของตารางไซส์ standard
+model SizeChartTemplateRow {
+  id          String            @id @default(uuid())
+  template_id String
+  size        String // XS, S, M, L, XL
+  chest       Decimal?          @db.Decimal(5, 2)
+  waist       Decimal?          @db.Decimal(5, 2)
+  hips        Decimal?          @db.Decimal(5, 2)
+  length      Decimal?          @db.Decimal(5, 2)
+  sort_order  Int               @default(0)
+  template    SizeChartTemplate @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  @@unique([template_id, size])
+  @@index([template_id, sort_order])
+  @@map("size_chart_template_rows")
+}
+
+// ตารางไซส์กลางของร้าน (collection) — สินค้าอ้างอิงแบบสด
+model BrandSizeChart {
+  id         String                @id @default(uuid())
+  brand_id   String
+  name       String
+  gender     ProductGender         @default(UNISEX)
+  created_at DateTime              @default(now()) @db.Timestamp(6)
+  updated_at DateTime              @updatedAt @db.Timestamp(6)
+  brand      Brand                 @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  entries    BrandSizeChartEntry[]
+  products   Product[]
+
+  @@unique([brand_id, name])
+  @@index([brand_id])
+  @@map("brand_size_charts")
+}
+
+// ตารางของ 1 category ภายใน collection
+model BrandSizeChartEntry {
+  id       String                    @id @default(uuid())
+  chart_id String
+  category String // top / bottom / dress
+  chart    BrandSizeChart            @relation(fields: [chart_id], references: [id], onDelete: Cascade)
+  rows     BrandSizeChartEntryRow[]
+
+  @@unique([chart_id, category])
+  @@map("brand_size_chart_entries")
+}
+
+// แถวไซส์ของ 1 category ใน collection
+model BrandSizeChartEntryRow {
+  id         String              @id @default(uuid())
+  entry_id   String
+  size       String
+  chest      Decimal?            @db.Decimal(5, 2)
+  waist      Decimal?            @db.Decimal(5, 2)
+  hips       Decimal?            @db.Decimal(5, 2)
+  length     Decimal?            @db.Decimal(5, 2)
+  sort_order Int                 @default(0)
+  entry      BrandSizeChartEntry @relation(fields: [entry_id], references: [id], onDelete: Cascade)
+
+  @@unique([entry_id, size])
+  @@index([entry_id, sort_order])
+  @@map("brand_size_chart_entry_rows")
+}
+
+// ชุดตัวเลือกฤดู/โอกาส ที่ super admin แก้ได้ (ไม่ hardcode ใน frontend)
+model ProductOption {
+  id         String            @id @default(uuid())
+  type       ProductOptionType
+  label      String
+  is_active  Boolean           @default(true)
+  sort_order Int               @default(0)
+
+  @@unique([type, label])
+  @@map("product_options")
 }
 
 //สินค้าในร้านค้า
@@ -185,6 +286,10 @@ model Product {
   brand_id    String
   name        String
   category    String
+  gender      ProductGender      @default(UNISEX)
+  fabric      String? // เนื้อผ้า (ร้านกรอกเอง)
+  seasons     String[]           @default([]) // ฤดู (multi-select)
+  occasions   String[]           @default([]) // โอกาส (multi-select)
   price       Decimal?           @db.Decimal(10, 2)
   description String?
   sku String?
@@ -192,7 +297,10 @@ model Product {
   created_at  DateTime           @default(now()) @db.Timestamp(6)
   updated_at  DateTime           @updatedAt @db.Timestamp(6)
   brand       Brand              @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  size_chart_id String? // อ้างอิงตารางไซส์กลางของร้าน (null = ใช้ตารางเฉพาะตัว)
+  size_chart  BrandSizeChart?    @relation(fields: [size_chart_id], references: [id], onDelete: SetNull)
   size_charts ProductSizeChart[]
+  colors      ProductColor[]
   images      ProductImage[]
 
   tryOnLogs TryOnLog[]
@@ -219,10 +327,25 @@ model ProductSizeChart {
   @@map("product_size_charts")
 }
 
-// รูปภาพของสินค้า
+// สีของสินค้า (1 product มีได้หลายสี, แต่ละสีมีรูปของตัวเอง)
+model ProductColor {
+  id         String   @id @default(uuid())
+  product_id String
+  name       String // เช่น Black, Beige
+  hex        String? // โค้ดสี เช่น #000000
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  product    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  images     ProductImage[]
+
+  @@index([product_id])
+  @@map("product_colors")
+}
+
+// รูปภาพของสินค้า (ผูกกับสี — color_id = null คือรูปเดิมก่อนมีระบบสี)
 model ProductImage {
   id             String                    @id @default(uuid())
   product_id     String
+  color_id       String?
   quality_status ProductImageQualityStatus @default(PENDING)
   quality_reason String?
   view            ImageView
@@ -230,8 +353,10 @@ model ProductImage {
   sort_order     Int                       @default(0)
   uploaded_at    DateTime                  @default(now()) @db.Timestamp(6)
   product        Product                   @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  color          ProductColor?             @relation(fields: [color_id], references: [id], onDelete: Cascade)
 
   @@index([product_id, quality_status])
+  @@index([color_id])
   @@map("product_images")
 }
 

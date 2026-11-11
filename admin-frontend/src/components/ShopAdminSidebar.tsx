@@ -7,6 +7,7 @@ import {
   gridOutline,
   menuOutline,
   pricetagsOutline,
+  resizeOutline,
   logOutOutline,
   storefrontOutline,
   personOutline,
@@ -25,6 +26,11 @@ const menuItems = [
     name: "Products",
     path: "/products",
     icon: pricetagsOutline,
+  },
+  {
+    name: "Size Charts",
+    path: "/size-charts",
+    icon: resizeOutline,
   },
   {
     name: "Admin Management",

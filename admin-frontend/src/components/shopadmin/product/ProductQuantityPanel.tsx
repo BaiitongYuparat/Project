@@ -136,6 +136,23 @@ export default function ProductQualityPanel({
                 }
               >
                 {getViewLabel(image.view)}
+                {image.color_id && (
+                  <span className="ml-2 inline-flex items-center gap-1 text-xs font-normal text-gray-500">
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-full border border-gray-200"
+                      style={{
+                        backgroundColor:
+                          product.colors.find(
+                            (color) => color.id === image.color_id,
+                          )?.hex ?? "#E5E7EB",
+                      }}
+                    />
+                    {
+                      product.colors.find((color) => color.id === image.color_id)
+                        ?.name
+                    }
+                  </span>
+                )}
               </span>
 
               <StatusBadge status={getStatus(image.quality_status)} />

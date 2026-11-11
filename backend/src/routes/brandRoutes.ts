@@ -5,6 +5,8 @@ import { authMiddleware } from "../middlewares/auth";
 import { adminAuthMiddleware } from "../middlewares/adminAuth";
 import { requireBrandAccess } from "../middlewares/brandAccess";
 import { createProductController, deleteProductController, getProductByIdController, getProductsController, updateProductController } from "../controllers/product";
+import { getSizeChartTemplatesController, getProductOptionsController } from "../controllers/productConfig";
+import { createBrandSizeChartController, deleteBrandSizeChartController, getBrandSizeChartByIdController, getBrandSizeChartsController, updateBrandSizeChartController } from "../controllers/sizeChart";
 
 const router = Router();
 
@@ -13,6 +15,19 @@ router.post("/register", authMiddleware , uploadEbizRegistration, handleUploadEr
 
 // Route ฝั่งจัดการร้าน ใช้ session ผู้ดูแล (ตาราง Admin — cookie admin_token)
 router.get("/:slug/access", adminAuthMiddleware , checkBrandAccess);
+
+// ตารางไซส์ standard + ชุดตัวเลือกฤดู/โอกาส ของแพลตฟอร์ม (ใช้ตอนเพิ่ม/แก้สินค้า)
+router.get("/size-chart-templates", adminAuthMiddleware, getSizeChartTemplatesController);
+router.get("/product-options", adminAuthMiddleware, getProductOptionsController);
+
+// ตารางไซส์กลางของร้าน (collection) — สินค้าอ้างอิง
+router.use("/:slug/size-charts", adminAuthMiddleware, requireBrandAccess);
+
+router.get("/:slug/size-charts", getBrandSizeChartsController);
+router.get("/:slug/size-charts/:id", getBrandSizeChartByIdController);
+router.post("/:slug/size-charts", createBrandSizeChartController);
+router.put("/:slug/size-charts/:id", updateBrandSizeChartController);
+router.delete("/:slug/size-charts/:id", deleteBrandSizeChartController);
 
 // ตรวจสอบสิทธิ์ก่อนเข้าถึง API สินค้าในร้าน
 router.use("/:slug/products",adminAuthMiddleware,requireBrandAccess);

@@ -1,10 +1,10 @@
 
 import { Request, Response } from "express";
-import { createProduct, deleteProduct, getProductById, getProducts, getPublicProduct, getPublicProducts, updateProductWithImages , getAdminProducts , getAdminProductStats} from "../services/productService";
+import { createProduct, deleteProduct, getProductById, getProducts, getPublicProduct, getPublicProducts, updateProductWithImages , getAdminProducts , getAdminProductStats, getSizeChartTemplates, getProductOptions} from "../services/productService";
+import { resolveSizeChartForProduct } from "../services/sizeChartService";
 import { BrandAccessError } from "../services/brandAccessService";
 import { processProductImageQuality } from "../services/productImageQuality";
 import { deleteImage } from "../utils/s3Utils";
-import { ImageView } from "@prisma/client";
 
 // GET /products
 
@@ -78,18 +78,6 @@ export const getProductsController = async (
 
     const products = await getProducts(brandId);
 
-    console.dir(
-    products.map((p) => ({
-        id: p.id,
-        images: p.images.map((img) => ({
-        id: img.id,
-        quality_status: img.quality_status,
-        quality_reason: img.quality_reason,
-        })),
-    })),
-    { depth: null }
-    );
-
     return res.status(200).json({
       message: "Products fetched successfully",
       products,
@@ -137,11 +125,193 @@ export const getProductByIdController = async (
   }
 };
 
+// ---------- Shared parsing/validation helpers ----------
+
+const GENDERS = ["UNISEX", "MALE", "FEMALE"] as const;
+type ProductGenderValue = (typeof GENDERS)[number];
+
+const VIEWS = ["FRONT", "BACK", "LEFT", "RIGHT"] as const;
+type ViewValue = (typeof VIEWS)[number];
+
+const parseGender = (raw: unknown): ProductGenderValue | null => {
+  if (raw === undefined || raw === null || raw === "") return "UNISEX";
+
+  return GENDERS.includes(raw as ProductGenderValue)
+    ? (raw as ProductGenderValue)
+    : null;
+};
+
+// JSON string -> string[] (undefined = ไม่ได้ส่งมา, null = ส่งมาผิดรูปแบบ)
+const parseStringArray = (raw: unknown): string[] | null | undefined => {
+  if (raw === undefined) return undefined;
+
+  let parsed: unknown;
+
+  try {
+    parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch {
+    return null;
+  }
+
+  if (!Array.isArray(parsed) || !parsed.every((v) => typeof v === "string")) {
+    return null;
+  }
+
+  return parsed.map((v) => (v as string).trim()).filter(Boolean);
+};
+
+interface ParsedColor {
+  id?: string;
+  name: string;
+  hex: string | null;
+}
+
+// สี: create = [{name, hex}], update = [{id?, name, hex}]
+const parseColors = (raw: unknown): ParsedColor[] | null | undefined => {
+  if (raw === undefined) return undefined;
+
+  let parsed: unknown;
+
+  try {
+    parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch {
+    return null;
+  }
+
+  if (!Array.isArray(parsed)) return null;
+
+  const colors: ParsedColor[] = [];
+
+  for (const item of parsed) {
+    if (!item || typeof item.name !== "string" || !item.name.trim()) {
+      return null;
+    }
+
+    colors.push({
+      ...(typeof item.id === "string" && item.id.trim()
+        ? { id: item.id.trim() }
+        : {}),
+      name: item.name.trim(),
+      hex:
+        typeof item.hex === "string" && item.hex.trim()
+          ? item.hex.trim()
+          : null,
+    });
+  }
+
+  return colors;
+};
+
+interface ParsedSizeChartRow {
+  size: string;
+  chest: number | null;
+  waist: number | null;
+  hips: number | null;
+  length: number | null;
+}
+
+const parseMeasure = (value: unknown): number | null | "invalid" => {
+  if (value === undefined || value === null || value === "") return null;
+
+  const num = Number(value);
+
+  if (!Number.isFinite(num) || num < 0) return "invalid";
+
+  return num;
+};
+
+// ตารางไซส์: undefined = ไม่ได้ส่งมา, null = ส่งมาผิดรูปแบบ, array = แทนที่ทั้งชุด
+const parseSizeChart = (
+  raw: unknown
+): ParsedSizeChartRow[] | null | undefined => {
+  if (raw === undefined || raw === null || raw === "") return undefined;
+
+  let parsed: unknown;
+
+  try {
+    parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch {
+    return null;
+  }
+
+  if (!Array.isArray(parsed)) return null;
+
+  const rows: ParsedSizeChartRow[] = [];
+
+  for (const item of parsed) {
+    if (!item || typeof item.size !== "string" || !item.size.trim()) {
+      return null;
+    }
+
+    const chest = parseMeasure(item.chest);
+    const waist = parseMeasure(item.waist);
+    const hips = parseMeasure(item.hips);
+    const length = parseMeasure(item.length);
+
+    if (
+      chest === "invalid" ||
+      waist === "invalid" ||
+      hips === "invalid" ||
+      length === "invalid"
+    ) {
+      return null;
+    }
+
+    rows.push({
+      size: item.size.trim(),
+      chest: chest as number | null,
+      waist: waist as number | null,
+      hips: hips as number | null,
+      length: length as number | null,
+    });
+  }
+
+  return rows;
+};
+
+// views: string หรือ string[] จาก FormData -> ViewValue[]
+const parseViews = (raw: unknown): ViewValue[] | null => {
+  const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+
+  if (!list.every((view) => VIEWS.includes(view as ViewValue))) return null;
+
+  return list as ViewValue[];
+};
+
+// color_indexes: ตำแหน่งสีของแต่ละไฟล์ (parallel array กับ files/views)
+const parseColorIndexes = (
+  raw: unknown,
+  fileCount: number,
+  colorCount: number
+): number[] | null => {
+  const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  const indexes = list.map(Number);
+
+  if (
+    indexes.length !== fileCount ||
+    !indexes.every(
+      (index) =>
+        Number.isInteger(index) && index >= 0 && index < Math.max(colorCount, 1)
+    )
+  ) {
+    return null;
+  }
+
+  return indexes;
+};
+
+// หมวดหมู่ที่ต้องมีตารางไซส์ (accessories ไม่จำเป็น)
+const requiresSizeChart = (category: string) => category !== "accessories";
+
 // POST /brands/:slug/products
 export const createProductController = async (
   req: Request,
   res: Response
 ) => {
+  const files = (req.files ?? []) as (
+    Express.Multer.File & { key: string }
+  )[];
+
   try {
     const brandId = req.brand?.id;
 
@@ -149,7 +319,22 @@ export const createProductController = async (
       return res.status(403).json({ message: "Brand access required" });
     }
 
-    const { name, category, price, description, sku } = req.body;
+    const {
+      name,
+      category,
+      price,
+      description,
+      sku,
+      gender,
+      fabric,
+      seasons,
+      occasions,
+      size_chart,
+      size_chart_id,
+      colors,
+      views: rawViews,
+      color_indexes,
+    } = req.body;
 
     if (
       typeof name !== "string" ||
@@ -170,45 +355,164 @@ export const createProductController = async (
       return res.status(400).json({ message: "Invalid product price" });
     }
 
+    // ตรวจสอบเพศสินค้า
+    const parsedGender = parseGender(gender);
+
+    if (!parsedGender) {
+      return res.status(400).json({ message: "Invalid product gender" });
+    }
+
+    // ตรวจสอบฤดู/โอกาส
+    const parsedSeasons = parseStringArray(seasons);
+
+    if (parsedSeasons === null) {
+      return res.status(400).json({ message: "Invalid seasons" });
+    }
+
+    const parsedOccasions = parseStringArray(occasions);
+
+    if (parsedOccasions === null) {
+      return res.status(400).json({ message: "Invalid occasions" });
+    }
+
+    // ตรวจสอบตารางไซส์ (top/bottom/dress ต้องมีอย่างน้อย 1 แถว)
+    const sizeChartRows = parseSizeChart(size_chart);
+
+    if (sizeChartRows === null) {
+      return res.status(400).json({ message: "Invalid size chart" });
+    }
+
+    // ตารางไซส์กลางของร้าน (สำคัญกว่า size_chart rows ถ้าส่งมาพร้อมกัน)
+    const parsedSizeChartId =
+      typeof size_chart_id === "string" && size_chart_id.trim()
+        ? size_chart_id.trim()
+        : null;
+
+    if (
+      requiresSizeChart(category.trim()) &&
+      !parsedSizeChartId &&
+      (!sizeChartRows || sizeChartRows.length === 0)
+    ) {
+      return res.status(400).json({
+        message: "ต้องมีตารางไซส์อย่างน้อย 1 แถวสำหรับหมวดหมู่นี้",
+      });
+    }
+
+    if (parsedSizeChartId) {
+      const resolved = await resolveSizeChartForProduct(
+        brandId,
+        parsedSizeChartId,
+        category.trim()
+      );
+
+      if (resolved.error === "SIZE_CHART_NOT_FOUND") {
+        return res.status(400).json({ message: "ไม่พบตารางไซส์ที่เลือก" });
+      }
+
+      if (resolved.error === "SIZE_CHART_CATEGORY_MISSING") {
+        return res.status(400).json({
+          message: "ตารางไซส์ที่เลือกไม่มีข้อมูลสำหรับหมวดหมู่นี้",
+        });
+      }
+    }
+
+    // ตรวจสอบสี (ต้องมีอย่างน้อย 1 สี)
+    const parsedColors = parseColors(colors);
+
+    if (parsedColors === null) {
+      return res.status(400).json({
+        message: "สินค้าต้องมีสีอย่างน้อย 1 สี",
+      });
+    }
+
+    if (!parsedColors || parsedColors.length === 0) {
+      return res.status(400).json({
+        message: "สินค้าต้องมีสีอย่างน้อย 1 สี",
+      });
+    }
 
     // รับไฟล์รูปภาพจาก Multer
-    const files = (req.files ?? []) as (
-      Express.Multer.File & { key: string }
-    )[];
-
     if (files.length === 0) {
       return res.status(400).json({
         message: "At least one product image is required",
       });
     }
-    const rawViews = req.body.views;
 
-    const views = Array.isArray(rawViews)
-    ? rawViews
-    : rawViews
-        ? [rawViews]
-        : [];
-    console.log("uploaded keys:", files.map((f) => f.key), "brandId:", brandId);
-    if (views.length !== files.length) {
-    throw new Error("IMAGE_VIEW_COUNT_MISMATCH");
+    const views = parseViews(rawViews);
+
+    if (!views || views.length !== files.length) {
+      return res.status(400).json({
+        message: "IMAGE_VIEW_COUNT_MISMATCH",
+      });
     }
+
+    const colorIndexes = parseColorIndexes(
+      color_indexes,
+      files.length,
+      parsedColors.length
+    );
+
+    if (!colorIndexes) {
+      return res.status(400).json({
+        message: "Invalid color_indexes",
+      });
+    }
+
+    // ทุกสีต้องมีรูปด้านหน้าอย่างน้อย 1 รูป (ใช้สำหรับ Virtual Try-On)
+    for (const [colorIndex, color] of parsedColors.entries()) {
+      const hasFront = files.some(
+        (_, index) =>
+          colorIndexes[index] === colorIndex && views[index] === "FRONT"
+      );
+
+      if (!hasFront) {
+        return res.status(400).json({
+          message: `สี "${color.name}" ต้องมีรูปภาพด้านหน้าอย่างน้อย 1 รูป`,
+        });
+      }
+    }
+
+    // จับคู่ไฟล์เข้ากับสี
+    const colorsWithImages = parsedColors.map((color, colorIndex) => {
+      let order = 0;
+
+      return {
+        ...color,
+        images: files
+          .map((file, index) => ({ file, index }))
+          .filter(({ index }) => colorIndexes[index] === colorIndex)
+          .map(({ file, index }) => ({
+            s3_key: file.key,
+            sort_order: order++,
+            view: views[index],
+          })),
+      };
+    });
 
     const product = await createProduct(brandId, {
       name: name.trim(),
       category: category.trim(),
+      gender: parsedGender,
+      fabric: typeof fabric === "string" && fabric.trim() ? fabric.trim() : null,
+      seasons: parsedSeasons ?? [],
+      occasions: parsedOccasions ?? [],
       price: price === "" ? null : price,
       description: description?.trim() || null,
       sku: sku?.trim() || null,
-      images: files.map((file, index) => ({
-        s3_key: file.key,
-        sort_order: index,
-        view: views[index],
-      })),
+      // อ้างอิงตารางกลาง = ไม่สร้างตารางเฉพาะตัว
+      ...(parsedSizeChartId
+        ? { size_chart_id: parsedSizeChartId }
+        : { size_chart: sizeChartRows ?? [] }),
+      colors: colorsWithImages,
     });
 
     // ส่งรูปไปตรวจสอบคุณภาพด้วย Gemini แบบไม่รอผล
     for (const [index, file] of files.entries()) {
-      const image = product.images[index];
+      const color = product.colors[colorIndexes[index]];
+
+      const image = color?.images.find(
+        (productImage) => productImage.s3_key === file.key
+      );
 
       if (image) {
         void processProductImageQuality({
@@ -218,7 +522,7 @@ export const createProductController = async (
           mimeType: file.mimetype,
           view: image.view,
         }).catch((error) => {
-        console.error("Product image quality check error:", error);
+          console.error("Product image quality check error:", error);
         });
       }
     }
@@ -230,6 +534,15 @@ export const createProductController = async (
 
   } catch (error: any) {
     console.error("Create product error:", error);
+
+    // ลบไฟล์ค้างใน S3 เมื่อสร้างไม่สำเร็จ
+    await Promise.all(
+      files.map((file) =>
+        deleteImage(file.key).catch((cleanupError) => {
+          console.error("S3 cleanup error:", file.key, cleanupError);
+        })
+      )
+    );
 
     if (error.code === "P2002") {
       return res.status(409).json({
@@ -257,13 +570,6 @@ export const updateProductController = async (
   try {
     const brandId = req.brand?.id;
     const id = req.params.id;
-    const rawViews = req.body.views;
-
-    const views: ImageView[] = Array.isArray(rawViews)
-    ? rawViews
-    : rawViews
-        ? [rawViews]
-        : [];
 
     if (!brandId) {
       return res.status(403).json({
@@ -284,6 +590,16 @@ export const updateProductController = async (
       description,
       sku,
       is_active,
+      gender,
+      fabric,
+      seasons,
+      occasions,
+      size_chart,
+      size_chart_id,
+      colors,
+      views: rawViews,
+      color_indexes,
+      remove_color_ids,
     } = req.body;
 
     // ตรวจสอบชื่อสินค้า
@@ -346,6 +662,155 @@ export const updateProductController = async (
       });
     }
 
+    // ตรวจสอบเพศสินค้า
+    let parsedGender: ProductGenderValue | undefined;
+
+    if (gender !== undefined) {
+      const parsed = parseGender(gender);
+
+      if (!parsed) {
+        return res.status(400).json({ message: "Invalid product gender" });
+      }
+
+      parsedGender = parsed;
+    }
+
+    // ตรวจสอบฤดู/โอกาส
+    const parsedSeasons = parseStringArray(seasons);
+
+    if (parsedSeasons === null) {
+      return res.status(400).json({ message: "Invalid seasons" });
+    }
+
+    const parsedOccasions = parseStringArray(occasions);
+
+    if (parsedOccasions === null) {
+      return res.status(400).json({ message: "Invalid occasions" });
+    }
+
+    // ตรวจสอบตารางไซส์ (undefined = ไม่แตะตารางเดิม, array = แทนที่ทั้งชุด)
+    const sizeChartRows = parseSizeChart(size_chart);
+
+    if (sizeChartRows === null) {
+      return res.status(400).json({ message: "Invalid size chart" });
+    }
+
+    // ตารางไซส์กลาง (สำคัญกว่า size_chart rows ถ้าส่งมาพร้อมกัน)
+    const parsedSizeChartId =
+      typeof size_chart_id === "string" && size_chart_id.trim()
+        ? size_chart_id.trim()
+        : null;
+
+    // หมวดหมู่ effective สำหรับตรวจข้อบังคับตารางไซส์
+    let effectiveCategory = typeof category === "string" ? category.trim() : null;
+
+    if (!effectiveCategory) {
+      const existing = await getProductById(brandId, id);
+
+      if (existing) {
+        effectiveCategory = existing.category;
+      }
+    }
+
+    if (
+      effectiveCategory &&
+      requiresSizeChart(effectiveCategory) &&
+      !parsedSizeChartId &&
+      (sizeChartRows === undefined || sizeChartRows.length === 0)
+    ) {
+      // ไม่มีทั้ง chart กลางและตารางเฉพาะตัว แต่หมวดบังคับ → ต้องตรวจว่าสินค้ายังมีตารางอยู่ไหม
+      const existing = await getProductById(brandId, id);
+
+      const stillHasRows =
+        existing &&
+        (existing.size_chart_id ||
+          existing.size_charts.length > 0);
+
+      if (!stillHasRows) {
+        return res.status(400).json({
+          message: "ต้องมีตารางไซส์อย่างน้อย 1 แถวสำหรับหมวดหมู่นี้",
+        });
+      }
+    }
+
+    if (parsedSizeChartId) {
+      const resolved = await resolveSizeChartForProduct(
+        brandId,
+        parsedSizeChartId,
+        effectiveCategory ?? ""
+      );
+
+      if (resolved.error === "SIZE_CHART_NOT_FOUND") {
+        return res.status(400).json({ message: "ไม่พบตารางไซส์ที่เลือก" });
+      }
+
+      if (resolved.error === "SIZE_CHART_CATEGORY_MISSING") {
+        return res.status(400).json({
+          message: "ตารางไซส์ที่เลือกไม่มีข้อมูลสำหรับหมวดหมู่นี้",
+        });
+      }
+    }
+
+    // ตรวจสอบสี (undefined = ไม่แตะสีเดิม, array = สีชุดใหม่ของสินค้า)
+    const parsedColors = parseColors(colors);
+
+    if (parsedColors === null) {
+      return res.status(400).json({ message: "Invalid colors" });
+    }
+
+    // ถ้ามีรูปใหม่ ต้องระบุสีปลายทางด้วย
+    if (files.length > 0 && parsedColors === undefined) {
+      return res.status(400).json({
+        message: "ต้องระบุสีสำหรับรูปภาพที่เพิ่ม",
+      });
+    }
+
+    const views = parseViews(rawViews);
+
+    if (files.length > 0 && (!views || views.length !== files.length)) {
+      return res.status(400).json({
+        message: "IMAGE_VIEW_COUNT_MISMATCH",
+      });
+    }
+
+    let colorIndexes: number[] = [];
+
+    if (files.length > 0) {
+      const parsedIndexes = parseColorIndexes(
+        color_indexes,
+        files.length,
+        (parsedColors ?? []).length
+      );
+
+      if (!parsedIndexes) {
+        return res.status(400).json({
+          message: "Invalid color_indexes",
+        });
+      }
+
+      colorIndexes = parsedIndexes;
+    }
+
+    // สีใหม่ (ไม่มี id) ต้องมีรูปด้านหน้าอย่างน้อย 1 รูป
+    if (parsedColors) {
+      for (const [colorIndex, color] of parsedColors.entries()) {
+        if (color.id) continue;
+
+        const hasFront =
+          files.length > 0 &&
+          files.some(
+            (_, index) =>
+              colorIndexes[index] === colorIndex && views![index] === "FRONT"
+          );
+
+        if (!hasFront) {
+          return res.status(400).json({
+            message: `สี "${color.name}" ต้องมีรูปภาพด้านหน้าอย่างน้อย 1 รูป`,
+          });
+        }
+      }
+    }
+
     // แปลง is_active จาก FormData ให้เป็น Boolean
     let parsedIsActive: boolean | undefined;
 
@@ -389,47 +854,100 @@ export const updateProductController = async (
       }
     }
 
+    // อ่าน ID ของสีเดิมที่ต้องการลบ (รูปในสีถูกลบตาม)
+    let parsedRemoveColorIds: string[] = [];
+
+    if (remove_color_ids !== undefined) {
+      try {
+        parsedRemoveColorIds = JSON.parse(remove_color_ids);
+
+        if (
+          !Array.isArray(parsedRemoveColorIds) ||
+          !parsedRemoveColorIds.every((colorId) => typeof colorId === "string") ||
+          new Set(parsedRemoveColorIds).size !== parsedRemoveColorIds.length
+        ) {
+          throw new Error("Invalid color IDs");
+        }
+      } catch {
+        return res.status(400).json({
+          message: "Invalid remove_color_ids",
+        });
+      }
+    }
+
     // เรียก Service เพื่อแก้ไขสินค้าและรูปภาพ
     const result = await updateProductWithImages(
       brandId,
       id,
       {
-        ...(name !== undefined && {
-          name: name.trim(),
-        }),
+        data: {
+          ...(name !== undefined && {
+            name: name.trim(),
+          }),
 
-        ...(category !== undefined && {
-          category: category.trim(),
-        }),
+          ...(category !== undefined && {
+            category: category.trim(),
+          }),
 
-        ...(price !== undefined && {
-          price: parsedPrice,
-        }),
+          ...(parsedGender !== undefined && {
+            gender: parsedGender,
+          }),
 
-        ...(description !== undefined && {
-          description:
-            description === null
-              ? null
-              : description.trim() || null,
-        }),
+          ...(fabric !== undefined && {
+            fabric:
+              typeof fabric === "string" && fabric.trim()
+                ? fabric.trim()
+                : null,
+          }),
 
-        ...(sku !== undefined && {
-          sku:
-            sku === null
-              ? null
-              : sku.trim() || null,
-        }),
+          ...(parsedSeasons !== undefined && {
+            seasons: parsedSeasons,
+          }),
 
-        ...(is_active !== undefined && {
-          is_active: parsedIsActive!,
+          ...(parsedOccasions !== undefined && {
+            occasions: parsedOccasions,
+          }),
+
+          ...(price !== undefined && {
+            price: parsedPrice,
+          }),
+
+          ...(description !== undefined && {
+            description:
+              description === null
+                ? null
+                : description.trim() || null,
+          }),
+
+          ...(sku !== undefined && {
+            sku:
+              sku === null
+                ? null
+                : sku.trim() || null,
+          }),
+
+          ...(is_active !== undefined && {
+            is_active: parsedIsActive!,
+          }),
+
+          // อ้างอิงตารางไซส์กลาง (ส่งค่าว่างได้ = เลิกอ้างอิง)
+          ...(size_chart_id !== undefined && {
+            size_chart_id: parsedSizeChartId,
+          }),
+        },
+        newImages: files.map((file, index) => ({
+          s3_key: file.key,
+          sort_order: index,
+          view: views![index],
+          color_index: colorIndexes[index],
+        })),
+        colors: parsedColors ?? [],
+        removeImageIds,
+        removeColorIds: parsedRemoveColorIds,
+        ...(sizeChartRows !== undefined && {
+          size_chart: sizeChartRows,
         }),
-      },
-      files.map((file, index) => ({
-        s3_key: file.key,
-        sort_order: index,
-        view: views[index],
-      })),
-      removeImageIds
+      }
     );
 
     if (!result) {
@@ -478,6 +996,18 @@ export const updateProductController = async (
     if (error.message === "INVALID_IMAGE_IDS") {
       return res.status(400).json({
         message: "Invalid image IDs",
+      });
+    }
+
+    if (error.message === "INVALID_COLOR_IDS") {
+      return res.status(400).json({
+        message: "Invalid color IDs",
+      });
+    }
+
+    if (error.message === "INVALID_COLOR_INDEX") {
+      return res.status(400).json({
+        message: "Invalid color index",
       });
     }
 

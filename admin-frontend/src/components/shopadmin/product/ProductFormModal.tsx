@@ -1,114 +1,146 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { IonIcon } from "@ionic/react";
 import {
   closeOutline,
-  cloudUploadOutline,
-  imageOutline,
-  trashOutline,
+  createOutline,
+  gridOutline,
+  pricetagOutline,
+  removeCircleOutline,
+  addCircleOutline,
 } from "ionicons/icons";
 
 import Button from "../../Button";
 import Input from "../../Input";
 
+import { sortChartsForProduct } from "../../../services/ShopAdmin/sizeChartService";
 import type {
-  ImageView,
+  BrandSizeChart,
   Product,
   ProductFormData,
+  ProductGender,
+  ProductOptions,
+  SizeChartTemplate,
 } from "../../../types/product";
 
 interface ProductFormModalProps {
   editingProduct: Product | null;
   form: ProductFormData;
   saving: boolean;
+  options: ProductOptions;
+  templates: SizeChartTemplate[];
+  charts: BrandSizeChart[];
+  activeTemplateId: string | null;
   onClose: () => void;
+  onOpenImages: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onChange: (
     event: ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >,
   ) => void;
-  onImageChange: (
-    event: ChangeEvent<HTMLInputElement>,
-    view: "FRONT" | "BACK" | "LEFT" | "RIGHT",
+  onGenderChange: (gender: ProductGender) => void;
+  onCategoryChange: (event: ChangeEvent<HTMLSelectElement>) => void;
+  onToggleArrayField: (field: "seasons" | "occasions", value: string) => void;
+  onUpdateSizeRow: (
+    index: number,
+    field: keyof ProductFormData["size_chart"][number],
+    value: string,
   ) => void;
-  onRemoveOldImage: (imageId: string) => void;
-  onRemoveNewImage: (index: number) => void;
+  onAddSizeRow: () => void;
+  onRemoveSizeRow: (index: number) => void;
+  onApplyTemplate: (template: SizeChartTemplate) => void;
+  // เลือก/เลิกอ้างอิงตารางกลางของร้าน
+  onSizeChartChange: (chartId: string | null) => void;
+  // สลับเป็นตารางเฉพาะตัว โดย copy rows จากตารางกลางที่เลือก
+  onOverrideFromChart: (chartId: string) => void;
+  // ไปหน้าสร้างตารางใหม่ (เซฟ draft ก่อน)
+  onGoToNewChart: () => void;
 }
+
 const CATEGORY_OPTIONS = [
   { value: "top", label: "Top" },
   { value: "bottom", label: "Bottom" },
   { value: "dress", label: "Dress" },
   { value: "accessories", label: "Accessories" },
 ];
-const imageViews: {
-  key: ImageView;
+
+const GENDER_OPTIONS: { value: ProductGender; label: string }[] = [
+  { value: "UNISEX", label: "ทุกเพศ (Unisex)" },
+  { value: "MALE", label: "ชาย" },
+  { value: "FEMALE", label: "หญิง" },
+];
+
+const SIZE_MEASURE_COLUMNS: {
+  field: keyof ProductFormData["size_chart"][number];
   label: string;
 }[] = [
-  { key: "FRONT", label: "ด้านหน้า" },
-  { key: "BACK", label: "ด้านหลัง" },
-  { key: "LEFT", label: "ด้านซ้าย" },
-  { key: "RIGHT", label: "ด้านขวา" },
+  { field: "chest", label: "รอบอก (ซม.)" },
+  { field: "waist", label: "รอบเอว (ซม.)" },
+  { field: "hips", label: "รอบสะโพก (ซม.)" },
+  { field: "length", label: "ความยาว (ซม.)" },
 ];
+
+// หมวดหมู่ที่ต้องมีตารางไซส์
+const requiresSizeChart = (category: string) => category !== "accessories";
 
 export default function ProductFormModal({
   editingProduct,
   form,
   saving,
+  options,
+  templates,
+  charts,
+  activeTemplateId,
   onClose,
+  onOpenImages,
   onSubmit,
   onChange,
-  onImageChange,
-  onRemoveOldImage,
-  onRemoveNewImage,
+  onGenderChange,
+  onCategoryChange,
+  onToggleArrayField,
+  onUpdateSizeRow,
+  onAddSizeRow,
+  onRemoveSizeRow,
+  onApplyTemplate,
+  onSizeChartChange,
+  onOverrideFromChart,
+  onGoToNewChart,
 }: ProductFormModalProps) {
-  const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
+  // สรุปสถานะสี/รูปสำหรับปุ่มเปิด modal รูป
+  const realColors = form.colors.filter((color) => !color.legacy);
+  const legacyImages = form.colors.find((color) => color.legacy);
 
-  // สร้าง Preview สำหรับรูปภาพใหม่
-  useEffect(() => {
-    const previews = form.images.map((image) =>
-      URL.createObjectURL(image.file),
-    );
+  const colorsSummary = realColors.length
+    ? `${realColors.length} สี`
+    : "ยังไม่มีสี";
 
-    setNewImagePreviews(previews);
+  const imagesSummary = [
+    ...realColors.flatMap(
+      (color) =>
+        color.existing_images.filter(
+          (image) => !color.removed_image_ids.includes(image.id),
+        ).length + color.new_images.length,
+    ),
+    ...(legacyImages
+      ? [
+          legacyImages.existing_images.filter(
+            (image) => !legacyImages.removed_image_ids.includes(image.id),
+          ).length,
+        ]
+      : []),
+  ].reduce((sum, count) => sum + count, 0);
 
-    return () => {
-      previews.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [form.images]);
+  // ตารางกลางของร้าน เรียงให้ตัวที่ตรงเพศ/หมวดขึ้นก่อน (ตัวช่วยกรอง ไม่ block)
+  const sortedCharts = sortChartsForProduct(charts, form.gender, form.category);
 
-  // รูปภาพเดิมที่ยังไม่ได้เลือกลบ
-  const existingImages =
-    editingProduct?.images.filter(
-      (image) => !form.remove_image_ids.includes(image.id),
-    ) ?? [];
-
-  const getImageByView = (view: ImageView) => {
-    const newImage = form.images.find((image) => image.view === view);
-
-    if (newImage) {
-      const index = form.images.indexOf(newImage);
-
-      return {
-        url: newImagePreviews[index],
-        isNew: true,
-        index,
-        status: "PENDING",
-      };
-    }
-
-    const oldImage = existingImages.find((image) => image.view === view);
-
-    if (oldImage) {
-      return {
-        url: oldImage.image_url,
-        isNew: false,
-        image: oldImage,
-        status: oldImage.quality_status,
-      };
-    }
-
-    return null;
-  };
+  // ตารางกลางที่ถูกเลือกอยู่ + entry ของหมวดปัจจุบัน (สำหรับ preview)
+  const selectedChart = form.size_chart_id
+    ? charts.find((chart) => chart.id === form.size_chart_id) ?? null
+    : null;
+  const selectedEntry =
+    selectedChart?.entries.find(
+      (entry) => entry.category === form.category,
+    ) ?? null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -121,7 +153,7 @@ export default function ProductFormModal({
             </h2>
 
             <p className="mt-1 text-sm text-[#8B806E]">
-              กรอกข้อมูลสินค้าและเพิ่มรูปภาพสำหรับระบบ Virtual Try-On
+              กรอกข้อมูลสินค้า ตารางไซส์ และจัดการรูปแยกตามสี
             </p>
           </div>
 
@@ -166,7 +198,7 @@ export default function ProductFormModal({
                 <select
                   name="category"
                   value={form.category}
-                  onChange={onChange}
+                  onChange={onCategoryChange}
                   required
                   className="w-full rounded-lg border border-[#E9DFC9] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2453D4]"
                 >
@@ -181,6 +213,90 @@ export default function ProductFormModal({
                   ))}
                 </select>
               </label>
+            </div>
+
+            {/* Gender */}
+            <div>
+              <span className="mb-2 block text-sm font-medium text-[#332F29]">
+                เพศสินค้า
+              </span>
+
+              <div className="flex flex-wrap gap-2">
+                {GENDER_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-pressed={form.gender === option.value}
+                    onClick={() => onGenderChange(option.value)}
+                    className={`rounded-full px-4 py-2 text-sm transition-colors ${
+                      form.gender === option.value
+                        ? "bg-[#2453D4] font-medium text-white"
+                        : "bg-[#FCFAF6] text-[#786E5D] hover:bg-[#F8F4EA]"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Fabric */}
+            <Input
+              label="เนื้อผ้า"
+              name="fabric"
+              value={form.fabric}
+              onChange={onChange}
+              placeholder="เช่น ผ้าฝ้าย 100%, Polyester"
+            />
+
+            {/* Seasons */}
+            <div>
+              <span className="mb-2 block text-sm font-medium text-[#332F29]">
+                ฤดู (เลือกได้หลายค่า)
+              </span>
+
+              <div className="flex flex-wrap gap-2">
+                {options.seasons.map((season) => (
+                  <button
+                    key={season}
+                    type="button"
+                    aria-pressed={form.seasons.includes(season)}
+                    onClick={() => onToggleArrayField("seasons", season)}
+                    className={`rounded-full px-4 py-2 text-sm transition-colors ${
+                      form.seasons.includes(season)
+                        ? "bg-[#2453D4] font-medium text-white"
+                        : "bg-[#FCFAF6] text-[#786E5D] hover:bg-[#F8F4EA]"
+                    }`}
+                  >
+                    {season}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Occasions */}
+            <div>
+              <span className="mb-2 block text-sm font-medium text-[#332F29]">
+                โอกาสในการใช้งาน (เลือกได้หลายค่า)
+              </span>
+
+              <div className="flex flex-wrap gap-2">
+                {options.occasions.map((occasion) => (
+                  <button
+                    key={occasion}
+                    type="button"
+                    aria-pressed={form.occasions.includes(occasion)}
+                    onClick={() => onToggleArrayField("occasions", occasion)}
+                    className={`rounded-full px-4 py-2 text-sm transition-colors ${
+                      form.occasions.includes(occasion)
+                        ? "bg-[#2453D4] font-medium text-white"
+                        : "bg-[#FCFAF6] text-[#786E5D] hover:bg-[#F8F4EA]"
+                    }`}
+                  >
+                    {occasion}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Price */}
@@ -211,167 +327,286 @@ export default function ProductFormModal({
               />
             </div>
 
-            {/* Product Images */}
-            <div>
-              <div className="mb-3 flex items-center justify-between">
-                <label className="text-sm font-medium text-[#332F29]">
-                  รูปภาพสินค้า
-                </label>
-
-                <span className="text-xs text-[#8B806E]">
-                  {existingImages.length + form.images.length}/4 รูป
-                </span>
-              </div>
-
-              {/* Existing Images */}
-              {existingImages.length > 0 && (
-                <div className="mb-4">
-                  <p className="mb-2 text-xs text-[#8B806E]">รูปภาพปัจจุบัน</p>
-
-                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-                    {existingImages.map((image) => (
-                      <div key={image.id} className="relative">
-                        <img
-                          src={image.image_url}
-                          alt="Product"
-                          className="aspect-square w-full rounded-xl border border-[#E9DFC9] object-cover"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => onRemoveOldImage(image.id)}
-                          className="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white shadow"
-                          aria-label="ลบรูปภาพ"
-                        >
-                          <IonIcon icon={trashOutline} className="text-sm" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* New Images */}
-              {newImagePreviews.length > 0 && (
-                <div className="mb-4">
-                  <p className="mb-2 text-xs text-[#8B806E]">
-                    รูปภาพที่เพิ่มใหม่
+            {/* Size Chart */}
+            <div className="rounded-xl border border-[#E9DFC9] bg-[#FCFAF6] p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="flex items-center gap-2 text-sm font-medium text-[#332F29]">
+                    <IonIcon icon={gridOutline} />
+                    ตารางไซส์
+                    {requiresSizeChart(form.category) && (
+                      <span className="text-red-500">*</span>
+                    )}
                   </p>
 
-                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-                    {newImagePreviews.map((preview, index) => (
-                      <div key={`${preview}-${index}`} className="relative">
-                        <img
-                          src={preview}
-                          alt={`New product ${index + 1}`}
-                          className="aspect-square w-full rounded-xl border border-[#E9DFC9] object-cover"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => onRemoveNewImage(index)}
-                          className="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white shadow"
-                          aria-label="ลบรูปภาพใหม่"
-                        >
-                          <IonIcon icon={trashOutline} className="text-sm" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Upload Area - 4 Views */}
-              <div>
-                <div className="mb-3">
-                  <p className="text-sm font-medium text-[#332F29]">
-                    รูปภาพสินค้า (4 มุม)
-                  </p>
                   <p className="mt-1 text-xs text-[#8B806E]">
-                    อัปโหลดรูปภาพด้านหน้า ด้านหลัง ด้านซ้าย และด้านขวา
+                    {requiresSizeChart(form.category)
+                      ? "เลือกตารางไซส์ของร้าน หรือแก้เฉพาะสินค้านี้"
+                      : "หมวดหมู่ Accessories ไม่จำเป็นต้องมีตารางไซส์"}
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  {imageViews.map((view) => {
-                    const image = getImageByView(view.key);
-
-                    return (
-                      <div
-                        key={view.key}
-                        className="rounded-xl border border-[#E9DFC9] bg-[#FCFAF6] p-3"
-                      >
-                        <p className="mb-2 text-sm font-medium text-[#332F29]">
-                          {view.label}
-                        </p>
-
-                        {image?.url ? (
-                          <div className="relative">
-                            <img
-                              src={image.url}
-                              alt={view.label}
-                              className="aspect-square w-full rounded-lg object-cover"
-                            />
-
-                            <div className="mt-2 flex items-center justify-between">
-                              <span className="text-xs text-[#8B806E]">
-                                {image.status === "PASSED"
-                                  ? "ผ่านการตรวจสอบ"
-                                  : image.status === "FAILED"
-                                    ? "ไม่ผ่านการตรวจสอบ"
-                                    : "กำลังตรวจสอบ..."}
-                              </span>
-
-                              <label className="cursor-pointer rounded-lg bg-[#2453D4] px-3 py-1.5 text-xs text-white hover:bg-[#1D45B5]">
-                                เปลี่ยนรูป
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={(e) => onImageChange(e, view.key)}
-                                />
-                              </label>
-                            </div>
-
-                            {image.status === "FAILED" && !image.isNew && (
-                              <p className="mt-1 text-xs text-red-500">
-                                {image.image?.quality_reason ||
-                                  "กรุณาเปลี่ยนรูปภาพ"}
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#DCCFB8] hover:border-[#2453D4] hover:bg-[#F8F4EA]">
-                            <IonIcon
-                              icon={cloudUploadOutline}
-                              className="mb-2 text-3xl text-[#2453D4]"
-                            />
-
-                            <span className="text-xs text-[#8B806E]">
-                              คลิกเพื่ออัปโหลด
-                            </span>
-
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) => onImageChange(e, view.key)}
-                            />
-                          </label>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <p className="mt-3 text-xs text-[#8B806E]">
-                  <IonIcon icon={imageOutline} className="mr-1 align-middle" />
-                  รองรับไฟล์รูปภาพ 4 มุม สูงสุด 4 รูปต่อสินค้า
-                </p>
+                <button
+                  type="button"
+                  onClick={onGoToNewChart}
+                  className="flex items-center gap-1.5 rounded-lg border border-[#E9DFC9] bg-white px-3 py-2 text-xs text-[#2453D4] hover:bg-[#F8F4EA]"
+                >
+                  <IonIcon icon={addCircleOutline} />
+                  เพิ่มตาราง
+                </button>
               </div>
 
+              {/* เลือกตารางกลางของร้าน */}
+              <label className="mt-4 block">
+                <span className="mb-1 block text-xs text-[#8B806E]">
+                  ตารางไซส์ของร้าน
+                </span>
 
+                <select
+                  value={form.size_chart_id ?? ""}
+                  onChange={(event) =>
+                    onSizeChartChange(event.target.value || null)
+                  }
+                  className="w-full rounded-lg border border-[#E9DFC9] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2453D4]"
+                >
+                  <option value="">
+                    — ใช้ตารางเฉพาะสินค้านี้ (แก้เองด้านล่าง) —
+                  </option>
+
+                  {sortedCharts.map((chart) => (
+                    <option key={chart.id} value={chart.id}>
+                      {chart.name} ({chart.gender.toLowerCase()}
+                      {chart.entries.length > 0
+                        ? ` · ${chart.entries
+                            .map((entry) => entry.category)
+                            .join(", ")}`
+                        : ""}
+                      )
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {selectedChart ? (
+                /* โหมดอ้างอิงตารางกลาง — preview read-only */
+                <div className="mt-3">
+                  {form.category ? (
+                    selectedEntry && selectedEntry.rows.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[480px] text-left text-sm">
+                          <thead className="text-xs text-[#786E5D]">
+                            <tr>
+                              <th className="px-2 py-2 font-medium">ไซส์</th>
+
+                              {SIZE_MEASURE_COLUMNS.map((column) => (
+                                <th
+                                  key={column.field}
+                                  className="px-2 py-2 font-medium"
+                                >
+                                  {column.label}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+
+                          <tbody className="divide-y divide-[#F0E8DA]">
+                            {selectedEntry.rows.map((row) => (
+                              <tr key={row.id ?? row.size}>
+                                <td className="px-2 py-2 font-medium text-[#332F29]">
+                                  {row.size}
+                                </td>
+
+                                {SIZE_MEASURE_COLUMNS.map((column) => (
+                                  <td
+                                    key={column.field}
+                                    className="px-2 py-2 text-[#786E5D]"
+                                  >
+                                    {row[column.field] === null
+                                      ? "-"
+                                      : row[column.field]}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                        ตาราง "{selectedChart.name}" ไม่มีข้อมูลของหมวด "
+                        {form.category}" — เลือกตารางอื่น หรือแก้เฉพาะสินค้านี้
+                      </p>
+                    )
+                  ) : (
+                    <p className="text-xs text-[#A39988]">
+                      เลือกหมวดหมู่ก่อน เพื่อดูตารางไซส์ของหมวดนั้น
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => onOverrideFromChart(selectedChart.id)}
+                    disabled={
+                      !form.category ||
+                      !selectedEntry ||
+                      selectedEntry.rows.length === 0
+                    }
+                    className="mt-3 flex items-center gap-1.5 rounded-lg border border-[#E9DFC9] px-3 py-2 text-xs text-[#2453D4] hover:bg-[#F8F4EA] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <IonIcon icon={createOutline} />
+                    แก้เฉพาะสินค้านี้ (copy จากตาราง)
+                  </button>
+                </div>
+              ) : (
+                /* โหมดตารางเฉพาะตัว — editor inline */
+                <div className="mt-3">
+                  {templates.length > 0 && (
+                    <label className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+                      <span className="text-xs text-[#8B806E]">
+                        ใช้ตาราง standard
+                      </span>
+
+                      <select
+                        value={activeTemplateId ?? ""}
+                        onChange={(event) => {
+                          const template = templates.find(
+                            (item) => item.id === event.target.value,
+                          );
+
+                          if (template) onApplyTemplate(template);
+                        }}
+                        className="rounded-lg border border-[#E9DFC9] bg-white px-3 py-2 text-sm outline-none focus:border-[#2453D4]"
+                      >
+                        <option value="" disabled>
+                          เลือกตาราง
+                        </option>
+
+                        {templates.map((template) => (
+                          <option key={template.id} value={template.id}>
+                            {template.name}
+                            {template.category ? ` (${template.category})` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+
+                  {form.size_chart.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[560px] text-left text-sm">
+                        <thead className="text-xs text-[#786E5D]">
+                          <tr>
+                            <th className="px-2 py-2 font-medium">ไซส์</th>
+
+                            {SIZE_MEASURE_COLUMNS.map((column) => (
+                              <th
+                                key={column.field}
+                                className="px-2 py-2 font-medium"
+                              >
+                                {column.label}
+                              </th>
+                            ))}
+
+                            <th className="px-2 py-2" />
+                          </tr>
+                        </thead>
+
+                        <tbody className="divide-y divide-[#F0E8DA]">
+                          {form.size_chart.map((row, index) => (
+                            <tr key={index}>
+                              <td className="px-2 py-2">
+                                <input
+                                  type="text"
+                                  value={row.size}
+                                  onChange={(event) =>
+                                    onUpdateSizeRow(
+                                      index,
+                                      "size",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="S, M, L..."
+                                  className="w-20 rounded-lg border border-[#E9DFC9] px-2 py-1.5 text-sm outline-none focus:border-[#2453D4]"
+                                />
+                              </td>
+
+                              {SIZE_MEASURE_COLUMNS.map((column) => (
+                                <td key={column.field} className="px-2 py-2">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.1"
+                                    value={row[column.field]}
+                                    onChange={(event) =>
+                                      onUpdateSizeRow(
+                                        index,
+                                        column.field,
+                                        event.target.value,
+                                      )
+                                    }
+                                    className="w-20 rounded-lg border border-[#E9DFC9] px-2 py-1.5 text-sm outline-none focus:border-[#2453D4]"
+                                  />
+                                </td>
+                              ))}
+
+                              <td className="px-2 py-2 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => onRemoveSizeRow(index)}
+                                  className="rounded-lg p-2 text-red-500 hover:bg-red-50"
+                                  aria-label="ลบแถวไซส์"
+                                >
+                                  <IonIcon icon={removeCircleOutline} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[#A39988]">
+                      ยังไม่มีแถวไซส์ — เลือกตาราง standard ด้านบน หรือกด
+                      "เพิ่มแถว" เพื่อสร้างตารางเอง
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={onAddSizeRow}
+                    className="mt-3 rounded-lg border border-dashed border-[#DCCFB8] px-3 py-2 text-sm text-[#2453D4] hover:bg-[#F8F4EA]"
+                  >
+                    + เพิ่มแถว (สร้างตารางเอง)
+                  </button>
+                </div>
+              )}
             </div>
+
+            {/* Images & Colors summary */}
+            <button
+              type="button"
+              onClick={onOpenImages}
+              className="flex w-full items-center justify-between rounded-xl border border-[#E9DFC9] bg-[#FCFAF6] p-4 text-left hover:border-[#2453D4]"
+            >
+              <div className="flex items-center gap-3">
+                <IonIcon icon={pricetagOutline} className="text-xl text-[#2453D4]" />
+
+                <div>
+                  <p className="text-sm font-medium text-[#332F29]">
+                    รูปสินค้า &amp; สี
+                  </p>
+
+                  <p className="mt-1 text-xs text-[#8B806E]">
+                    {colorsSummary} · {imagesSummary} รูป — กดเพื่อจัดการสีและอัปโหลดรูป
+                    4 มุม
+                  </p>
+                </div>
+              </div>
+
+              <span className="rounded-lg bg-[#2453D4] px-3 py-2 text-xs text-white">
+                จัดการ
+              </span>
+            </button>
 
             {/* Active Status */}
             <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-[#FCFAF6] p-4">

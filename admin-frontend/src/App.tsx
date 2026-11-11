@@ -9,6 +9,8 @@ import ShopAdminLayout from "./layouts/ShopAdminLayout";
 import ShopAdminGuard from "./components/ShopAdminGuard";
 import ShopDashboard from "./pages/AdminStore/Dashboard";
 import ProductManagement from "./pages/AdminStore/ProductManagement";
+import SizeChartManagement from "./pages/AdminStore/SizeChartManagement";
+import SizeChartForm from "./pages/AdminStore/SizeChartForm";
 import ShopAdminManagement from "./pages/AdminStore/AdminManagement";
 import Dashboard from "./pages/SuperAdmin/Dashboard";
 import StoreManagement from "./pages/SuperAdmin/storemanagement/StoreManagement";
@@ -37,7 +39,7 @@ function App() {
         const admin = await getCurrentAdmin();
 
         dispatch(loginAdmin(admin));
-      } catch (error) {
+      } catch {
         dispatch(logoutAdmin());
       } finally {
         dispatch(setAdminAuthChecked());
@@ -74,6 +76,9 @@ function App() {
             <Route path="/shopadmin/:slug" element={<ShopAdminLayout />}>
               <Route index element={<ShopDashboard />} />
               <Route path="products" element={<ProductManagement />} />
+              <Route path="size-charts" element={<SizeChartManagement />} />
+              <Route path="size-charts/new" element={<SizeChartForm />} />
+              <Route path="size-charts/:id/edit" element={<SizeChartForm />} />
               <Route path="admin" element={<ShopAdminManagement />} />
             </Route>
           </Route>
