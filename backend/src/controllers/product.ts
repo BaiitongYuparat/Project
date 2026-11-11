@@ -672,6 +672,7 @@ export const updateProductController = async (
       });
     }
 
+    // ตรวจสอบเพศของสินค้า (UNISEX / MALE / FEMALE — ดูที่ parsedGender ด้านล่าง)
     // แปลงและตรวจสอบราคา
     const parsedPrice =
       price === undefined
@@ -939,11 +940,11 @@ export const updateProductController = async (
             category: category.trim(),
           }),
 
-          ...(parsedGender !== undefined && {
-            gender: parsedGender,
-          }),
+        ...(parsedGender !== undefined && {
+          gender: parsedGender,
+        }),
 
-          ...(fabric !== undefined && {
+        ...(fabric !== undefined && {
             fabric:
               typeof fabric === "string" && fabric.trim()
                 ? fabric.trim()
