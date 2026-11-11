@@ -211,7 +211,7 @@ export default function ShopAdminSidebar() {
                         to={`${basePath}${child.path}`}
                         onClick={() => setIsOpen(false)}
                         className={({ isActive }) =>
-                          `${itemBase} pl-11 ${
+                          `${itemBase} pl-11 w-full text-left flex justify-start ${
                             isActive
                               ? "bg-[#87947A] font-semibold text-white shadow-sm"
                               : "text-[#766454] hover:bg-[#E9E0D2]"

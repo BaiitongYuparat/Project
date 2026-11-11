@@ -67,6 +67,8 @@ export default function ProductColorsEditor({
   onRemoveNewImage,
 }: ProductColorsEditorProps) {
   const [rawActiveIndex, setActiveColorIndex] = useState(0);
+  const [selectedPajamasPiece, setSelectedPajamasPiece] =
+    useState<ProductPiece>("SET");
 
   // clamp index กันสีที่เลือกถูกลบไป
   const activeColorIndex = Math.min(
@@ -137,6 +139,28 @@ export default function ProductColorsEditor({
   const missingFrontColors = colors.filter(
     (color) => !color.legacy && !hasFrontImage(color),
   );
+
+  const pajamasPieceLabels: Record<ProductPiece, string> = {
+    SET: "รูปเต็มชุด (SET)",
+    TOP: "รูปท่อนบน (TOP)",
+    BOTTOM: "รูปท่อนล่าง (BOTTOM)",
+  };
+
+  const handleUploadImage = (
+    colorIndex: number,
+    view: ImageView,
+    file: File | undefined,
+  ) => {
+    if (!file) return;
+
+    onImageChange(colorIndex, view, file);
+
+    if (category === "pajamas") {
+      onImagePieceChange?.(colorIndex, view, selectedPajamasPiece);
+    }
+  };
+
+  const pajamasSteps: ProductPiece[] = ["SET", "TOP", "BOTTOM"];
 
   return (
     <div className="overflow-hidden rounded-2xl border border-[#E9DFC9] bg-white">
@@ -264,9 +288,41 @@ export default function ProductColorsEditor({
                   </p>
 
                   {category === "pajamas" && (
+                    <div className="mt-3 rounded-xl border border-[#DCCFB8] bg-[#F8F4EA] p-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6B7A5E]">
+                        ต้องอัปโหลดแบบบังคับ
+                      </p>
+
+                      <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                        {pajamasSteps.map((piece) => (
+                          <button
+                            key={piece}
+                            type="button"
+                            onClick={() => setSelectedPajamasPiece(piece)}
+                            className={`rounded-xl border px-3 py-2 text-left text-[11px] font-medium transition-colors ${
+                              selectedPajamasPiece === piece
+                                ? "border-[#87947A] bg-[#E9F0E3] text-[#332F29]"
+                                : "border-[#DCCFB8] bg-white text-[#6B7A5E]"
+                            }`}
+                          >
+                            {pajamasPieceLabels[piece]}
+                          </button>
+                        ))}
+                      </div>
+
+                      <p className="mt-2 text-[11px] text-[#6B7A5E]">
+                        ขั้นตอนที่กำลังเลือก:{" "}
+                        <span className="font-semibold text-[#332F29]">
+                          {pajamasPieceLabels[selectedPajamasPiece]}
+                        </span>
+                      </p>
+                    </div>
+                  )}
+
+                  {category === "pajamas" && (
                     <p className="mt-1 text-xs text-[#6B7A5E]">
-                      ชุดนอน: รูปแรกควรเป็น "รูปรวมทั้งชุด" (รูปหลัก)
-                      ตามด้วยรูปแยกท่อนบน/ท่อนล่าง — เลือกชนิดรูปได้ใต้รูปแต่ละรูป
+                      ชุดนอน: อัปโหลดรูป 4 ด้านตามลำดับ{" "}
+                      <span className="font-semibold">SET → TOP → BOTTOM</span>
                     </p>
                   )}
                 </div>
@@ -327,7 +383,7 @@ export default function ProductColorsEditor({
                                   accept="image/*"
                                   className="hidden"
                                   onChange={(event) => {
-                                    onImageChange(
+                                    handleUploadImage(
                                       activeColorIndex,
                                       view.key,
                                       event.target.files?.[0],
@@ -339,24 +395,11 @@ export default function ProductColorsEditor({
                             </div>
 
                             {category === "pajamas" && image.isNew && (
-                              <select
-                                value={image.piece ?? ""}
-                                onChange={(event) =>
-                                  onImagePieceChange?.(
-                                    activeColorIndex,
-                                    view.key,
-                                    event.target.value as ProductPiece,
-                                  )
-                                }
-                                className="mt-2 w-full rounded-lg border border-[#E9DFC9] px-2 py-1.5 text-xs outline-none focus:border-[#87947A]"
-                              >
-                                <option value="">ไม่ระบุชนิดรูป</option>
-                                <option value="SET">
-                                  รูปรวมทั้งชุด (รูปหลัก)
-                                </option>
-                                <option value="TOP">รูปท่อนบน</option>
-                                <option value="BOTTOM">รูปท่อนล่าง</option>
-                              </select>
+                              <div className="mt-2 rounded-lg border border-[#EFE7D8] bg-white px-2 py-1.5 text-[11px] text-[#6B7A5E]">
+                                {image.piece
+                                  ? `ประเภท: ${pajamasPieceLabels[image.piece]}`
+                                  : "ยังไม่ได้ระบุประเภทรูป"}
+                              </div>
                             )}
 
                             {image.status === "FAILED" &&
@@ -369,30 +412,34 @@ export default function ProductColorsEditor({
                               )}
                           </div>
                         ) : (
-                          <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#DCCFB8] hover:border-[#87947A] hover:bg-[#F8F4EA]">
-                            <IonIcon
-                              icon={cloudUploadOutline}
-                              className="mb-2 text-3xl text-[#6B7A5E]"
-                            />
+                          <div className="flex aspect-square cursor-pointer flex-col justify-center rounded-lg border-2 border-dashed border-[#DCCFB8] bg-[#F8F4EA] p-3 hover:border-[#87947A]">
+                            <label className="flex flex-1 cursor-pointer flex-col items-center justify-center text-center">
+                              <IonIcon
+                                icon={cloudUploadOutline}
+                                className="mb-2 text-3xl text-[#6B7A5E]"
+                              />
 
-                            <span className="text-xs text-[#8B806E]">
-                              คลิกเพื่ออัปโหลด
-                            </span>
+                              <span className="text-xs text-[#8B806E]">
+                                {category === "pajamas"
+                                  ? `อัปโหลด ${pajamasPieceLabels[selectedPajamasPiece]}`
+                                  : "คลิกเพื่ออัปโหลด"}
+                              </span>
 
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(event) => {
-                                onImageChange(
-                                  activeColorIndex,
-                                  view.key,
-                                  event.target.files?.[0],
-                                );
-                                event.target.value = "";
-                              }}
-                            />
-                          </label>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(event) => {
+                                  handleUploadImage(
+                                    activeColorIndex,
+                                    view.key,
+                                    event.target.files?.[0],
+                                  );
+                                  event.target.value = "";
+                                }}
+                              />
+                            </label>
+                          </div>
                         )}
                       </div>
                     );
@@ -430,7 +477,7 @@ export default function ProductColorsEditor({
       <div className="border-t border-[#EFE7D8] bg-[#FCFAF6] px-6 py-3">
         {missingFrontColors.length > 0 ? (
           <p className="text-xs text-red-500">
-            ยังขาดรูปด้านหน้า:{" "}
+            ยังขาดรูปด้านหน้า: {" "}
             {missingFrontColors.map((color) => color.name || "สีใหม่").join(", ")}
           </p>
         ) : (
