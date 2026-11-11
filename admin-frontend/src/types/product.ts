@@ -100,8 +100,6 @@ export interface ProductOptions {
   occasions: string[];
 }
 
-export type ProductGender = "MALE" | "FEMALE";
-
 export interface Product {
   id: string;
   brand_id: string;
@@ -153,7 +151,6 @@ export interface SizeChartRowForm {
 export interface ProductFormData {
   name: string;
   category: string;
-  gender: ProductGender | "";
   gender: ProductGender;
   fabric: string;
   seasons: string[];

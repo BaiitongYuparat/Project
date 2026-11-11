@@ -10,6 +10,7 @@ datasource db {
 enum Gender {
   MALE
   FEMALE
+  UNSPECIFIED
 }
 
 enum BrandStatus {
@@ -285,7 +286,7 @@ model Product {
   brand_id    String
   name        String
   category    String
-  gender      Gender?
+  gender      ProductGender      @default(UNISEX)
   fabric      String? // เนื้อผ้า (ร้านกรอกเอง)
   seasons     String[]           @default([]) // ฤดู (multi-select)
   occasions   String[]           @default([]) // โอกาส (multi-select)
@@ -307,7 +308,6 @@ model Product {
 
   @@index([brand_id])
   @@index([category])
-  @@index([gender])
   @@unique([brand_id, sku])
   @@map("products")
 }
@@ -480,4 +480,3 @@ model BodyType {
 
   @@map("body_type")
 }
-

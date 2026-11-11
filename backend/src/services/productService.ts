@@ -345,50 +345,6 @@ export const getProductById = async (
 };
 
 
-type CreateProductInput = {
-  name: string;
-  category: string;
-  gender: "MALE" | "FEMALE";
-  price?: number | null;
-  description?: string | null;
-  sku?: string | null;
-  images: {
-    s3_key: string;
-    sort_order: number;
-    view: "FRONT" | "BACK" | "LEFT" | "RIGHT";
-  }[];
-};
-
-// เพิ่มสินค้า
-export const createProduct = async (
-  brandId: string,
-  data: CreateProductInput
-) => {
-  assertOwnKeys(brandId, data.images);
-  return await prisma.product.create({
-    data: {
-      brand_id: brandId,
-      name: data.name,
-      category: data.category,
-      gender: data.gender,
-      price: data.price ?? null,
-      description: data.description ?? null,
-      sku: data.sku ?? null,
-     images: {
-        create: data.images.map((image) => ({
-          s3_key: image.s3_key,
-          sort_order: image.sort_order,
-          view: image.view,
-        })),
-      },
-    },
-    include: {
-      images: true,
-    },
-  });
-};
-
-// แก้ไขสินค้า
 type ProductImageInput = {
   s3_key: string;
   sort_order: number;
@@ -459,7 +415,7 @@ export const createProduct = async (
         brand_id: brandId,
         name: data.name,
         category: data.category,
-        gender: data.gender ?? "UNISEX",
+        gender: data.gender,
         fabric: data.fabric ?? null,
         seasons: data.seasons ?? [],
         occasions: data.occasions ?? [],
@@ -554,17 +510,6 @@ type UpdateProductPayload = {
 export const updateProductWithImages = async (
   brandId: string,
   productId: string,
-  data: {
-    name?: string;
-    category?: string;
-    gender?: "MALE" | "FEMALE";
-    price?: number | null;
-    description?: string | null;
-    sku?: string | null;
-    is_active?: boolean;
-  },
-  newImages: ProductImageInput[],
-  removeImageIds: string[]
   payload: UpdateProductPayload
 ) => {
   const { data, newImages, colors, removeImageIds, removeColorIds, size_chart } =
@@ -915,4 +860,3 @@ export const getProductOptions = async () => {
       .map((option) => option.label),
   };
 };
-
