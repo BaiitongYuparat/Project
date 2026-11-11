@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { NavLink, useNavigate, useParams } from "react-router-dom";
+import { NavLink, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { IonIcon } from "@ionic/react";
 import {
+  chevronDownOutline,
+  chevronForwardOutline,
   closeOutline,
   gridOutline,
   menuOutline,
@@ -16,6 +18,7 @@ import { logoutAdmin as logoutAdminApi } from "../services/adminAuthService";
 import { logoutAdmin as clearAdminAuth } from "../store/adminSlice";
 import ConfirmLogoutModal from "./ConfirmLogoutModal";
 
+// รายการเมนู — มี children = กลุ่มแบบ dropdown (กดหัวข้อแล้วกาง/หุบ)
 const menuItems = [
   {
     name: "Dashboard",
@@ -23,14 +26,20 @@ const menuItems = [
     icon: gridOutline,
   },
   {
-    name: "Products",
-    path: "/products",
+    name: "Product",
     icon: pricetagsOutline,
-  },
-  {
-    name: "Size Charts",
-    path: "/size-charts",
-    icon: resizeOutline,
+    children: [
+      {
+        name: "Product Management",
+        path: "/products",
+        icon: pricetagsOutline,
+      },
+      {
+        name: "Size Charts",
+        path: "/size-charts",
+        icon: resizeOutline,
+      },
+    ],
   },
   {
     name: "Admin Management",
@@ -63,8 +72,30 @@ export default function ShopAdminSidebar() {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const { slug } = useParams();
+  const location = useLocation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  const basePath = `/shopadmin/${slug}`;
+
+  // อยู่ในส่วน Product/Size Charts ไหม — ใช้กางกลุ่ม Product อัตโนมัติ
+  const inProductSection =
+    location.pathname.startsWith(`${basePath}/products`) ||
+    location.pathname.startsWith(`${basePath}/size-charts`);
+
+  const [productOpen, setProductOpen] = useState(inProductSection);
+  const [wasInProductSection, setWasInProductSection] =
+    useState(inProductSection);
+
+  // เด้งเข้าหน้า product/size chart ตรง ๆ → กางกลุ่มให้เสมอ
+  // (ปรับ state ระหว่าง render — แทน useEffect กัน cascading render)
+  if (inProductSection !== wasInProductSection) {
+    setWasInProductSection(inProductSection);
+
+    if (inProductSection) {
+      setProductOpen(true);
+    }
+  }
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -81,8 +112,6 @@ export default function ShopAdminSidebar() {
       navigate("/login", { replace: true });
     }
   };
-
-  const basePath = `/shopadmin/${slug}`;
 
   return (
     <>
@@ -142,35 +171,101 @@ export default function ShopAdminSidebar() {
           aria-label="Shop admin"
           className="flex-1 space-y-1 overflow-y-auto px-3 pb-3"
         >
-          {menuItems.map((item) => (
-            <NavLink
-              key={item.name}
-              to={`${basePath}${item.path}`}
-              end={item.path === ""}
-              onClick={() => setIsOpen(false)}
-              className={({ isActive }) =>
-                `${itemBase} ${
-                  isActive
-                    ? "bg-[#87947A] font-semibold text-white shadow-sm"
-                    : "text-[#766454] hover:bg-[#E9E0D2]"
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
+          {menuItems.map((item) =>
+            item.children ? (
+              <div key={item.name}>
+                {/* Group header — กดเพื่อกาง/หุบ dropdown */}
+                <button
+                  type="button"
+                  onClick={() => setProductOpen((previous) => !previous)}
+                  aria-expanded={productOpen}
+                  className={`${itemBase} w-full ${
+                    inProductSection
+                      ? "bg-[#87947A]/15 font-semibold text-[#5F6E53]"
+                      : "text-[#766454] hover:bg-[#E9E0D2]"
+                  }`}
+                >
                   <IonIcon
                     icon={item.icon}
                     className={`text-xl transition-colors ${
-                      isActive
-                        ? "text-white"
+                      inProductSection
+                        ? "text-[#6B7A5E]"
                         : "text-[#A99A87] group-hover:text-[#766454]"
                     }`}
                   />
                   {item.name}
-                </>
-              )}
-            </NavLink>
-          ))}
+                  <IonIcon
+                    icon={productOpen ? chevronDownOutline : chevronForwardOutline}
+                    className={`ml-auto text-sm transition-colors ${
+                      inProductSection ? "text-[#6B7A5E]" : "text-[#A99A87]"
+                    }`}
+                  />
+                </button>
+
+                {/* Group children */}
+                {productOpen && (
+                  <div className="mt-1 space-y-1">
+                    {item.children.map((child) => (
+                      <NavLink
+                        key={child.name}
+                        to={`${basePath}${child.path}`}
+                        onClick={() => setIsOpen(false)}
+                        className={({ isActive }) =>
+                          `${itemBase} pl-11 ${
+                            isActive
+                              ? "bg-[#87947A] font-semibold text-white shadow-sm"
+                              : "text-[#766454] hover:bg-[#E9E0D2]"
+                          }`
+                        }
+                      >
+                        {({ isActive }) => (
+                          <>
+                            <IonIcon
+                              icon={child.icon}
+                              className={`text-lg transition-colors ${
+                                isActive
+                                  ? "text-white"
+                                  : "text-[#A99A87] group-hover:text-[#766454]"
+                              }`}
+                            />
+                            {child.name}
+                          </>
+                        )}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <NavLink
+                key={item.name}
+                to={`${basePath}${item.path}`}
+                end={item.path === ""}
+                onClick={() => setIsOpen(false)}
+                className={({ isActive }) =>
+                  `${itemBase} ${
+                    isActive
+                      ? "bg-[#87947A] font-semibold text-white shadow-sm"
+                      : "text-[#766454] hover:bg-[#E9E0D2]"
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <IonIcon
+                      icon={item.icon}
+                      className={`text-xl transition-colors ${
+                        isActive
+                          ? "text-white"
+                          : "text-[#A99A87] group-hover:text-[#766454]"
+                      }`}
+                    />
+                    {item.name}
+                  </>
+                )}
+              </NavLink>
+            ),
+          )}
         </nav>
 
         {/* Footer */}

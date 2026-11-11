@@ -2,6 +2,7 @@ import { prisma } from "../../lib/prisma";
 import { Prisma } from "@prisma/client";
 import { getImageUrl } from "../utils/s3Utils";
 import { deleteImage } from "../utils/s3Utils";
+import { isQualitySystemError } from "./productImageQuality";
 import { ProductImageQualityStatus } from "@prisma/client";
 
 const publicProductImageSelect = {
@@ -76,16 +77,25 @@ const withProductImageUrls = async <
   );
 };
 
-const withShopImageUrls = async <I extends { id: string; s3_key: string }>(
+const withShopImageUrls = async <I extends { id: string; s3_key: string; quality_reason?: string | null }>(
   images: I[]
-): Promise<WithImageUrl<I>[]> => {
+): Promise<(WithImageUrl<I> & { quality_error: boolean })[]> => {
   return Promise.all(
     images.map(async ({ s3_key, ...rest }) => {
       try {
-        return { ...rest, image_url: await getImageUrl(s3_key) };
+        return {
+          ...rest,
+          image_url: await getImageUrl(s3_key),
+          // FAILED เพราะระบบตรวจล้มเหลว (ไม่ใช่รูปไม่ผ่านจริง) — frontend ใช้แยกปุ่ม recheck
+          quality_error: isQualitySystemError(rest.quality_reason),
+        };
       } catch (error) {
         console.error("Failed to build image url:", rest.id, error);
-        return { ...rest, image_url: null };
+        return {
+          ...rest,
+          image_url: null,
+          quality_error: isQualitySystemError(rest.quality_reason),
+        };
       }
     })
   );

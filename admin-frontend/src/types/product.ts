@@ -13,6 +13,8 @@ export interface ProductImage {
   quality_status: QualityStatus;
   quality_reason?: string | null;
   view: ImageView;
+  // FAILED เพราะระบบตรวจล้มเหลว (AI error / ปิดบริการ) ไม่ใช่รูปไม่ผ่านจริง
+  quality_error?: boolean;
 }
 
 export interface ProductColor {
@@ -164,11 +166,13 @@ export interface ProductFormData {
   colors: ProductColorForm[];
 }
 
-// draft ที่เก็บลง sessionStorage ตอนออกไปหน้าสร้างตารางไซส์
+// draft ที่เก็บลง sessionStorage ตอนออกจากฟอร์มสินค้ากลางคัน (กู้ตอนกลับมา)
 export interface ProductFormDraft {
   form: ProductFormData;
   remove_color_ids: string[];
   editing_product_id: string | null;
+  // step ของ wizard ตอนเซฟ (กู้กลับไป step เดิม)
+  step?: number;
 }
 
 // Payload ที่ส่งให้ service

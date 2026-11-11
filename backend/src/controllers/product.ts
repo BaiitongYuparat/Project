@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import { createProduct, deleteProduct, getProductById, getProducts, getPublicProduct, getPublicProducts, updateProductWithImages , getAdminProducts , getAdminProductStats, getSizeChartTemplates, getProductOptions} from "../services/productService";
 import { resolveSizeChartForProduct } from "../services/sizeChartService";
 import { BrandAccessError } from "../services/brandAccessService";
-import { processProductImageQuality } from "../services/productImageQuality";
+import { processProductImageQuality, recheckProductImage } from "../services/productImageQuality";
 import { deleteImage } from "../utils/s3Utils";
 
 // GET /products
@@ -122,6 +122,56 @@ export const getProductByIdController = async (
   } catch (error) {
     console.error("Get product error:", error);
     return res.status(500).json({ message: "Failed to fetch product" });
+  }
+};
+
+// POST /brands/:slug/products/:productId/images/:imageId/recheck
+// ส่งรูปที่ FAILED กลับเข้าคิวตรวจคุณภาพใหม่ (ไว้กรณี AI ตรวจล้มเหลว)
+export const recheckProductImageController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const brandId = req.brand?.id;
+    const productId = req.params.productId;
+    const imageId = req.params.imageId;
+
+    if (!brandId) {
+      return res.status(403).json({ message: "Brand access required" });
+    }
+
+    if (typeof productId !== "string" || typeof imageId !== "string") {
+      return res.status(400).json({ message: "Invalid product or image ID" });
+    }
+
+    const result = await recheckProductImage(brandId, productId, imageId);
+
+    if (!result.ok) {
+      switch (result.reason) {
+        case "NOT_FOUND":
+          return res.status(404).json({ message: "Image not found" });
+        case "UNSUPPORTED":
+          return res.status(400).json({ message: "Unsupported image type" });
+        case "TOO_SOON":
+          return res.status(429).json({
+            message: "กรุณารอสักครู่ก่อนตรวจซ้ำ",
+            retry_after: result.retry_after ?? 0,
+          });
+        case "NOT_ALLOWED":
+        default:
+          return res
+            .status(409)
+            .json({ message: "ตรวจซ้ำได้เฉพาะรูปที่สถานะไม่ผ่าน" });
+      }
+    }
+
+    // AI ตรวจเป็น background job — หน้าเว็บจะ poll สถานะเอง
+    return res.status(202).json({
+      message: "ส่งรูปเข้าคิวตรวจสอบใหม่แล้ว",
+    });
+  } catch (error) {
+    console.error("Recheck product image error:", error);
+    return res.status(500).json({ message: "Failed to recheck image" });
   }
 };
 

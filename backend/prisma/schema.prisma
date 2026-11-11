@@ -352,6 +352,7 @@ model ProductImage {
   s3_key         String
   sort_order     Int                       @default(0)
   uploaded_at    DateTime                  @default(now()) @db.Timestamp(6)
+  last_checked_at DateTime?                 @db.Timestamp(6)
   product        Product                   @relation(fields: [product_id], references: [id], onDelete: Cascade)
   color          ProductColor?             @relation(fields: [color_id], references: [id], onDelete: Cascade)
 

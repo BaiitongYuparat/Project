@@ -134,7 +134,7 @@ export default function SizeChartManagement() {
           <button
             type="button"
             onClick={() => navigate("new")}
-            className="mt-4 rounded-lg bg-[#2453D4] px-4 py-2 text-sm text-white hover:bg-[#1D45B5]"
+            className="mt-4 rounded-lg bg-[#3B2C25] px-4 py-2 text-sm text-white hover:bg-[#2A201B]"
           >
             สร้างตารางแรกของคุณ
           </button>
@@ -160,7 +160,7 @@ export default function SizeChartManagement() {
                 </div>
 
                 <span
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FCFAF6] text-[#2453D4]"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FCFAF6] text-[#6B7A5E]"
                   aria-hidden
                 >
                   <IonIcon icon={resizeOutline} />
@@ -186,7 +186,7 @@ export default function SizeChartManagement() {
               <div className="mt-4 flex items-center justify-between border-t border-[#F0E8DA] pt-4">
                 <Link
                   to={`${chart.id}/edit`}
-                  className="flex items-center gap-1.5 text-sm font-medium text-[#2453D4] hover:underline"
+                  className="flex items-center gap-1.5 text-sm font-medium text-[#6B7A5E] hover:underline"
                 >
                   <IonIcon icon={createOutline} className="text-sm" />
                   แก้ไข

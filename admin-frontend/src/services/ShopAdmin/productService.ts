@@ -31,6 +31,17 @@ export const getProductById = async (
   return response.data.product;
 };
 
+// ส่งรูปที่ FAILED กลับเข้าคิวตรวจคุณภาพใหม่ (AI ตรวจเบื้องหลัง, cooldown 30 วิ ฝั่งเซิร์ฟเวอร์)
+export const recheckProductImage = async (
+  slug: string,
+  productId: string,
+  imageId: string
+): Promise<void> => {
+  await api.post(
+    `/brands/${slug}/products/${productId}/images/${imageId}/recheck`
+  );
+};
+
 // ดึงตารางไซส์ standard ของแพลตฟอร์ม (filter ตาม gender/category ได้)
 export const getSizeChartTemplates = async (params?: {
   gender?: ProductGender;

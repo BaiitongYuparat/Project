@@ -302,7 +302,7 @@ export default function SizeChartForm() {
         </button>
 
         {fromProducts && (
-          <p className="mb-1 text-xs text-[#2453D4]">
+          <p className="mb-1 text-xs text-[#6B7A5E]">
             ข้อมูลฟอร์มสินค้าที่กรอกไว้ถูกเก็บไว้แล้ว — กลับไปแล้วจะได้ฟอร์มเดิมพร้อมเลือกตารางนี้
           </p>
         )}
@@ -345,7 +345,7 @@ export default function SizeChartForm() {
                 }))
               }
               placeholder="เช่น collection 1, Summer 2026"
-              className="w-full rounded-lg border border-[#E9DFC9] px-3 py-2.5 text-sm outline-none focus:border-[#2453D4]"
+              className="w-full rounded-lg border border-[#E9DFC9] px-3 py-2.5 text-sm outline-none focus:border-[#87947A]"
             />
           </label>
 
@@ -367,7 +367,7 @@ export default function SizeChartForm() {
                   }
                   className={`rounded-full px-4 py-2 text-sm transition-colors ${
                     form.gender === option.value
-                      ? "bg-[#2453D4] font-medium text-white"
+                      ? "bg-[#87947A] font-medium text-white"
                       : "bg-[#FCFAF6] text-[#786E5D] hover:bg-[#F8F4EA]"
                   }`}
                 >
@@ -397,7 +397,7 @@ export default function SizeChartForm() {
                     onClick={() => toggleCategory(category)}
                     className={`rounded-full px-4 py-2 text-sm capitalize transition-colors ${
                       active
-                        ? "bg-[#2453D4] font-medium text-white"
+                        ? "bg-[#87947A] font-medium text-white"
                         : "bg-[#FCFAF6] text-[#786E5D] hover:bg-[#F8F4EA]"
                     }`}
                   >
@@ -423,7 +423,7 @@ export default function SizeChartForm() {
                 <button
                   type="button"
                   onClick={() => applyStandardTemplate(entry.category)}
-                  className="rounded-lg border border-[#E9DFC9] px-3 py-2 text-xs text-[#2453D4] hover:bg-[#F8F4EA]"
+                  className="rounded-lg border border-[#E9DFC9] px-3 py-2 text-xs text-[#6B7A5E] hover:bg-[#F8F4EA]"
                 >
                   เริ่มจากตาราง standard
                 </button>
@@ -466,7 +466,7 @@ export default function SizeChartForm() {
                                 )
                               }
                               placeholder="S, M, L..."
-                              className="w-20 rounded-lg border border-[#E9DFC9] px-2 py-1.5 text-sm outline-none focus:border-[#2453D4]"
+                              className="w-20 rounded-lg border border-[#E9DFC9] px-2 py-1.5 text-sm outline-none focus:border-[#87947A]"
                             />
                           </td>
 
@@ -485,7 +485,7 @@ export default function SizeChartForm() {
                                     event.target.value,
                                   )
                                 }
-                                className="w-20 rounded-lg border border-[#E9DFC9] px-2 py-1.5 text-sm outline-none focus:border-[#2453D4]"
+                                className="w-20 rounded-lg border border-[#E9DFC9] px-2 py-1.5 text-sm outline-none focus:border-[#87947A]"
                               />
                             </td>
                           ))}
@@ -512,7 +512,7 @@ export default function SizeChartForm() {
               <button
                 type="button"
                 onClick={() => handleAddRow(entry.category)}
-                className="mt-3 rounded-lg border border-dashed border-[#DCCFB8] px-3 py-2 text-sm text-[#2453D4] hover:bg-[#F8F4EA]"
+                className="mt-3 rounded-lg border border-dashed border-[#DCCFB8] px-3 py-2 text-sm text-[#6B7A5E] hover:bg-[#F8F4EA]"
               >
                 + เพิ่มแถวไซส์
               </button>

@@ -4,7 +4,7 @@ import { uploadEbizRegistration, handleUploadError,uploadProductImages } from ".
 import { authMiddleware } from "../middlewares/auth";
 import { adminAuthMiddleware } from "../middlewares/adminAuth";
 import { requireBrandAccess } from "../middlewares/brandAccess";
-import { createProductController, deleteProductController, getProductByIdController, getProductsController, updateProductController } from "../controllers/product";
+import { createProductController, deleteProductController, getProductByIdController, getProductsController, recheckProductImageController, updateProductController } from "../controllers/product";
 import { getSizeChartTemplatesController, getProductOptionsController } from "../controllers/productConfig";
 import { createBrandSizeChartController, deleteBrandSizeChartController, getBrandSizeChartByIdController, getBrandSizeChartsController, updateBrandSizeChartController } from "../controllers/sizeChart";
 
@@ -38,6 +38,8 @@ router.get("/:slug/products/:id", getProductByIdController);
 router.post("/:slug/products",uploadProductImages, handleUploadError, createProductController);
 router.put("/:slug/products/:id",uploadProductImages, handleUploadError, updateProductController);
 router.delete("/:slug/products/:id", deleteProductController);
+// ส่งรูปที่ FAILED กลับเข้าคิวตรวจคุณภาพใหม่ (cooldown 30 วินาทีฝั่ง service)
+router.post("/:slug/products/:productId/images/:imageId/recheck", recheckProductImageController);
 //BrandMember Management
 
 router.use("/:slug/members",adminAuthMiddleware,requireBrandAccess);
