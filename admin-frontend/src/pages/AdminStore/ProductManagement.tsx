@@ -1,19 +1,9 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ChangeEvent,
-  type FormEvent,
-} from "react";
-import { useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { IonIcon } from "@ionic/react";
-import { addOutline, chevronDownOutline, searchOutline } from "ionicons/icons";
-
-import Button from "../../components/Button";
+import { chevronDownOutline, searchOutline } from "ionicons/icons";
 
 import ProductTable from "../../components/shopadmin/product/ProductTable";
-import ProductFormModal from "../../components/shopadmin/product/ProductFormModal";
 import ProductQualityPanel from "../../components/shopadmin/product/ProductQuantityPanel";
 
 import {
@@ -38,6 +28,8 @@ const initialForm: ProductFormData = {
   images: [],
   remove_image_ids: [],
 };
+import { deleteProduct, getProducts } from "../../services/ShopAdmin/productService";
+import type { Product } from "../../types/product";
 
 type QualityStatus = "PENDING" | "PASSED" | "FAILED";
 type StatusFilter = "ALL" | QualityStatus;
@@ -61,6 +53,7 @@ const getProductStatus = (product: Product): QualityStatus => {
 
 export default function ProductManagement() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
 
   // Product data
   const [products, setProducts] = useState<Product[]>([]);
@@ -68,12 +61,6 @@ export default function ProductManagement() {
 
   // Loading states
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  // Form states
-  const [showForm, setShowForm] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [form, setForm] = useState<ProductFormData>({ ...initialForm });
 
   // Filters
   const [search, setSearch] = useState("");
@@ -135,24 +122,19 @@ export default function ProductManagement() {
   }, [products, search, category, statusFilter]);
 
   // สินค้าที่เลือก: หาจาก id ในรายการที่แสดงอยู่ จึงอัปเดตตามข้อมูลล่าสุดเสมอ
-  // ถ้าไม่มีสินค้า -> null (ไม่แสดง ProductQualityPanel)
-
   const selectedProduct =
     filteredProducts.find((product) => product.id === selectedId) ??
     filteredProducts[0] ??
     null;
 
-  // เปิดฟอร์มเพิ่มสินค้า
-  const handleAdd = () => {
-    setEditingProduct(null);
-    setForm({ ...initialForm });
-    setError("");
-    setShowForm(true);
-  };
+  // ขณะสินค้าที่เลือกมีรูป "รอตรวจ" (สร้างใหม่/กดตรวจซ้ำ) ให้ poll ทุก 5 วิ
+  // จนกว่าจะไม่มีรูปที่รอตรวจ — ผล AI ค่อย ๆ ไหลเข้า UI เอง
+  const hasPendingImages = !!selectedProduct?.images.some(
+    (image) => image.quality_status === "PENDING",
+  );
 
-  // เปิดฟอร์มแก้ไขสินค้า
-  const handleEdit = (product: Product) => {
-    setEditingProduct(product);
+  useEffect(() => {
+    if (!hasPendingImages) return;
 
     setForm({
       name: product.name,
@@ -281,20 +263,18 @@ export default function ProductManagement() {
         await updateProduct(slug, editingProduct.id, form);
       } else {
         await createProduct(slug, form);
+    const timer = window.setInterval(() => {
+      if (!document.hidden) {
+        loadProducts(true);
       }
+    }, 5000);
 
-      setShowForm(false);
-      setEditingProduct(null);
-      setForm({ ...initialForm });
+    return () => window.clearInterval(timer);
+  }, [hasPendingImages, loadProducts]);
 
-      await loadProducts(true);
-    } catch (err: any) {
-      console.error("Save product error:", err);
-
-      setError(err.response?.data?.message ?? "ไม่สามารถบันทึกสินค้าได้");
-    } finally {
-      setSaving(false);
-    }
+  // แก้ไขสินค้า → เปิด wizard (tab "เพิ่ม/แก้สินค้า")
+  const handleEdit = (product: Product) => {
+    navigate(`/shopadmin/${slug}/products/${product.id}/edit`);
   };
 
   // ลบสินค้า
@@ -316,30 +296,21 @@ export default function ProductManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF7F0] p-4 sm:p-6 lg:p-8">
+    <div>
       {/* Header */}
-      <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-left text-2xl font-bold text-[#332F29] sm:text-3xl">
-            Product Management
-          </h1>
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-left text-2xl font-bold text-[#332F29] sm:text-3xl">
+          Product Management
+        </h1>
 
-          <p className="mt-2 text-base text-[#8B806E]">
-            จัดการข้อมูลสินค้าและตรวจสอบคุณภาพรูปสำหรับ Virtual Try-On
-          </p>
-        </div>
-
-        <div className="w-full sm:w-auto">
-          <Button type="button" onClick={handleAdd} variant="secondary">
-            <IonIcon icon={addOutline} className="text-sm md:text-md" />
-            เพิ่มสินค้า
-          </Button>
-        </div>
+        <p className="mt-2 text-base text-[#8B806E]">
+          จัดการข้อมูลสินค้าและตรวจสอบคุณภาพรูปสำหรับ Virtual Try-On
+        </p>
       </div>
 
       {/* Toolbar: Search + Category + Quality filter */}
       <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:mb-6 lg:flex lg:flex-wrap lg:items-center">
-        <label className="flex w-full items-center gap-3 rounded-xl border border-[#E9DFC9] bg-white px-4 py-3 text-sm focus-within:border-[#2453D4] lg:max-w-xs">
+        <label className="flex w-full items-center gap-3 rounded-xl border border-[#E9DFC9] bg-white px-4 py-3 text-sm focus-within:border-[#87947A] lg:max-w-xs">
           <IonIcon icon={searchOutline} className="text-lg text-[#8B806E]" />
           <input
             type="text"
@@ -350,7 +321,7 @@ export default function ProductManagement() {
           />
         </label>
 
-        <div className="relative w-full rounded-xl border border-[#E9DFC9] bg-white focus-within:border-[#2453D4] lg:w-48">
+        <div className="relative w-full rounded-xl border border-[#E9DFC9] bg-white focus-within:border-[#87947A] lg:w-48">
           <select
             value={category}
             onChange={(event) => setCategory(event.target.value)}
@@ -381,7 +352,7 @@ export default function ProductManagement() {
               onClick={() => setStatusFilter(filter.value)}
               className={`flex-1 whitespace-nowrap rounded-lg px-4 py-2 text-sm transition-colors lg:flex-none ${
                 statusFilter === filter.value
-                  ? "bg-[#2453D4] font-medium text-white"
+                  ? "bg-[#87947A] font-medium text-white"
                   : "text-[#786E5D] hover:text-[#332F29]"
               }`}
             >
@@ -392,7 +363,7 @@ export default function ProductManagement() {
       </div>
 
       {/* Error */}
-      {error && !showForm && (
+      {error && (
         <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
           {error}
         </div>
@@ -426,34 +397,12 @@ export default function ProductManagement() {
               <ProductQualityPanel
                 key={selectedProduct.id}
                 product={selectedProduct}
+                onRefresh={() => loadProducts(true)}
               />
             </div>
           )}
         </div>
       )}
-
-      {/* Add / Edit Modal */}
-      {showForm && (
-        <ProductFormModal
-          editingProduct={editingProduct}
-          form={form}
-          saving={saving}
-          onClose={handleCloseForm}
-          onSubmit={handleSubmit}
-          onChange={handleChange}
-          onImageChange={handleImageChange}
-          onRemoveOldImage={handleRemoveOldImage}
-          onRemoveNewImage={handleRemoveNewImage}
-        />
-      )}
-
-      {/* Form Error */}
-      {showForm && error && (
-        <div className="fixed left-1/2 top-5 z-[60] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 shadow-lg">
-          {error}
-        </div>
-      )}
     </div>
   );
 }
-

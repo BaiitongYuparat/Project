@@ -173,7 +173,7 @@ export default function ProductTable({
                       <button
                         type="button"
                         onClick={() => onEdit(product)}
-                        className="font-medium text-[#2453D4] hover:underline"
+                        className="font-medium text-[#6B7A5E] hover:underline"
                       >
                         แก้ไข
                       </button>
