@@ -44,7 +44,7 @@ import type {
 
 export const WIZARD_STEPS = [
   { title: "รายละเอียดสินค้า", description: "ชื่อ หมวดหมู่ เพศ เนื้อผ้า ฤดู โอกาส ราคา" },
-  { title: "ตารางไซส์", description: "เลือกตารางของร้าน หรือสร้างใหม่" },
+  { title: "ตารางไซส์", description: "ใช้ตารางของร้าน ตาราง standard หรือใส่เฉพาะตัว" },
   { title: "รูปสินค้า & สี", description: "เพิ่มสีและอัปโหลดรูป 4 มุม" },
   { title: "ตรวจสอบ & บันทึก", description: "ตรวจข้อมูลก่อนบันทึก" },
 ];
@@ -1134,10 +1134,47 @@ const handleOverrideFromChart = (chartId: string) => {
     }
   };
 
-  // ยกเลิกฟอร์มเอง → ทิ้ง draft กลับหน้า list
+  // เริ่มใหม่ = ล้างทั้ง wizard (ทุกขั้นตอน) แล้วกลับไปขั้นที่ 1 — อยู่ในหน้าเดิมให้กรอกใหม่
+  // (โหมดแก้ไข: กลับไปค่าตั้งต้นของสินค้าที่โหลดจาก DB ไม่ใช่ฟอร์มว่าง กันข้อมูลสินค้าหาย)
   const cancelWizard = () => {
     clearDraft();
-    navigate(`/shopadmin/${slug}/products`);
+
+    // กัน effect เซฟ draft (ที่จะรันหลัง state reset) เขียนฟอร์มเปล่าทับกลับ
+    skipNextDraftSave.current = true;
+
+    setRemoveColorIds([]);
+    setActiveTemplateId(null);
+    setShowChartCreator(false);
+    setError("");
+    setStep(0);
+    setFurthestStep(0);
+
+    if (productId && editingProduct) {
+      setForm(productToForm(editingProduct));
+      sizeChartTouched.current = true;
+    } else {
+      // สร้างใหม่ — ฟอร์มว่าง + prefill ตารางเหมือนตอนเข้าหน้าครั้งแรก
+      sizeChartTouched.current = false;
+
+      const base = { ...initialForm };
+      const best = pickBestChart(charts, base.gender, base.category);
+
+      setForm(
+        best
+          ? { ...base, size_chart_id: best.id }
+          : (() => {
+              const template = pickDefaultTemplate(
+                templates,
+                base.gender,
+                base.category,
+              );
+
+              return template
+                ? { ...base, size_chart: templateToRows(template) }
+                : base;
+            })(),
+      );
+    }
   };
 
   return {

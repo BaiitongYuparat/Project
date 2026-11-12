@@ -7,6 +7,8 @@ interface ProductTableProps {
   onSelect: (product: Product) => void;
   onEdit: (product: Product) => void;
   onDelete: (productId: string) => void;
+  /** id ของสินค้าที่กำลังลบอยู่ — ปุ่มลบของแถวนั้นจะ disable กันกดซ้ำ */
+  deletingId?: string | null;
 }
 
 type QualityStatus = "PENDING" | "PASSED" | "FAILED";
@@ -57,6 +59,7 @@ export default function ProductTable({
   onSelect,
   onEdit,
   onDelete,
+  deletingId = null,
 }: ProductTableProps) {
   return (
     <div className="overflow-hidden rounded-2xl border border-[#E9DFC9] bg-white shadow-sm">
@@ -181,9 +184,10 @@ export default function ProductTable({
                       <button
                         type="button"
                         onClick={() => onDelete(product.id)}
-                        className="font-medium text-red-500 hover:underline"
+                        disabled={deletingId === product.id}
+                        className="font-medium text-red-500 hover:underline disabled:cursor-not-allowed disabled:text-red-300 disabled:no-underline"
                       >
-                        ลบ
+                        {deletingId === product.id ? "กำลังลบ..." : "ลบ"}
                       </button>
                     </div>
                   </td>
