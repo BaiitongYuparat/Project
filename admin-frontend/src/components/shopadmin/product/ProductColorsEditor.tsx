@@ -54,6 +54,27 @@ const hasFrontImage = (color: ProductColorForm) => {
   return hasNewFront || hasExistingFront;
 };
 
+// สินค้า set ต้องมีรูปหน้าของ SET / TOP / BOTTOM ครบต่อสี
+// รูปที่ยังไม่ระบุชนิด (piece = null) นับเป็นตัวรองทุกชนิด (เช่นรูปเดิมก่อนมีฟีเจอร์นี้)
+const REQUIRED_SET_PIECES: ProductPiece[] = ["SET", "TOP", "BOTTOM"];
+
+const missingSetFrontPieces = (color: ProductColorForm): ProductPiece[] => {
+  const hasFrontPiece = (piece: ProductPiece) =>
+    color.new_images.some(
+      (image) =>
+        image.view === "FRONT" &&
+        (image.piece === piece || image.piece === null),
+    ) ||
+    color.existing_images.some(
+      (image) =>
+        image.view === "FRONT" &&
+        image.piece === piece &&
+        !color.removed_image_ids.includes(image.id),
+    );
+
+  return REQUIRED_SET_PIECES.filter((piece) => !hasFrontPiece(piece));
+};
+
 // ส่วนแก้ไขสี & รูปสินค้า (เดิมอยู่ใน modal — ตอนนี้ฝังใน step 3 ของ wizard)
 export default function ProductColorsEditor({
   colors,
@@ -283,14 +304,26 @@ export default function ProductColorsEditor({
                   </p>
 
                   <p className="mt-1 text-xs text-[#8B806E]">
-                    ต้องมีรูปภาพด้านหน้าอย่างน้อย 1 รูปต่อสี
-                    เพื่อใช้งาน Virtual Try-On
+                    {category === "set"
+                      ? "ต้องมีรูปด้านหน้าของ SET, TOP และ BOTTOM ครบทุกชนิดต่อสี เพื่อใช้งาน Virtual Try-On"
+                      : "ต้องมีรูปภาพด้านหน้าอย่างน้อย 1 รูปต่อสี เพื่อใช้งาน Virtual Try-On"}
                   </p>
 
                   {category === "set" && (
                     <div className="mt-3 rounded-xl border border-[#DCCFB8] bg-[#F8F4EA] p-3">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6B7A5E]">
-                        ต้องอัปโหลดแบบบังคับ
+                        สินค้าแบบชุด — เลือกชนิดรูปก่อนอัปโหลด
+                      </p>
+
+                      <p className="mt-1.5 text-[11px] text-[#6B7A5E]">
+                        ต้องมีรูป{" "}
+                        <span className="font-semibold text-[#332F29]">
+                          ด้านหน้า
+                        </span>{" "}
+                        อย่างน้อย 1 รูป ของแต่ละชนิดต่อ 1 สี:
+                        รูปเต็มชุด (SET), รูปท่อนบน (TOP) และรูปท่อนล่าง
+                        (BOTTOM) — เลือกชนิดรูปด้านล่าง แล้วอัปโหลดรูปทับช่อง
+                        ด้านหน้า/ด้านหลัง ทีละชนิด
                       </p>
 
                       <div className="mt-2 grid gap-2 sm:grid-cols-3">
@@ -475,7 +508,36 @@ export default function ProductColorsEditor({
 
       {/* Footer hint */}
       <div className="border-t border-[#EFE7D8] bg-[#FCFAF6] px-6 py-3">
-        {missingFrontColors.length > 0 ? (
+        {category === "set" ? (
+          (() => {
+            const missingByColor = colors
+              .filter((color) => !color.legacy)
+              .map((color) => ({
+                color,
+                missing: missingSetFrontPieces(color),
+              }))
+              .filter(({ missing }) => missing.length > 0);
+
+            return missingByColor.length > 0 ? (
+              <p className="text-xs text-red-500">
+                ยังขาดรูปด้านหน้า:{" "}
+                {missingByColor
+                  .map(
+                    ({ color, missing }) =>
+                      `${color.name || "สีใหม่"} (ขาด: ${missing
+                        .map((piece) => setPieceLabels[piece])
+                        .join(", ")})`,
+                  )
+                  .join(" | ")}
+              </p>
+            ) : (
+              <p className="text-xs text-[#8B806E]">
+                {colors.filter((color) => !color.legacy).length} สี
+                — ครบรูปหน้าของ SET / TOP / BOTTOM ทุกสีแล้ว
+              </p>
+            );
+          })()
+        ) : missingFrontColors.length > 0 ? (
           <p className="text-xs text-red-500">
             ยังขาดรูปด้านหน้า: {" "}
             {missingFrontColors.map((color) => color.name || "สีใหม่").join(", ")}

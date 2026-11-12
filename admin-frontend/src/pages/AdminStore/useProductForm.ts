@@ -986,6 +986,43 @@ const handleOverrideFromChart = (chartId: string) => {
           }
         }
 
+        // สินค้าชุด (set): ทุกสีต้องมีรูปด้านหน้าของ SET / TOP / BOTTOM ครบ
+        // รูปที่ยังไม่ระบุชนิด (piece = null) นับเป็นตัวรองทุกชนิด (เช่นรูปเดิมก่อนมีฟีเจอร์นี้)
+        if (form.category === "set") {
+          const requiredPieces: ProductPiece[] = ["SET", "TOP", "BOTTOM"];
+
+          const pieceLabels: Record<ProductPiece, string> = {
+            SET: "รูปเต็มชุด (SET)",
+            TOP: "ท่อนบน (TOP)",
+            BOTTOM: "ท่อนล่าง (BOTTOM)",
+          };
+
+          for (const color of realColors) {
+            const hasFrontPiece = (piece: ProductPiece) =>
+              color.new_images.some(
+                (image) =>
+                  image.view === "FRONT" &&
+                  (image.piece === piece || image.piece === null),
+              ) ||
+              color.existing_images.some(
+                (image) =>
+                  image.view === "FRONT" &&
+                  image.piece === piece &&
+                  !color.removed_image_ids.includes(image.id),
+              );
+
+            const missing = requiredPieces.filter(
+              (piece) => !hasFrontPiece(piece),
+            );
+
+            if (missing.length > 0) {
+              return `สี "${color.name || "สีใหม่"}" ต้องมีรูปด้านหน้าของทั้ง 3 ชนิด (ขาด: ${missing
+                .map((piece) => pieceLabels[piece])
+                .join(", ")})`;
+            }
+          }
+        }
+
         // สีใหม่ต้องตั้งชื่อ
         const unnamedColor = form.colors.find(
           (color) =>

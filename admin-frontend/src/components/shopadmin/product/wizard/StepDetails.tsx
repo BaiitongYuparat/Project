@@ -60,6 +60,32 @@ export default function StepDetails({ ctl }: StepDetailsProps) {
         </label>
       </div>
 
+      {/* Set category hint */}
+      {form.category === "set" && (
+        <div className="rounded-xl border border-[#DCCFB8] bg-[#F8F4EA] p-4 text-xs text-[#6B7A5E]">
+          <p className="font-semibold text-[#332F29]">
+            สินค้าแบบชุด (Set) = ท่อนบน (Top) + ท่อนล่าง (Bottom) ใน 1 สินค้า
+          </p>
+
+          <p className="mt-1.5">
+            ขั้นตอนอัปโหลดรูปจะต้องอัปโหลดรูป{" "}
+            <span className="font-semibold text-[#332F29]">ด้านหน้า</span>{" "}
+            อย่างน้อย 1 รูป ของทั้ง 3 ชนิด ต่อ 1 สี:
+          </p>
+
+          <ul className="mt-1 list-inside list-disc space-y-0.5">
+            <li>รูปเต็มชุด (SET) — ถ่ายสวมทั้งชุด</li>
+            <li>รูปท่อนบน (TOP) — ถ่ายเฉพาะท่อนบน</li>
+            <li>รูปท่อนล่าง (BOTTOM) — ถ่ายเฉพาะท่อนล่าง</li>
+          </ul>
+
+          <p className="mt-1.5">
+            แนะนำให้อัปโหลดรูปด้านหลัง/ซ้าย/ขวา ของทุกชิ้นเพิ่มด้วย
+            เพื่อผลลัพธ์ Virtual Try-On ที่ดีที่สุด
+          </p>
+        </div>
+      )}
+
       {/* Gender */}
       <div>
         <span className="mb-2 block text-sm font-medium text-[#332F29]">
