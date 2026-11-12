@@ -15,7 +15,7 @@ import type {
 
 interface ProductColorsEditorProps {
   colors: ProductColorForm[];
-  // หมวดสินค้า — ใช้แสดงตัวเลือกชนิดรูปของสินค้าแบบชุด เช่น pajamas
+  // หมวดสินค้า — ใช้แสดงตัวเลือกชนิดรูปของสินค้าแบบชุด เช่น set
   category?: string;
   onAddColor: () => void;
   onUpdateColor: (index: number, patch: Partial<ProductColorForm>) => void;
@@ -67,7 +67,7 @@ export default function ProductColorsEditor({
   onRemoveNewImage,
 }: ProductColorsEditorProps) {
   const [rawActiveIndex, setActiveColorIndex] = useState(0);
-  const [selectedPajamasPiece, setSelectedPajamasPiece] =
+  const [selectedSetPiece, setSelectedSetPiece] =
     useState<ProductPiece>("SET");
 
   // clamp index กันสีที่เลือกถูกลบไป
@@ -140,7 +140,7 @@ export default function ProductColorsEditor({
     (color) => !color.legacy && !hasFrontImage(color),
   );
 
-  const pajamasPieceLabels: Record<ProductPiece, string> = {
+  const setPieceLabels: Record<ProductPiece, string> = {
     SET: "รูปเต็มชุด (SET)",
     TOP: "รูปท่อนบน (TOP)",
     BOTTOM: "รูปท่อนล่าง (BOTTOM)",
@@ -155,12 +155,12 @@ export default function ProductColorsEditor({
 
     onImageChange(colorIndex, view, file);
 
-    if (category === "pajamas") {
-      onImagePieceChange?.(colorIndex, view, selectedPajamasPiece);
+    if (category === "set") {
+      onImagePieceChange?.(colorIndex, view, selectedSetPiece);
     }
   };
 
-  const pajamasSteps: ProductPiece[] = ["SET", "TOP", "BOTTOM"];
+  const setSteps: ProductPiece[] = ["SET", "TOP", "BOTTOM"];
 
   return (
     <div className="overflow-hidden rounded-2xl border border-[#E9DFC9] bg-white">
@@ -287,25 +287,25 @@ export default function ProductColorsEditor({
                     เพื่อใช้งาน Virtual Try-On
                   </p>
 
-                  {category === "pajamas" && (
+                  {category === "set" && (
                     <div className="mt-3 rounded-xl border border-[#DCCFB8] bg-[#F8F4EA] p-3">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6B7A5E]">
                         ต้องอัปโหลดแบบบังคับ
                       </p>
 
                       <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                        {pajamasSteps.map((piece) => (
+                        {setSteps.map((piece) => (
                           <button
                             key={piece}
                             type="button"
-                            onClick={() => setSelectedPajamasPiece(piece)}
+                            onClick={() => setSelectedSetPiece(piece)}
                             className={`rounded-xl border px-3 py-2 text-left text-[11px] font-medium transition-colors ${
-                              selectedPajamasPiece === piece
+                              selectedSetPiece === piece
                                 ? "border-[#87947A] bg-[#E9F0E3] text-[#332F29]"
                                 : "border-[#DCCFB8] bg-white text-[#6B7A5E]"
                             }`}
                           >
-                            {pajamasPieceLabels[piece]}
+                            {setPieceLabels[piece]}
                           </button>
                         ))}
                       </div>
@@ -313,15 +313,15 @@ export default function ProductColorsEditor({
                       <p className="mt-2 text-[11px] text-[#6B7A5E]">
                         ขั้นตอนที่กำลังเลือก:{" "}
                         <span className="font-semibold text-[#332F29]">
-                          {pajamasPieceLabels[selectedPajamasPiece]}
+                          {setPieceLabels[selectedSetPiece]}
                         </span>
                       </p>
                     </div>
                   )}
 
-                  {category === "pajamas" && (
+                  {category === "set" && (
                     <p className="mt-1 text-xs text-[#6B7A5E]">
-                      ชุดนอน: อัปโหลดรูป 4 ด้านตามลำดับ{" "}
+                      ชุด (Set): อัปโหลดรูป 4 ด้านตามลำดับ{" "}
                       <span className="font-semibold">SET → TOP → BOTTOM</span>
                     </p>
                   )}
@@ -394,10 +394,10 @@ export default function ProductColorsEditor({
                               </label>
                             </div>
 
-                            {category === "pajamas" && image.isNew && (
+                            {category === "set" && image.isNew && (
                               <div className="mt-2 rounded-lg border border-[#EFE7D8] bg-white px-2 py-1.5 text-[11px] text-[#6B7A5E]">
                                 {image.piece
-                                  ? `ประเภท: ${pajamasPieceLabels[image.piece]}`
+                                  ? `ประเภท: ${setPieceLabels[image.piece]}`
                                   : "ยังไม่ได้ระบุประเภทรูป"}
                               </div>
                             )}
@@ -420,8 +420,8 @@ export default function ProductColorsEditor({
                               />
 
                               <span className="text-xs text-[#8B806E]">
-                                {category === "pajamas"
-                                  ? `อัปโหลด ${pajamasPieceLabels[selectedPajamasPiece]}`
+                                {category === "set"
+                                  ? `อัปโหลด ${setPieceLabels[selectedSetPiece]}`
                                   : "คลิกเพื่ออัปโหลด"}
                               </span>
 

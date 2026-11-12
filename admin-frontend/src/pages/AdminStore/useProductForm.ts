@@ -191,9 +191,9 @@ const pickBestChart = (
   );
 };
 
-// หมวดที่สินค้าต้องใช้ entry จากตาราง (pajamas = top + bottom)
+// หมวดที่สินค้าต้องใช้ entry จากตาราง (set = top + bottom)
 export const requiredChartCategories = (category: string): string[] =>
-  category === "pajamas" ? ["top", "bottom"] : [category];
+  category === "set" ? ["top", "bottom"] : [category];
 
 // รวมแถวของ entry ที่ต้องใช้ — คืน null ถ้าขาดส่วนใดส่วนหนึ่งหรือไม่มีแถว
 // ไม่ตรวจเงื่อนไขซ้ำ — ให้ผู้เรียกเช็ก chartMatchesCategory ก่อน
@@ -833,15 +833,15 @@ const handleOverrideFromChart = (chartId: string) => {
     setError("");
 
     setForm((previous) => {
-      // pajamas: รูปแรกของสินค้า = รูปรวมทั้งชุด (SET) อัตโนมัติ
-      const isPajamas = previous.category === "pajamas";
+      // set: รูปแรกของสินค้า = รูปรวมทั้งชุด (SET) อัตโนมัติ
+      const isSet = previous.category === "set";
       const hasSetImage = previous.colors.some(
         (color) =>
           color.new_images.some((image) => image.piece === "SET") ||
           color.existing_images.some((image) => image.piece === "SET"),
       );
       const defaultPiece: ProductPiece | null =
-        isPajamas && !hasSetImage ? "SET" : null;
+        isSet && !hasSetImage ? "SET" : null;
 
       return {
         ...previous,
@@ -869,7 +869,7 @@ const handleOverrideFromChart = (chartId: string) => {
     });
   };
 
-  // เปลี่ยนชนิดรูปของรูปใหม่ (ใช้กับสินค้าแบบชุด เช่น pajamas)
+  // เปลี่ยนชนิดรูปของรูปใหม่ (ใช้กับสินค้าแบบชุด เช่น set)
   const handleColorImagePieceChange = (
     colorIndex: number,
     view: ProductColorForm["new_images"][number]["view"],
@@ -945,8 +945,8 @@ const handleOverrideFromChart = (chartId: string) => {
       }
 
       if (!chartMatchesCategory(chart, form.category)) {
-        return form.category === "pajamas"
-          ? "ชุดนอนต้องใช้ตารางที่มีทั้งท่อนบน (top) และท่อนล่าง (bottom) ครบ"
+        return form.category === "set"
+          ? "ชุด (set) ต้องใช้ตารางที่มีทั้งท่อนบน (top) และท่อนล่าง (bottom) ครบ"
           : `ตารางไซส์ที่เลือกไม่มีข้อมูลสำหรับหมวด "${form.category}"`;
       }
     } else {

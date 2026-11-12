@@ -2,7 +2,7 @@ export type ImageView = "FRONT" | "BACK" | "LEFT" | "RIGHT";
 
 export type ProductGender = "UNISEX" | "MALE" | "FEMALE";
 
-// ชนิดรูปของสินค้าแบบชุด (เช่น pajamas): SET = รูปรวมทั้งชุด (รูปหลัก)
+// ชนิดรูปของสินค้าแบบชุด (เช่น set): SET = รูปรวมทั้งชุด (รูปหลัก)
 export type ProductPiece = "SET" | "TOP" | "BOTTOM";
 
 export type QualityStatus = "PENDING" | "PASSED" | "FAILED";
@@ -135,7 +135,7 @@ export interface Product {
 export interface ProductImageForm {
   file: File;
   view: ImageView;
-  // ชนิดรูป (ใช้กับสินค้าแบบชุด เช่น pajamas)
+  // ชนิดรูป (ใช้กับสินค้าแบบชุด เช่น set)
   piece?: ProductPiece | null;
 }
 

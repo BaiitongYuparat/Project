@@ -183,7 +183,7 @@ type ProductGenderValue = (typeof GENDERS)[number];
 const VIEWS = ["FRONT", "BACK", "LEFT", "RIGHT"] as const;
 type ViewValue = (typeof VIEWS)[number];
 
-// ชนิดรูปของสินค้าแบบชุด (เช่น pajamas): SET = รูปรวมทั้งชุด (รูปหลัก), TOP/BOTTOM = รูปแยกท่อน
+// ชนิดรูปของสินค้าแบบชุด (เช่น set): SET = รูปรวมทั้งชุด (รูปหลัก), TOP/BOTTOM = รูปแยกท่อน
 const PIECES = ["SET", "TOP", "BOTTOM"] as const;
 type PieceValue = (typeof PIECES)[number];
 
@@ -528,7 +528,7 @@ export const createProductController = async (
       });
     }
 
-    // pieces: ชนิดรูป (optional — ใช้กับสินค้าแบบชุด เช่น pajamas)
+    // pieces: ชนิดรูป (optional — ใช้กับสินค้าแบบชุด เช่น set)
     let parsedPieces = parsePieces(pieces, files.length);
 
     if (!parsedPieces) {
@@ -537,9 +537,9 @@ export const createProductController = async (
       });
     }
 
-    // pajamas = สินค้า 1 ชุด → ต้องมีรูปรวมทั้งชุด (SET) อย่างน้อย 1 รูป
+    // set = สินค้า 1 ชุด → ต้องมีรูปรวมทั้งชุด (SET) อย่างน้อย 1 รูป
     // ถ้าไม่ระบุ pieces มาเลย ถือว่ารูปแรกเป็นรูปชุด
-    if (category.trim() === "pajamas") {
+    if (category.trim() === "set") {
       if (!parsedPieces.some((piece) => piece === "SET")) {
         if (parsedPieces.every((piece) => piece === null)) {
           parsedPieces = parsedPieces.map((piece, index) =>
@@ -547,7 +547,7 @@ export const createProductController = async (
           );
         } else {
           return res.status(400).json({
-            message: "สินค้าชุดนอนต้องมีรูปรวมทั้งชุดอย่างน้อย 1 รูป",
+            message: "สินค้าชุด (set) ต้องมีรูปรวมทั้งชุดอย่างน้อย 1 รูป",
           });
         }
       }
@@ -883,7 +883,7 @@ export const updateProductController = async (
       });
     }
 
-    // pieces: ชนิดรูป (optional — ใช้กับสินค้าแบบชุด เช่น pajamas)
+    // pieces: ชนิดรูป (optional — ใช้กับสินค้าแบบชุด เช่น set)
     let parsedPieces: (PieceValue | null)[] = [];
 
     if (files.length > 0) {

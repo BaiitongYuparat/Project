@@ -46,7 +46,7 @@ export default function StepSizeChart({ ctl }: StepSizeChartProps) {
     top: "Top",
     bottom: "Bottom",
     dress: "Dress",
-    pajamas: "Pajamas (ชุดนอน — รวมท่อนบน+ท่อนล่าง)",
+    set: "Set (ชุด — รวมท่อนบน+ท่อนล่าง)",
   };
 
   // ---------- inline creator handlers ----------
@@ -112,7 +112,7 @@ export default function StepSizeChart({ ctl }: StepSizeChartProps) {
     }));
   };
 
-  // เปิด/ปิดโหมด Free Size (ไซส์เดียว) — ใช้ได้กับทุกหมวด ไม่ใช่เฉพาะ pajamas
+  // เปิด/ปิดโหมด Free Size (ไซส์เดียว) — ใช้ได้กับทุกหมวด ไม่ใช่เฉพาะ set
   // เปิดแล้วแต่ละหมวดเหลือแถวเดียว size = FREESIZE (ตัววัดยังกรอกได้)
   const handleToggleFreesize = () => {
     setChartForm((previous) => {
@@ -137,8 +137,8 @@ export default function StepSizeChart({ ctl }: StepSizeChartProps) {
     });
   };
 
-  // preset: เปิดหมวด pajamas — แต่ตาราง pajamas ต้องมี entry ครบทั้ง top + bottom
-  const handlePresetPajamas = () => {
+  // preset: เปิดหมวด set — ตาราง set ต้องมี entry ครบทั้ง top + bottom
+  const handlePresetSet = () => {
     setChartForm((previous) => {
       let nextEntries = [...previous.entries];
 
@@ -528,10 +528,10 @@ export default function StepSizeChart({ ctl }: StepSizeChartProps) {
 
             <button
               type="button"
-              onClick={handlePresetPajamas}
+              onClick={handlePresetSet}
               className="mt-3 rounded-lg border border-[#DCCFB8] px-3 py-2 text-xs font-medium text-[#6B7A5E] transition-colors hover:bg-[#F8F4EA]"
             >
-              + ตาราง pajamas (เปิด top + bottom ครบทั้งคู่)
+              + ตาราง set (เปิด top + bottom ครบทั้งคู่)
             </button>
           </div>
 

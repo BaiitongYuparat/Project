@@ -55,7 +55,7 @@ enum ProductGender {
   FEMALE
 }
 
-// ชนิดรูปของสินค้าแบบชุด (เช่น pajamas): SET = รูปรวมทั้งชุด (รูปหลัก), TOP/BOTTOM = รูปแยกท่อน
+// ชนิดรูปของสินค้าแบบชุด (เช่น set): SET = รูปรวมทั้งชุด (รูปหลัก), TOP/BOTTOM = รูปแยกท่อน
 enum ProductPiece {
   SET
   TOP

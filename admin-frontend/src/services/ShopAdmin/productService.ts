@@ -121,7 +121,7 @@ const appendCommonFields = (
       formData.append("images", image.file);
       formData.append("views", image.view);
       formData.append("color_indexes", String(colorIndex));
-      // ชนิดรูปของสินค้าแบบชุด เช่น pajamas (SET/TOP/BOTTOM, ค่าว่าง = ไม่ระบุ)
+      // ชนิดรูปของสินค้าแบบชุด เช่น set (SET/TOP/BOTTOM, ค่าว่าง = ไม่ระบุ)
       formData.append("pieces", image.piece ?? "");
     });
   });

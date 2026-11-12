@@ -193,8 +193,8 @@ export default function SizeChartForm() {
     });
   };
 
-  // preset: สร้างตาราง pajamas — เปิด entry ทั้งท่อนบน (top) และท่อนล่าง (bottom) พร้อมกัน
-  const handlePresetPajamas = () => {
+  // preset: สร้างตาราง set — เปิด entry ทั้งท่อนบน (top) และท่อนล่าง (bottom) พร้อมกัน
+  const handlePresetSet = () => {
     setForm((previous) => {
       const nextEntries = [...previous.entries];
 
@@ -498,10 +498,10 @@ export default function SizeChartForm() {
 
               <button
                 type="button"
-                onClick={handlePresetPajamas}
+                onClick={handlePresetSet}
                 className="mt-3 rounded-lg border border-[#DCCFB8] px-3 py-2 text-xs font-medium text-[#6B7A5E] transition-colors hover:bg-[#F8F4EA]"
               >
-                + ตาราง pajamas (เปิด top + bottom ครบทั้งคู่)
+                + ตาราง set (เปิด top + bottom ครบทั้งคู่)
               </button>
             </div>
 

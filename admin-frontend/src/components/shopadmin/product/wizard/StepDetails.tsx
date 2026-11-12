@@ -5,6 +5,7 @@ import {
   CATEGORY_OPTIONS,
   GENDER_OPTIONS,
 } from "./constants";
+import { optionLabelTh } from "./optionLabels";
 
 interface StepDetailsProps {
   ctl: ProductFormController;
@@ -112,7 +113,7 @@ export default function StepDetails({ ctl }: StepDetailsProps) {
                   : "bg-[#FCFAF6] text-[#786E5D] hover:bg-[#F8F4EA]"
               }`}
             >
-              {season}
+              {optionLabelTh(season)}
             </button>
           ))}
         </div>
@@ -137,7 +138,7 @@ export default function StepDetails({ ctl }: StepDetailsProps) {
                   : "bg-[#FCFAF6] text-[#786E5D] hover:bg-[#F8F4EA]"
               }`}
             >
-              {occasion}
+              {optionLabelTh(occasion)}
             </button>
           ))}
         </div>
