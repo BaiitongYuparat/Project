@@ -12,12 +12,12 @@ import {
 
 import Button from "./Button";
 import type { RootState } from "../store/store";
-import { openLogin, closeSuspended } from "../store/uiSlice";
-import { logout as logoutAction } from "../store/userSlice";
+import { openLogin, closeSuspended } from "../store/uiSlice";import { logout as logoutAction } from "../store/userSlice";
 import { logout as logoutAPI } from "../services/authService";
 
 
 import SuspendedModal from "./SuspendedModal";
+import SuspendedAppealModal from "./SuspendedAppealModal";
 
 // ---------- Styles (ใช้ซ้ำทั้ง desktop และ mobile) ----------
 
@@ -293,7 +293,15 @@ export default function NavBar() {
           </div>
         </nav>
       )}
-      {(userSuspendedOpen || suspendedOpen) && (
+      {suspendedOpen ? (
+        // ถูกระงับจากหน้า login → แจ้งเตือน + ยื่นคำร้องขอปลดระงับได้
+        <SuspendedAppealModal
+          onClose={() => {
+            dispatch(closeSuspended());
+          }}
+        />
+      ) : userSuspendedOpen ? (
+        // ถูกระงับระหว่างใช้งาน (ไม่มี appeal_token) → แจ้งเตือนแบบเดิม
         <SuspendedModal
           title="บัญชีของคุณถูกระงับ"
           onClose={() => {
@@ -302,7 +310,7 @@ export default function NavBar() {
             if (user) handleLogout();
           }}
         />
-      )}
+      ) : null}
     </header>
   );
 }

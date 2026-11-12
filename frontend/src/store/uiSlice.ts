@@ -1,4 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
+import type { AppealSummary } from "../types/appeal";
 
 const uiSlice = createSlice({
   name: "ui",
@@ -6,6 +7,8 @@ const uiSlice = createSlice({
     isLoginOpen: false,
     isBodyOpen: false,
     isSuspendedOpen: false,
+    // คำร้องล่าสุดของบัญชีที่ถูกระงับ (จาก response ตอน login) — ใช้แสดงแจ้งเตือนบน SuspendedAppealModal
+    latestAppeal: null as AppealSummary | null,
   },
   reducers: {
     openLogin: (state) => {
@@ -26,6 +29,12 @@ const uiSlice = createSlice({
     closeSuspended: (state) => {
       state.isSuspendedOpen = false;
     },
+    setSuspendedAppeal: (state, action) => {
+      state.latestAppeal = action.payload;
+    },
+    clearSuspendedAppeal: (state) => {
+      state.latestAppeal = null;
+    },
   },
 });
 
@@ -36,6 +45,8 @@ export const {
   closeBody,
   openSuspended,
   closeSuspended,
+  setSuspendedAppeal,
+  clearSuspendedAppeal,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

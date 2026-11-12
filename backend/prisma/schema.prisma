@@ -103,6 +103,7 @@ model User {
   body         Body[]
   userConsents UserConsent[]
   bodyType     BodyType?
+  appeals      Appeal[]
 
   // Brand
   brandCustomers BrandCustomer[]
@@ -112,6 +113,33 @@ model User {
   productClicks ProductClick[]
 
   @@map("User")
+}
+
+// สถานะคำร้องขอปลดระงับบัญชี
+enum AppealStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// คำร้องขอปลดระงับ — shopper ยื่นผ่านหน้า login หลังบัญชีถูกระงับ
+// (อนุมัติโดย Super Admin แล้วบัญชีจะถูกปลดระงับอัตโนมัติ)
+model Appeal {
+  id         String       @id @default(uuid())
+  user_id    String
+  title      String
+  message    String // เหตุผลที่ขอปลดระงับ
+  status     AppealStatus @default(PENDING)
+  admin_note String? // คำตอบของ Super Admin
+  decided_by String? // id ของ Admin ที่ตัดสิน
+  decided_at DateTime?    @db.Timestamp(6)
+  created_at DateTime     @default(now()) @db.Timestamp(6)
+  updated_at DateTime     @updatedAt @db.Timestamp(6)
+  user       User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([status])
+  @@map("appeals")
 }
 
 model Body {

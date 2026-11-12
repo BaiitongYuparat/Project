@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { getBrands, registerBrand , getBrandById  , checkBrandAccess, getBrandMembers, addBrandMember, removeBrandMember, updateBrandMemberRole} from "../controllers/brand";
 import { uploadEbizRegistration, handleUploadError,uploadProductImages } from "../middlewares/upload";
-import { authMiddleware } from "../middlewares/auth";
 import { adminAuthMiddleware } from "../middlewares/adminAuth";
 import { requireBrandAccess } from "../middlewares/brandAccess";
 import { createProductController, deleteProductController, getProductByIdController, getProductsController, recheckProductImageController, updateProductController } from "../controllers/product";
@@ -10,8 +9,8 @@ import { createBrandSizeChartController, deleteBrandSizeChartController, getBran
 
 const router = Router();
 
-// สมัครร้าน: shopper (User) กรอกฟอร์มได้เหมือนเดิม — ระบบจะสร้างบัญชี Admin ให้เมื่อร้านได้รับอนุมัติ
-router.post("/register", authMiddleware , uploadEbizRegistration, handleUploadError, registerBrand);
+// สมัครร้าน: เปิดให้ใครก็ได้กรอก (ไม่ต้อง login) — ระบบจะสร้างบัญชี Admin ให้เมื่อร้านได้รับอนุมัติ
+router.post("/register", uploadEbizRegistration, handleUploadError, registerBrand);
 
 // Route ฝั่งจัดการร้าน ใช้ session ผู้ดูแล (ตาราง Admin — cookie admin_token)
 router.get("/:slug/access", adminAuthMiddleware , checkBrandAccess);

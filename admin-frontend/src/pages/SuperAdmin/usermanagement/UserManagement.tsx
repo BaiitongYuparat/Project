@@ -123,23 +123,13 @@ export default function UserManagement() {
 
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
-    const handleAction = async (type: "suspend" | "unsuspend" | "delete", user: User) => {
-        // ยืนยันก่อนทำรายการ
+    const handleAction = async (type: "suspend" | "delete", user: User) => {
+        // ยืนยันก่อนทำรายการ — ปลดระงับทำที่หน้าคำร้องขอปลดระงับ (Appeals) เท่านั้น
         const displayName = user.name ?? user.email ?? "-";
-        let confirmMessage: string;
-        switch (type) {
-            case "delete":
-                console.log(`ยืนยันการลบผู้ใช้: ${user.email}`);
-                confirmMessage = `ยืนยันการลบผู้ใช้ ${displayName} `;
-                break;
-            case "suspend":
-                console.log(`ยืนยันการระงับผู้ใช้: ${user.email}`);
-                confirmMessage = `ยืนยันการระงับผู้ใช้ ${displayName} ?`;
-                break;
-            default:
-                console.log(`ยืนยันการปลดระงับผู้ใช้: ${user.email}`);
-                confirmMessage = `ยืนยันการปลดระงับผู้ใช้ ${displayName} ?`;
-        }
+        const confirmMessage =
+            type === "delete"
+                ? `ยืนยันการลบผู้ใช้ ${displayName} `
+                : `ยืนยันการระงับผู้ใช้ ${displayName} ?`;
         if (!window.confirm(confirmMessage)) return;
 
         try {
@@ -150,10 +140,9 @@ export default function UserManagement() {
                 setUsers((prev) => prev.filter((u) => u.id !== user.id));
                 console.log(`[User] deleted: ${user.email}`);
             } else {
-                const status = type === "suspend" ? "suspended" : "active";
-                await updateUserStatus(user.id, status);
-                setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status } : u)));
-                console.log(`[User] ${status}: ${user.email}`);
+                await updateUserStatus(user.id, "suspended");
+                setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: "suspended" } : u)));
+                console.log(`[User] suspended: ${user.email}`);
             }
         } catch (err: any) {
             console.error(
@@ -256,13 +245,11 @@ export default function UserManagement() {
                                         <div className="ml-auto flex gap-2">
                                             <Button
                                                 size="sm"
-                                                variant={user.status === "suspended" ? "secondary" : "outline"}
-                                                disabled={actionLoadingId === user.id}
-                                                onClick={() =>
-                                                    handleAction(user.status === "suspended" ? "unsuspend" : "suspend", user)
-                                                }
+                                                variant="outline"
+                                                disabled={actionLoadingId === user.id || user.status === "suspended"}
+                                                onClick={() => handleAction("suspend", user)}
                                             >
-                                                {user.status === "suspended" ? "ปลดระงับ" : "ระงับ"}
+                                                ระงับ
                                             </Button>
                                             <Button
                                                 size="sm"
@@ -309,13 +296,11 @@ export default function UserManagement() {
                                                 <div className="flex justify-end gap-2">
                                                     <Button
                                                         size="sm"
-                                                        variant={user.status === "suspended" ? "secondary" : "outline"}
-                                                        disabled={actionLoadingId === user.id}
-                                                        onClick={() =>
-                                                            handleAction(user.status === "suspended" ? "unsuspend" : "suspend", user)
-                                                        }
+                                                        variant="outline"
+                                                        disabled={actionLoadingId === user.id || user.status === "suspended"}
+                                                        onClick={() => handleAction("suspend", user)}
                                                     >
-                                                        {user.status === "suspended" ? "ปลดระงับ" : "ระงับ"}
+                                                        ระงับ
                                                     </Button>
                                                     <Button
                                                         size="sm"

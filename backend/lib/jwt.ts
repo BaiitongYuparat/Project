@@ -61,3 +61,42 @@ export const verifyAdminToken = (token: string): AdminTokenPayload => {
 
     return { adminId: decoded.adminId };
 };
+
+//---------------------Appeal token (token อายุสั้นสำหรับบัญชีที่ถูกระงับ — ใช้ยื่น/ดูคำร้องได้เท่านั้น)---------------------
+
+export interface AppealTokenPayload {
+    userId: string;
+    scope: "appeal";
+}
+
+const APPEAL_AUDIENCE = "appeal";
+export const APPEAL_TOKEN_TTL_MS = 15 * 60 * 1000; // อายุ cookie ให้ตรงกับ expiresIn
+
+export const signAppealToken = (userId: string): string => {
+    return jwt.sign(
+        { userId, scope: "appeal" } satisfies AppealTokenPayload,
+        JWT_SECRET,
+        {
+            algorithm: "HS256",
+            expiresIn: "15m",
+            audience: APPEAL_AUDIENCE,
+        }
+    );
+};
+
+export const verifyAppealToken = (token: string): AppealTokenPayload => {
+    const decoded = jwt.verify(token, JWT_SECRET, {
+        algorithms: ["HS256"],
+        audience: APPEAL_AUDIENCE,
+    });
+
+    if (
+        typeof decoded === "string" ||
+        typeof decoded.userId !== "string" ||
+        decoded.scope !== "appeal"
+    ) {
+        throw new jwt.JsonWebTokenError("Invalid appeal token payload");
+    }
+
+    return { userId: decoded.userId, scope: "appeal" };
+};

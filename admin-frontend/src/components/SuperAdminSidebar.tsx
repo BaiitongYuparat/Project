@@ -11,7 +11,8 @@ import {
     sparklesOutline,
     bodyOutline,
     logOutOutline,
-    settingsOutline
+    settingsOutline,
+    chatbubblesOutline
 } from "ionicons/icons";
 import { logoutAdmin as logoutAdminApi } from "../services/adminAuthService";
 import { logoutAdmin as clearAdminAuth } from "../store/adminSlice";
@@ -33,6 +34,11 @@ const menuItems = [
         name: "User Management",
         path: "/user-management",
         icon: peopleOutline
+    },
+    {
+        name: "Appeals",
+        path: "/appeals",
+        icon: chatbubblesOutline
     },
     // {
     //     name: "Admin Management",
@@ -68,7 +74,7 @@ function Logo() {
     return (
         <span className="flex items-center gap-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-700 text-xl text-white">
-                <IonIcon icon={storefrontOutline} />
+            <IonIcon icon={storefrontOutline} />
             </span>
             <span className="text-lg font-bold leading-none text-gray-700">
                 LongDress

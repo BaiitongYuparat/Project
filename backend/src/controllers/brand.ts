@@ -10,6 +10,7 @@ import {
   BrandAccessError,
   getBrandAccess,
 } from "../services/brandAccessService";
+import { sendBrandApprovedEmail } from "../services/emailService";
 //สร้าง slug ไว้เป็น url ที่ไม่ซ้ำกัน
 const generateSlug = (brandName: string) => {
   return brandName
@@ -263,6 +264,16 @@ export const updateBrandStatus = async (req: Request, res: Response) => {
     });
 
     if (!result) return res.status(404).json({ error: "Brand not found" });
+
+    // อนุมัติร้าน → ส่งอีเมลตอบกลับถึงร้าน (best-effort — ล้มเหลวไม่กระทบการอนุมัติ)
+    if (status === "APPROVED" && result.updatedBrand.email) {
+      await sendBrandApprovedEmail({
+        to: result.updatedBrand.email,
+        brandName: result.updatedBrand.brand_name,
+        ownerName: result.updatedBrand.owner_name,
+        loginUrl: `${process.env.ADMIN_APP_URL ?? "http://localhost:5174"}/login`,
+      });
+    }
 
     res.status(200).json({
       ...result.updatedBrand,

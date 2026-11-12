@@ -14,6 +14,7 @@ import {
   getAdminProductStatsController,
 } from "../controllers/product";
 import { deleteUser , updateUserStatus , getUsers } from "../controllers/user";
+import { getAppeals, decideAppeal } from "../controllers/appeal";
 const router = Router();
 
 // ทุก Route ต้องเป็น Super Admin (session ฝั่ง Admin — cookie admin_token)
@@ -35,6 +36,10 @@ router.get("/products", getAdminProductsController);
 router.get("/users", getUsers);
 router.delete("/users/:id", deleteUser);
 router.put("/users/:id/status", updateUserStatus);
+
+// Appeals (คำร้องขอปลดระงับบัญชี shopper)
+router.get("/appeals", getAppeals);
+router.post("/appeals/:id/decision", decideAppeal);
 
 
 
