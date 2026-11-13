@@ -16,6 +16,7 @@ import {
   settingsOutline,
 } from "ionicons/icons";
 import { logoutAdmin as logoutAdminApi } from "../services/adminAuthService";
+import { invalidateAll } from "../services/cache";
 import { logoutAdmin as clearAdminAuth } from "../store/adminSlice";
 import ConfirmLogoutModal from "./ConfirmLogoutModal";
 import { getBrandSettings } from "../services/ShopAdmin/brandService";
@@ -172,6 +173,8 @@ export default function ShopAdminSidebar() {
     } finally {
       setLoggingOut(false);
       setConfirmLogout(false);
+      // ล้าง cache ข้อมูลร้านทั้งหมด — กันบัญชีอื่น login ต่อแล้วเห็นข้อมูลเดิม
+      invalidateAll();
       dispatch(clearAdminAuth());
       navigate("/login", { replace: true });
     }

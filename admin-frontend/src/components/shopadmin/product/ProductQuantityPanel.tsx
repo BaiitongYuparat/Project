@@ -11,11 +11,11 @@ import {
 import { isAxiosError } from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 
-import type { ImageView, Product, ProductImage } from "../../../types/product";
+import type { ImageView, ProductImage, ProductSummary } from "../../../types/product";
 import { recheckProductImage } from "../../../services/ShopAdmin/productService";
 
 interface ProductQualityPanelProps {
-  product: Product | null;
+  product: ProductSummary | null;
   /** เรียกเมื่อสถานะรูปอาจเปลี่ยน (เช่น กด recheck แล้ว) ให้ parent โหลดข้อมูลใหม่ */
   onRefresh?: () => void;
 }
@@ -70,7 +70,7 @@ interface ColorGroup {
 }
 
 // จัดกลุ่มรูปตามสี (ลำดับตามสีที่ตั้งไว้ในสินค้า, รูปไม่มีสีรวมกลุ่ม "ไม่ระบุสี" ท้ายสุด)
-const buildColorGroups = (product: Product): ColorGroup[] => {
+const buildColorGroups = (product: ProductSummary): ColorGroup[] => {
   const groups: ColorGroup[] = product.colors
     .map((color) => ({
       key: color.id,

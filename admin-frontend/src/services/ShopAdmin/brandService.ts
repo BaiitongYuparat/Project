@@ -1,7 +1,21 @@
 import api from "../api";
+import { cachedQuery, invalidate } from "../cache";
 import type { RegisterBrandResponse , CheckBrandAccessResponse, BrandMember, BrandMembersResponse, BrandSettings, UpdateBrandSettingsResponse, OwnerTransferStatusResponse, RequestOwnerTransferResponse } from "../../types/brand";
 
 const baseUrl = "/brands";
+const BRAND_SETTINGS_TTL_MS = 5 * 60 * 1000;
+const BRAND_MEMBERS_TTL_MS = 30 * 1000;
+const OWNER_TRANSFER_TTL_MS = 30 * 1000;
+
+const brandSettingsKey = (slug: string) => `brand-settings:${slug}`;
+const brandMembersKey = (slug: string) => `brand-members:${slug}`;
+const ownerTransferKey = (slug: string) => `brand-owner-transfer:${slug}`;
+
+export const invalidateBrandMembers = (slug: string) =>
+  invalidate(brandMembersKey(slug), { keepStale: true });
+
+export const invalidateOwnerTransferStatus = (slug: string) =>
+  invalidate(ownerTransferKey(slug), { keepStale: true });
 
 // สมัครร้านค้า
 export async function registerBrand(
@@ -26,13 +40,21 @@ export async function checkBrandAccess(
 }
 
 export async function getBrandMembers(
-  slug: string
+  slug: string,
+  opts: { force?: boolean } = {},
 ): Promise<BrandMembersResponse> {
-  const response = await api.get<BrandMembersResponse>(
-    `${baseUrl}/${encodeURIComponent(slug)}/members`
-  );
+  return cachedQuery(
+    brandMembersKey(slug),
+    async () => {
+      const response = await api.get<BrandMembersResponse>(
+        `${baseUrl}/${encodeURIComponent(slug)}/members`
+      );
 
-  return response.data;
+      return response.data;
+    },
+    BRAND_MEMBERS_TTL_MS,
+    opts,
+  );
 }
 
 export async function addBrandMember(
@@ -43,6 +65,8 @@ export async function addBrandMember(
     `${baseUrl}/${encodeURIComponent(slug)}/members`,
     { email }
   );
+
+  invalidateBrandMembers(slug);
 
   return response.data;
 }
@@ -55,18 +79,28 @@ export async function removeBrandMember(
     `${baseUrl}/${encodeURIComponent(slug)}/members/${encodeURIComponent(memberId)}`
   );
 
+  invalidateBrandMembers(slug);
+
   return response.data;
 }
 
 // ดึงคำขอเปลี่ยน OWNER ล่าสุดของร้าน (ไว้โชว์สถานะ "รอ Super Admin อนุมัติ")
 export async function getOwnerTransferStatus(
-  slug: string
+  slug: string,
+  opts: { force?: boolean } = {},
 ): Promise<OwnerTransferStatusResponse> {
-  const response = await api.get<OwnerTransferStatusResponse>(
-    `${baseUrl}/${encodeURIComponent(slug)}/members/owner-transfer`
-  );
+  return cachedQuery(
+    ownerTransferKey(slug),
+    async () => {
+      const response = await api.get<OwnerTransferStatusResponse>(
+        `${baseUrl}/${encodeURIComponent(slug)}/members/owner-transfer`
+      );
 
-  return response.data;
+      return response.data;
+    },
+    OWNER_TRANSFER_TTL_MS,
+    opts,
+  );
 }
 
 // ยื่นคำขอเปลี่ยน OWNER (เฉพาะ OWNER ปัจจุบัน) — ระบุอีเมลใหม่ที่จะเป็น OWNER
@@ -79,6 +113,9 @@ export async function requestOwnerTransfer(
     { email }
   );
 
+  invalidateOwnerTransferStatus(slug);
+  invalidateBrandMembers(slug);
+
   return response.data;
 }
 
@@ -86,11 +123,17 @@ export async function requestOwnerTransfer(
 export async function getBrandSettings(
   slug: string
 ): Promise<BrandSettings> {
-  const response = await api.get<BrandSettings>(
-    `${baseUrl}/${encodeURIComponent(slug)}`
-  );
+  return cachedQuery(
+    brandSettingsKey(slug),
+    async () => {
+      const response = await api.get<BrandSettings>(
+        `${baseUrl}/${encodeURIComponent(slug)}`
+      );
 
-  return response.data;
+      return response.data;
+    },
+    BRAND_SETTINGS_TTL_MS,
+  );
 }
 
 // บันทึกข้อมูลร้าน (ส่ง logo ผ่าน FormData เมื่อมีการเปลี่ยนรูป)

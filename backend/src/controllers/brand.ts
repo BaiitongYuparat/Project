@@ -12,6 +12,7 @@ import {
   getBrandAccess,
 } from "../services/brandAccessService";
 import { sendBrandApprovedEmail } from "../services/emailService";
+import { invalidateBrandAccess } from "../utils/accessCache";
 //สร้าง slug ไว้เป็น url ที่ไม่ซ้ำกัน
 const generateSlug = (brandName: string) => {
   return brandName
@@ -19,6 +20,12 @@ const generateSlug = (brandName: string) => {
     .toLowerCase()
     .replace(/\s+/g, "-")
     .replace(/[^\wก-๙-]/g, "");
+};
+
+// อ่าน slug จาก path param (กัน type string | string[] ของ express 5)
+const slugParam = (req: Request): string | undefined => {
+  const value = req.params.slug;
+  return typeof value === "string" ? value : undefined;
 };
 
 //ตรวจสอบว่าเป็น URL ที่ถูกต้องหรือไม่
@@ -146,7 +153,7 @@ export const deleteBrand = async (req: Request, res: Response) => {
   try {
     const brand = await prisma.brand.findUnique({
       where: { id },
-      select: { id: true, ebiz_registration: true },
+      select: { id: true, ebiz_registration: true, slug: true },
     });
 
     if (!brand) {
@@ -156,6 +163,9 @@ export const deleteBrand = async (req: Request, res: Response) => {
     await prisma.brand.delete({ where: { id } });
     //ลบไฟล์ใน S3
     deleteS3File(brand.ebiz_registration);
+
+    // สิทธิ์เข้าร้านหมดไปพร้อมร้าน — ล้าง cache ทันที
+    invalidateBrandAccess({ slug: brand.slug });
 
     res.status(200).json({ message: "Deleted brand successfully" });
   } catch (error) {
@@ -232,6 +242,7 @@ export const updateBrandStatus = async (req: Request, res: Response) => {
           store_url: true,
           ebiz_reg_no: true,
           status: true,
+          slug: true,
           created_at: true,
         },
       });
@@ -265,6 +276,11 @@ export const updateBrandStatus = async (req: Request, res: Response) => {
     });
 
     if (!result) return res.status(404).json({ error: "Brand not found" });
+
+    // สถานะร้านเปลี่ยน (อนุมัติ/ปฏิเสธ) → ล้าง cache สิทธิ์ของร้านนี้ทันที
+    if (result.updatedBrand.slug) {
+      invalidateBrandAccess({ slug: result.updatedBrand.slug });
+    }
 
     // อนุมัติร้าน → ส่งอีเมลตอบกลับถึงร้าน (best-effort — ล้มเหลวไม่กระทบการอนุมัติ)
     if (status === "APPROVED" && result.updatedBrand.email) {
@@ -512,6 +528,9 @@ export const addBrandMember = async (
       },
     });
 
+    // สิทธิ์ของสมาชิกใหม่เปลี่ยน — ล้าง cache ของเขาสำหรับร้านนี้ทันที
+    invalidateBrandAccess({ slug: slugParam(req), adminId: admin.id });
+
     return res.status(201).json({
       message: "Member added successfully",
       member: {
@@ -565,6 +584,7 @@ export const removeBrandMember = async (
       select: {
         id: true,
         role: true,
+        admin_id: true,
       },
     });
 
@@ -600,6 +620,9 @@ export const removeBrandMember = async (
         id: targetMember.id,
       },
     });
+
+    // สิทธิ์ของสมาชิกที่ถอนเปลี่ยนแล้ว — ล้าง cache ของเขาสำหรับร้านนี้ทันที
+    invalidateBrandAccess({ slug: slugParam(req), adminId: targetMember.admin_id });
 
     return res.status(200).json({
       message: "Member removed successfully",
@@ -665,6 +688,7 @@ export const updateBrandMemberRole = async (
       select: {
         id: true,
         role: true,
+        admin_id: true,
       },
     });
 
@@ -729,6 +753,9 @@ export const updateBrandMemberRole = async (
         },
       },
     });
+
+    // role ของสมาชิกเปลี่ยน — ล้าง cache สิทธิ์ของเขาสำหรับร้านนี้ทันที
+    invalidateBrandAccess({ slug: slugParam(req), adminId: targetMember.admin_id });
 
     return res.status(200).json({
       message: "Member role updated successfully",

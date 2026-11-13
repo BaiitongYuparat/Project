@@ -20,6 +20,7 @@ import {
   chartMatchesCategory,
   createBrandSizeChart,
   getBrandSizeCharts,
+  invalidateCharts,
   sortChartsForProduct,
 } from "../../services/ShopAdmin/sizeChartService";
 import {
@@ -1117,6 +1118,10 @@ const handleOverrideFromChart = (chartId: string) => {
       // เขียนข้อมูลเก่าทับกลับ ไม่งั้นกลับมาหน้าเพิ่มสินค้าจะเจอข้อมูลเดิมทั้งหมด
       skipNextDraftSave.current = true;
       clearDraft();
+
+      // products cache ถูก invalidate ใน service แล้ว
+      // charts ต้อง invalidate ด้วย เพราะ product_count ของตารางที่อ้างอิงเปลี่ยน
+      invalidateCharts(slug);
 
       return true;
     } catch (err) {

@@ -26,6 +26,7 @@ import AI_PromptManagement from "./pages/SuperAdmin/ai_promptmanagement/AI_Promp
 import System from "./pages/SuperAdmin/System";
 
 import { getCurrentAdmin } from "./services/adminAuthService";
+import { invalidateAll } from "./services/cache";
 import {
   loginAdmin,
   logoutAdmin,
@@ -45,6 +46,8 @@ function App() {
 
         dispatch(loginAdmin(admin));
       } catch {
+        // หมด session / ยังไม่ login — ล้าง cache ข้อมูลร้านเก่าด้วย
+        invalidateAll();
         dispatch(logoutAdmin());
       } finally {
         dispatch(setAdminAuthChecked());

@@ -130,6 +130,20 @@ export interface Product {
   size_charts: ProductSizeChartRow[];
 }
 
+// ข้อมูลย่อของสินค้าสำหรับหน้า list — list API ไม่ส่งตารางไซส์และรูปต่อสี (ดึงเต็มใช้ getProductById)
+export interface ProductSummaryColor {
+  id: string;
+  name: string;
+  hex: string | null;
+}
+
+export type ProductSummary = Omit<
+  Product,
+  "colors" | "size_chart_id" | "size_chart" | "size_charts"
+> & {
+  colors: ProductSummaryColor[];
+};
+
 // ---------- ฟอร์ม (state ฝั่ง UI) ----------
 
 export interface ProductImageForm {

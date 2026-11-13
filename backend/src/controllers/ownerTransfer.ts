@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import { Request, Response } from "express";
 import { OwnerTransferRequestStatus } from "@prisma/client";
+import { invalidateBrandAccess } from "../utils/accessCache";
 
 //===================== ฝั่ง Shop Admin (auth: adminAuthMiddleware + requireBrandAccess) =====================
 
@@ -302,6 +303,16 @@ export const decideOwnerTransferRequest = async (
         select: OWNER_TRANSFER_REQUEST_SELECT,
       });
     });
+
+    // อนุมัติ = role ของสมาชิก 2 คนเปลี่ยน — ล้าง cache สิทธิ์ของร้านนี้ทันที
+    if (decision === "APPROVED") {
+      const brand = await prisma.brand.findUnique({
+        where: { id: request.brand_id },
+        select: { slug: true },
+      });
+
+      invalidateBrandAccess({ slug: brand?.slug });
+    }
 
     return res.status(200).json({
       message:

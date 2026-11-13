@@ -4,6 +4,10 @@ import {
   getBrandAccess,
   BrandAccessError,
 } from "../services/brandAccessService";
+import {
+  getCachedBrandAccess,
+  setCachedBrandAccess,
+} from "../utils/accessCache";
 import { AdminRole } from "@prisma/client";
 
 export const requireBrandAccess = async (
@@ -35,10 +39,24 @@ export const requireBrandAccess = async (
       });
     }
 
-    const result = await getBrandAccess(
-      slug,
-      adminId,
-    );
+    // ตรวจสิทธิ์เข้าร้าน — ใช้ cache ได้เฉพาะ GET เท่านั้น
+    // mutation ต้อง query สดเสมอ เพราะ req.brand.role ถูกใช้ตัดสินสิทธิ์ใน controller
+    let result =
+      req.method === "GET"
+        ? getCachedBrandAccess(adminId, slug)
+        : undefined;
+
+    if (!result) {
+      result = await getBrandAccess(
+        slug,
+        adminId,
+      );
+
+      // เก็บผลลัพธ์ที่ผ่านแล้ว (getBrandAccess throw ถ้าไม่ผ่าน — ไม่ cache กรณีถูกปฏิเสธ)
+      if (req.method === "GET") {
+        setCachedBrandAccess(adminId, slug, result);
+      }
+    }
 
     // แนบข้อมูล Brand และ Role ให้ Controller ใช้ต่อ
     req.brand = {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { IonIcon } from "@ionic/react";
@@ -15,6 +15,7 @@ import {
   deleteBrandSizeChart,
   getBrandSizeCharts,
 } from "../../services/ShopAdmin/sizeChartService";
+import { useCachedQuery } from "../../hooks/useCachedQuery";
 import type { BrandSizeChart, ProductGender } from "../../types/product";
 
 const GENDER_LABELS: Record<ProductGender, string> = {
@@ -27,41 +28,23 @@ export default function SizeChartManagement() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
 
-  const [charts, setCharts] = useState<BrandSizeChart[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  // รายการตารางไซส์ — มี cache แสดงทันที (skeleton เฉพาะครั้งแรกที่ไม่มี cache)
+  const {
+    data,
+    loading,
+    error: loadError,
+    refresh,
+  } = useCachedQuery<BrandSizeChart[]>(
+    slug ?? null,
+    (opts) =>
+      slug
+        ? getBrandSizeCharts(slug, opts)
+        : Promise.reject(new Error("Missing brand slug")),
+  );
 
-  const loadCharts = async () => {
-    if (!slug) return;
+  const charts = data ?? [];
 
-    try {
-      setCharts(await getBrandSizeCharts(slug));
-      setError("");
-    } catch (err) {
-      console.error("Load size charts error:", err);
-      setError("ไม่สามารถโหลดตารางไซส์ได้");
-    }
-  };
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      // defer ให้ setState อยู่นอก synchronous phase ของ effect
-      await Promise.resolve();
-
-      if (cancelled) return;
-
-      await loadCharts();
-
-      if (!cancelled) setLoading(false);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug]);
+  const [actionError, setActionError] = useState("");
 
   const handleDelete = async (chart: BrandSizeChart) => {
     if (!slug) return;
@@ -73,18 +56,22 @@ export default function SizeChartManagement() {
     if (!confirmed) return;
 
     try {
-      setError("");
+      setActionError("");
+      // service invalidate cache ให้เอง — force refresh ให้ list อัปเดตทันที
       await deleteBrandSizeChart(slug, chart.id);
-      loadCharts();
+      await refresh({ force: true });
     } catch (err) {
       console.error("Delete size chart error:", err);
-      setError(
+      setActionError(
         isAxiosError(err)
           ? err.response?.data?.message ?? "ไม่สามารถลบตารางไซส์ได้"
           : "ไม่สามารถลบตารางไซส์ได้",
       );
     }
   };
+
+  const displayError =
+    actionError || (loadError ? "ไม่สามารถโหลดตารางไซส์ได้" : "");
 
   return (
     <div className="min-h-screen bg-[#FAF7F0] p-4 sm:p-6 lg:p-8">
@@ -125,9 +112,9 @@ export default function SizeChartManagement() {
         </div>
 
         {/* Error */}
-        {error && (
+        {displayError && (
           <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-            {error}
+            {displayError}
           </div>
         )}
 

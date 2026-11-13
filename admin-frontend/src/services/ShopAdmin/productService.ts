@@ -1,25 +1,54 @@
-
 import api from "../api";
+import {
+  cachedQuery,
+  invalidate,
+} from "../cache";
 import type {
   Product,
   ProductFormData,
   ProductGender,
   ProductOptions,
+  ProductSummary,
   SizeChartTemplate,
 } from "../../types/product";
 
+// ---------- TTL ของ cache ----------
+
+const PRODUCTS_TTL_MS = 30_000; // รายการสินค้า — stale-while-revalidate 30 วิ
+const PLATFORM_CONFIG_TTL_MS = 30 * 60 * 1000; // template/ตัวเลือกของแพลตฟอร์ม — แก้ยาก เก็บ 30 นาที
+
+// ---------- cache keys ----------
+
+const productsKey = (slug: string) => `products:${slug}`;
+const templatesKey = (params?: {
+  gender?: ProductGender;
+  category?: string;
+}) => `templates:${params?.gender ?? ""}:${params?.category ?? ""}`;
+const productOptionsKey = "product-options";
+
 // ---------- API ----------
 
-// ดึงสินค้าทั้งหมดของร้าน
-export const getProducts = async (
-  slug: string
-): Promise<Product[]> => {
-  const response = await api.get(`/brands/${slug}/products`);
+// ดึงสินค้าทั้งหมดของร้าน (cache 30 วิ — stale-while-revalidate)
+export const getProducts = (
+  slug: string,
+  opts: { force?: boolean } = {},
+): Promise<ProductSummary[]> =>
+  cachedQuery(
+    productsKey(slug),
+    async () => {
+      const response = await api.get(`/brands/${slug}/products`);
 
-  return response.data.products;
-};
+      return response.data.products as ProductSummary[];
+    },
+    PRODUCTS_TTL_MS,
+    opts,
+  );
 
-// ดึงสินค้า 1 รายการ
+// หลัง mutation สินค้า — mark รายการเก่าเป็น stale (ยังแสดงได้ระหว่าง refetch)
+export const invalidateProducts = (slug: string) =>
+  invalidate(productsKey(slug), { keepStale: true });
+
+// ดึงสินค้า 1 รายการ (ไม่ cache — ฟอร์มแก้ไขต้องได้ข้อมูลสด)
 export const getProductById = async (
   slug: string,
   productId: string
@@ -40,29 +69,49 @@ export const recheckProductImage = async (
   await api.post(
     `/brands/${slug}/products/${productId}/images/${imageId}/recheck`
   );
+
+  // สถานะรูปจะกลายเป็น PENDING — list ต้องโหลดใหม่เพื่อเห็นสถานะล่าสุด
+  invalidateProducts(slug);
 };
 
-// ดึงตารางไซส์ standard ของแพลตฟอร์ม (filter ตาม gender/category ได้)
-export const getSizeChartTemplates = async (params?: {
-  gender?: ProductGender;
-  category?: string;
-}): Promise<SizeChartTemplate[]> => {
-  const response = await api.get("/brands/size-chart-templates", {
-    params: {
-      ...(params?.gender && { gender: params.gender }),
-      ...(params?.category && { category: params.category }),
+// ดึงตารางไซส์ standard ของแพลตฟอร์ม (filter ตาม gender/category ได้ — key แยกตาม params)
+export const getSizeChartTemplates = (
+  params?: {
+    gender?: ProductGender;
+    category?: string;
+  },
+  opts: { force?: boolean } = {},
+): Promise<SizeChartTemplate[]> =>
+  cachedQuery(
+    templatesKey(params),
+    async () => {
+      const response = await api.get("/brands/size-chart-templates", {
+        params: {
+          ...(params?.gender && { gender: params.gender }),
+          ...(params?.category && { category: params.category }),
+        },
+      });
+
+      return response.data.templates as SizeChartTemplate[];
     },
-  });
-
-  return response.data.templates;
-};
+    PLATFORM_CONFIG_TTL_MS,
+    opts,
+  );
 
 // ดึงชุดตัวเลือกฤดู/โอกาส ที่แพลตฟอร์มกำหนด
-export const getProductOptions = async (): Promise<ProductOptions> => {
-  const response = await api.get("/brands/product-options");
+export const getProductOptions = (
+  opts: { force?: boolean } = {},
+): Promise<ProductOptions> =>
+  cachedQuery(
+    productOptionsKey,
+    async () => {
+      const response = await api.get("/brands/product-options");
 
-  return response.data.options;
-};
+      return response.data.options as ProductOptions;
+    },
+    PLATFORM_CONFIG_TTL_MS,
+    opts,
+  );
 
 // ---------- FormData helpers ----------
 
@@ -138,10 +187,15 @@ export const createProduct = async (
 
   appendCommonFields(formData, data);
 
-  return api.post(
+  const response = await api.post(
     `/brands/${slug}/products`,
     formData
   );
+
+  // รายการสินค้าเปลี่ยน — mark stale ให้หน้า list โหลดใหม่
+  invalidateProducts(slug);
+
+  return response;
 };
 
 // แก้ไขสินค้า
@@ -169,10 +223,14 @@ export const updateProduct = async (
     JSON.stringify(remove_color_ids)
   );
 
-  return api.put(
+  const response = await api.put(
     `/brands/${slug}/products/${productId}`,
     formData
   );
+
+  invalidateProducts(slug);
+
+  return response;
 };
 
 // ลบสินค้า
@@ -180,7 +238,11 @@ export const deleteProduct = async (
   slug: string,
   productId: string
 ) => {
-  return api.delete(
+  const response = await api.delete(
     `/brands/${slug}/products/${productId}`
   );
+
+  invalidateProducts(slug);
+
+  return response;
 };

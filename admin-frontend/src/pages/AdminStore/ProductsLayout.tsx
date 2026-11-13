@@ -1,5 +1,6 @@
 import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 
+import { getProducts } from "../../services/ShopAdmin/productService";
 import { hasPendingDraft } from "../../pages/AdminStore/useProductForm";
 
 // Tab bar ระดับหน้า Products: สลับ "ดูข้อมูล (list)" ↔ "เพิ่ม/แก้สินค้า (wizard)"
@@ -25,6 +26,14 @@ export default function ProductsLayout() {
   // มี draft ค้างอยู่ไหม (ฟอร์มกรอกค้างที่ยังไม่บันทึก)
   const hasDraft = slug ? hasPendingDraft(slug) : false;
 
+  // prefetch รายการสินค้าตอนชี้/โฟกัสปุ่ม tab "ดูข้อมูล" — ใช้ cache/in-flight dedupe
+  // ตัวเดียวกับหน้า list จึงไม่ยิง API ซ้ำ
+  const prefetchProducts = () => {
+    if (!slug || !onForm) return;
+
+    getProducts(slug).catch(() => {});
+  };
+
   return (
     <div className="min-h-screen bg-[#FAF7F0] p-4 sm:p-6 lg:p-8">
       {/* Tab bar */}
@@ -33,6 +42,9 @@ export default function ProductsLayout() {
           type="button"
           aria-pressed={!onForm}
           onClick={() => navigate(basePath)}
+          onPointerEnter={prefetchProducts}
+          onFocus={prefetchProducts}
+          onTouchStart={prefetchProducts}
           className={`flex-1 whitespace-nowrap rounded-lg px-4 py-2 text-sm transition-colors ${
             !onForm
               ? "bg-[#87947A] font-medium text-white"

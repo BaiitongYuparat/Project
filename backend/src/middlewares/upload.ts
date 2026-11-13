@@ -172,6 +172,8 @@ export const uploadProduct = multer({
     s3: s3,
     bucket: process.env.AWS_S3_BUCKET_NAME!,
     contentType: multerS3.AUTO_CONTENT_TYPE,
+    // key ของรูปสินค้าไม่มีการเขียนทับเดิม → ให้ browser cache รูปได้ยาว
+    cacheControl: "public, max-age=31536000, immutable",
 
     metadata: (req, file, cb) => {
       cb(null, { fieldName: file.fieldname });

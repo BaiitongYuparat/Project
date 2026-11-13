@@ -1,11 +1,11 @@
 
-import type { Product } from "../../../types/product";
+import type { ProductSummary } from "../../../types/product";
 
 interface ProductTableProps {
-  products: Product[];
+  products: ProductSummary[];
   selectedProductId: string | null;
-  onSelect: (product: Product) => void;
-  onEdit: (product: Product) => void;
+  onSelect: (product: ProductSummary) => void;
+  onEdit: (product: ProductSummary) => void;
   onDelete: (productId: string) => void;
   /** id ของสินค้าที่กำลังลบอยู่ — ปุ่มลบของแถวนั้นจะ disable กันกดซ้ำ */
   deletingId?: string | null;
@@ -14,7 +14,7 @@ interface ProductTableProps {
 type QualityStatus = "PENDING" | "PASSED" | "FAILED";
 
 const getProductQualityStatus = (
-  product: Product,
+  product: ProductSummary,
 ): QualityStatus => {
   const images = product.images;
 

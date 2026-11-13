@@ -16,6 +16,7 @@ import {
     swapHorizontalOutline
 } from "ionicons/icons";
 import { logoutAdmin as logoutAdminApi } from "../services/adminAuthService";
+import { invalidateAll } from "../services/cache";
 import { logoutAdmin as clearAdminAuth } from "../store/adminSlice";
 import ConfirmLogoutModal from "./ConfirmLogoutModal";
 import { fetchPendingCounts } from "../store/pendingRequestsSlice";
@@ -139,6 +140,8 @@ export default function SuperAdminSidebar() {
         } finally {
             setLoggingOut(false);
             setConfirmLogout(false);
+            // ล้าง cache ทั้งหมด — กันบัญชีอื่น login ต่อแล้วเห็นข้อมูลเดิม
+            invalidateAll();
             dispatch(clearAdminAuth());
             navigate("/login", { replace: true });
         }
