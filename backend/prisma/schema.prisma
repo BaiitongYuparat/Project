@@ -35,6 +35,13 @@ enum BrandMemberRole {
   ADMIN //แอดมินลูกน้องเจ้าของร้าน
 }
 
+// สถานะคำขอเปลี่ยน OWNER ของร้าน — OWNER ยื่นแจ้ง Super Admin แล้วรอตัดสิน
+enum OwnerTransferRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum InviteStatus {
   PENDING
   ACCEPTED
@@ -88,6 +95,8 @@ model Admin {
   // Brand
   brandMembers     BrandMember[]
   sentBrandInvites BrandInvite[] @relation("BrandInviteInviter")
+  sentOwnerTransferRequests       OwnerTransferRequest[] @relation("OwnerTransferRequestedBy")
+  decidedOwnerTransferRequests    OwnerTransferRequest[] @relation("OwnerTransferDecidedBy")
 
   @@map("Admin")
 }
@@ -232,6 +241,7 @@ model Brand {
   tryOnLogs     TryOnLog[]
   productClicks ProductClick[]
   sizeCharts    BrandSizeChart[]
+  ownerTransferRequests OwnerTransferRequest[]
 
   @@index([status])
   @@map("brands")
@@ -458,6 +468,30 @@ model BrandCustomer {
   @@index([brand_id, last_seen_at])
   @@index([brand_id, first_seen_at])
   @@map("brand_customers")
+}
+
+// คำขอเปลี่ยน OWNER ของร้าน — OWNER ปัจจุบันยื่นระบุอีเมลใหม่ → Super Admin อนุมัติ
+// (อนุมัติแล้วระบบเปลี่ยนอีเมลใหม่เป็น OWNER และ owner เดิมเป็น ADMIN ใน transaction เดียว)
+// ร้านมีคำขอสถานะ PENDING ได้ครั้งละ 1 (enforce ใน controller)
+model OwnerTransferRequest {
+  id                      String                     @id @default(uuid())
+  brand_id                String
+  current_owner_member_id String // BrandMember id ของ owner ผู้ยื่น (ตอนอนุมัติจะถูก demote เป็น ADMIN)
+  current_owner_email     String
+  new_owner_email         String
+  status                  OwnerTransferRequestStatus @default(PENDING)
+  requested_by            String // Admin id ผู้ยื่น
+  decided_by              String? // Admin id ผู้ตัดสิน (Super Admin)
+  decided_at              DateTime?                  @db.Timestamp(6)
+  created_at              DateTime                   @default(now()) @db.Timestamp(6)
+
+  brand     Brand  @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  requester Admin  @relation("OwnerTransferRequestedBy", fields: [requested_by], references: [id], onDelete: Restrict)
+  decider   Admin? @relation("OwnerTransferDecidedBy", fields: [decided_by], references: [id], onDelete: SetNull)
+
+  @@index([brand_id, status])
+  @@index([status])
+  @@map("owner_transfer_requests")
 }
 
 model TryOnLog {

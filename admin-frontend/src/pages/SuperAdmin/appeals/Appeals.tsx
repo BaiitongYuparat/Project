@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDispatch } from "react-redux";
 import {
     getAppeals,
     decideAppeal,
 } from "../../../services/SuperAdmin/appealService";
 import type { Appeal, AppealStatus } from "../../../types/appeal";
+import { fetchPendingCounts } from "../../../store/pendingRequestsSlice";
+import type { AppDispatch } from "../../../store/store";
 import Button from "../../../components/Button";
 import { IonIcon } from "@ionic/react";
 import {
@@ -68,6 +71,7 @@ function AccountStatusBadge({ status }: { status?: string | null }) {
 }
 
 export default function Appeals() {
+    const dispatch = useDispatch<AppDispatch>();
     const [appeals, setAppeals] = useState<Appeal[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -163,6 +167,8 @@ export default function Appeals() {
                 prev.map((a) => (a.id === updated.id ? updated : a))
             );
             setSelected(null);
+            // ตัดสินแล้ว → ให้ badge ใน sidebar อัปเดตทันที
+            dispatch(fetchPendingCounts());
             showToast(
                 decision === "APPROVED"
                     ? "อนุมัติและปลดระงับบัญชีเรียบร้อย (ส่งอีเมลแจ้งผลแล้ว)"

@@ -41,11 +41,16 @@ Roles are two-dimensional (`UserRole` and `BrandMemberRole` in the Prisma schema
 | Product management (images, details, sizes) | — | ✅ | ✅ | — |
 | Add `ADMIN` members to own brand | — | ✅ | ✅ [REQ] | — |
 | Remove members | — | ✅ | ❌ **can never remove an `OWNER`** [REQ] | — |
+| Promote a member to `OWNER` / change role to `OWNER` | — | ❌ **never — any role** [REQ] | ❌ **never** [REQ] | — (goes through the transfer request) |
+| Request an ownership transfer (pick a new owner email) | — | ✅ [REQ] | ❌ | — |
+| Approve / reject ownership-transfer requests | — | — | — | ✅ [REQ] |
 | Approve / reject / suspend brands | — | — | — | ✅ [REQ] |
 | Edit AI prompts | — | — | — | ✅ [REQ] |
 | Reports + AI rate-limit management | — | — | — | ✅ [REQ] |
 
 **Rule to enforce in the service layer** (`backend/src/services/brandAccessService.ts`), not just the UI: brand `ADMIN`s can manage members of their own brand but must never be able to delete or demote an `OWNER`.
+
+**Ownership transfer rule [REQ]:** changing a member's role to `OWNER` is impossible from the shop-admin side (no role, not even the current `OWNER`; blocked in the UI and in `updateBrandMemberRole`). To change ownership, the current `OWNER` submits a request (`OwnerTransferRequest`) specifying the new owner's email (any email — the account is upserted on approval). A **super admin** then approves/rejects it in the admin-frontend ("Owner Transfer Requests", `backend/src/routes/adminRoutes.ts` → `/admin/owner-transfer-requests`). On approval the new email becomes `OWNER` and the requesting owner is demoted to `ADMIN` automatically in one transaction. A brand can have only one `PENDING` request at a time.
 
 ## 4. Core flows
 

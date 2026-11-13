@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { IonIcon } from "@ionic/react";
 import {
     closeOutline,
@@ -12,58 +12,80 @@ import {
     bodyOutline,
     logOutOutline,
     settingsOutline,
-    chatbubblesOutline
+    chatbubblesOutline,
+    swapHorizontalOutline
 } from "ionicons/icons";
 import { logoutAdmin as logoutAdminApi } from "../services/adminAuthService";
 import { logoutAdmin as clearAdminAuth } from "../store/adminSlice";
 import ConfirmLogoutModal from "./ConfirmLogoutModal";
+import { fetchPendingCounts } from "../store/pendingRequestsSlice";
+import type { RootState, AppDispatch } from "../store/store";
 
 
-const menuItems = [
+// เมนูแบ่งเป็นกลุ่ม (section) — label แสดงหัวข้อกลุ่มใน nav (undefined = เมนูหลักด้านบน)
+type MenuItem = { name: string; path: string; icon: typeof gridOutline };
+
+const menuSections: Array<{ label?: string; items: MenuItem[] }> = [
     {
-        name: "Dashboard",
-        path: "",
-        icon: gridOutline
+        // เมนูหลัก (หัวข้อ "Super Admin" วาดไว้เหนือ nav แล้ว)
+        items: [
+            {
+                name: "Dashboard",
+                path: "",
+                icon: gridOutline
+            },
+            {
+                name: "Store Management",
+                path: "/store-management",
+                icon: storefrontOutline
+            },
+            {
+                name: "User Management",
+                path: "/user-management",
+                icon: peopleOutline
+            },
+            // {
+            //     name: "Admin Management",
+            //     path: "/admin-management",
+            //     icon: shieldCheckmarkOutline
+            // },
+            {
+                name: "AI Prompt Management",
+                path: "/ai-prompt-management",
+                icon: sparklesOutline
+            },
+            // {
+            //     name: "Product Management",
+            //     path: "/product-management",
+            //     icon: pricetagsOutline
+            // },
+            {
+                name: "Model Management",
+                path: "/model-management",
+                icon: bodyOutline
+            },
+            {
+                name: "System",
+                path: "/system",
+                icon: settingsOutline
+            }
+        ]
     },
     {
-        name: "Store Management",
-        path: "/store-management",
-        icon: storefrontOutline
-    },
-    {
-        name: "User Management",
-        path: "/user-management",
-        icon: peopleOutline
-    },
-    {
-        name: "Appeals",
-        path: "/appeals",
-        icon: chatbubblesOutline
-    },
-    // {
-    //     name: "Admin Management",
-    //     path: "/admin-management",
-    //     icon: shieldCheckmarkOutline
-    // },
-    {
-        name: "AI Prompt Management",
-        path: "/ai-prompt-management",
-        icon: sparklesOutline
-    },
-    // {
-    //     name: "Product Management",
-    //     path: "/product-management",
-    //     icon: pricetagsOutline
-    // },
-    {
-        name: "Model Management",
-        path: "/model-management",
-        icon: bodyOutline
-    },
-    {
-        name: "System",
-        path: "/system",
-        icon: settingsOutline
+        // คิวงานรอพิจารณา — label กลุ่มจะแสดง badge รวมเมื่อมีคำขอ PENDING
+        label: "Requests",
+        items: [
+            {
+                name: "Appeals",
+                path: "/appeals",
+                icon: chatbubblesOutline
+            },
+            {
+                name: "Owner Transfer Requests",
+                path: "/owner-transfer-requests",
+                icon: swapHorizontalOutline
+            }
+        ]
     }
 ]
 
@@ -92,8 +114,19 @@ export default function SuperAdminSidebar() {
     const [isOpen, setIsOpen] = useState(false);
     const [confirmLogout, setConfirmLogout] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
-    const dispatch = useDispatch();
+    // จำนวนคำขอ PENDING แต่ละคิวจาก Redux store — หน้าตัดสินคำขอจะ dispatch fetchPendingCounts เพื่อ sync badge สด
+    const pendingAppealsCount = useSelector(
+        (state: RootState) => state.pendingRequests.pendingAppeals
+    );
+    const pendingTransferCount = useSelector(
+        (state: RootState) => state.pendingRequests.pendingTransfers
+    );
+    const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        dispatch(fetchPendingCounts());
+    }, [dispatch]);
 
     const handleLogout = async () => {
         setLoggingOut(true);
@@ -172,34 +205,72 @@ export default function SuperAdminSidebar() {
                 {/* Navigation */}
                 <nav
                     aria-label="Super admin"
-                    className="flex-1 space-y-1 overflow-y-auto px-3 pb-3"
+                    className="flex-1 overflow-y-auto px-3 pb-3"
                 >
-                    {menuItems.map((item) => (
-                        <NavLink
-                            key={item.name}
-                            to={`${basePath}${item.path}`}
-                            end={item.path === ""}
-                            onClick={() => setIsOpen(false)}
-                            className={({ isActive }) =>
-                                `${itemBase} ${isActive
-                                    ? "bg-gray-900 text-white"
-                                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                                }`
-                            }
-                        >
-                            {({ isActive }) => (
-                                <>
-                                    <IonIcon
-                                        icon={item.icon}
-                                        className={`text-xl transition-colors ${isActive
-                                            ? "text-white"
-                                            : "text-gray-400 group-hover:text-gray-900"
-                                            }`}
-                                    />
-                                    {item.name}
-                                </>
+                    {menuSections.map((section) => (
+                        <div key={section.label ?? "main"} className="space-y-1 pb-3">
+                            {/* หัวข้อกลุ่ม (เช่น "Requests") — แสดง badge รวมเมื่อมีคำขอ PENDING */}
+                            {section.label && (
+                                <div className="flex items-center justify-between px-6 pb-1 pt-4">
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                        {section.label}
+                                    </p>
+                                    {pendingAppealsCount + pendingTransferCount > 0 && (
+                                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                                            {pendingAppealsCount + pendingTransferCount}
+                                        </span>
+                                    )}
+                                </div>
                             )}
-                        </NavLink>
+
+                            {section.items.map((item) => {
+                                const itemPendingCount =
+                                    item.path === "/appeals"
+                                        ? pendingAppealsCount
+                                        : item.path === "/owner-transfer-requests"
+                                          ? pendingTransferCount
+                                          : 0;
+
+                                return (
+                                    <NavLink
+                                        key={item.name}
+                                        to={`${basePath}${item.path}`}
+                                        end={item.path === ""}
+                                        onClick={() => setIsOpen(false)}
+                                        className={({ isActive }) =>
+                                            `${itemBase} ${isActive
+                                                ? "bg-gray-900 text-white"
+                                                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                                            }`
+                                        }
+                                    >
+                                        {({ isActive }) => (
+                                            <>
+                                                <IonIcon
+                                                    icon={item.icon}
+                                                    className={`text-xl transition-colors ${isActive
+                                                        ? "text-white"
+                                                        : "text-gray-400 group-hover:text-gray-900"
+                                                        }`}
+                                                />
+                                                {item.name}
+                                                {itemPendingCount > 0 && (
+                                                    <span
+                                                        className={`ml-auto rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                                            isActive
+                                                                ? "bg-white text-gray-900"
+                                                                : "bg-amber-100 text-amber-700"
+                                                        }`}
+                                                    >
+                                                        {itemPendingCount}
+                                                    </span>
+                                                )}
+                                            </>
+                                        )}
+                                    </NavLink>
+                                );
+                            })}
+                        </div>
                     ))}
                 </nav>
 
