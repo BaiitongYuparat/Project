@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDispatch } from "react-redux";
 import {
     getOwnerTransferRequests,
     decideOwnerTransferRequest,
@@ -7,6 +8,8 @@ import type {
     SuperAdminOwnerTransferRequest,
     OwnerTransferStatus,
 } from "../../../types/brand";
+import { fetchPendingCounts } from "../../../store/pendingRequestsSlice";
+import type { AppDispatch } from "../../../store/store";
 import Button from "../../../components/Button";
 import { IonIcon } from "@ionic/react";
 import {
@@ -56,6 +59,7 @@ function StatusBadge({ status }: { status: OwnerTransferStatus }) {
 }
 
 export default function OwnerTransferRequests() {
+    const dispatch = useDispatch<AppDispatch>();
     const [requests, setRequests] = useState<SuperAdminOwnerTransferRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -138,6 +142,8 @@ export default function OwnerTransferRequests() {
                 prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r))
             );
             setSelected(null);
+            // ตัดสินแล้ว → ให้ badge ใน sidebar อัปเดตทันที
+            dispatch(fetchPendingCounts());
             showToast(
                 decision === "APPROVED"
                     ? "อนุมัติและเปลี่ยน OWNER เรียบร้อย"

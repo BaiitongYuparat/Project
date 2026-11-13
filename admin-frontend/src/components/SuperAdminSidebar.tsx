@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { IonIcon } from "@ionic/react";
 import {
     closeOutline,
@@ -18,8 +18,8 @@ import {
 import { logoutAdmin as logoutAdminApi } from "../services/adminAuthService";
 import { logoutAdmin as clearAdminAuth } from "../store/adminSlice";
 import ConfirmLogoutModal from "./ConfirmLogoutModal";
-import { getAppeals } from "../services/SuperAdmin/appealService";
-import { getOwnerTransferRequests } from "../services/SuperAdmin/ownerTransferService";
+import { fetchPendingCounts } from "../store/pendingRequestsSlice";
+import type { RootState, AppDispatch } from "../store/store";
 
 
 // เมนูแบ่งเป็นกลุ่ม (section) — label แสดงหัวข้อกลุ่มใน nav (undefined = เมนูหลักด้านบน)
@@ -114,34 +114,19 @@ export default function SuperAdminSidebar() {
     const [isOpen, setIsOpen] = useState(false);
     const [confirmLogout, setConfirmLogout] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
-    // จำนวนคำขอ PENDING ของแต่ละคิว (Appeals / Owner Transfer) — ไว้แสดง badge บนเมนูและหัวข้อกลุ่ม "Requests"
-    const [pendingAppealsCount, setPendingAppealsCount] = useState(0);
-    const [pendingTransferCount, setPendingTransferCount] = useState(0);
-    const dispatch = useDispatch();
+    // จำนวนคำขอ PENDING แต่ละคิวจาก Redux store — หน้าตัดสินคำขอจะ dispatch fetchPendingCounts เพื่อ sync badge สด
+    const pendingAppealsCount = useSelector(
+        (state: RootState) => state.pendingRequests.pendingAppeals
+    );
+    const pendingTransferCount = useSelector(
+        (state: RootState) => state.pendingRequests.pendingTransfers
+    );
+    const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
 
     useEffect(() => {
-        let cancelled = false;
-        Promise.allSettled([
-            getAppeals("PENDING"),
-            getOwnerTransferRequests("PENDING"),
-        ]).then(([appealsResult, transfersResult]) => {
-            if (cancelled) return;
-            if (appealsResult.status === "fulfilled") {
-                setPendingAppealsCount(appealsResult.value.length);
-            } else {
-                console.error("Failed to load pending appeals count:", appealsResult.reason);
-            }
-            if (transfersResult.status === "fulfilled") {
-                setPendingTransferCount(transfersResult.value.length);
-            } else {
-                console.error("Failed to load pending owner transfer count:", transfersResult.reason);
-            }
-        });
-        return () => {
-            cancelled = true;
-        };
-    }, []);
+        dispatch(fetchPendingCounts());
+    }, [dispatch]);
 
     const handleLogout = async () => {
         setLoggingOut(true);
