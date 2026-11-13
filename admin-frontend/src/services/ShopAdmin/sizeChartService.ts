@@ -1,22 +1,42 @@
 import api from "../api";
+import {
+  cachedQuery,
+  invalidate,
+} from "../cache";
 import type {
   BrandSizeChart,
   ProductGender,
   SizeChartForm,
 } from "../../types/product";
 
+// รายการตารางไซส์ — stale-while-revalidate 30 วิ
+const CHARTS_TTL_MS = 30_000;
+
+const chartsKey = (slug: string) => `charts:${slug}`;
+
 // ---------- ตารางไซส์กลางของร้าน ----------
 
-// ดึงตารางไซส์ทั้งหมดของร้าน
-export const getBrandSizeCharts = async (
-  slug: string
-): Promise<BrandSizeChart[]> => {
-  const response = await api.get(`/brands/${slug}/size-charts`);
+// ดึงตารางไซส์ทั้งหมดของร้าน (cache 30 วิ — stale-while-revalidate)
+export const getBrandSizeCharts = (
+  slug: string,
+  opts: { force?: boolean } = {},
+): Promise<BrandSizeChart[]> =>
+  cachedQuery(
+    chartsKey(slug),
+    async () => {
+      const response = await api.get(`/brands/${slug}/size-charts`);
 
-  return response.data.charts;
-};
+      return response.data.charts as BrandSizeChart[];
+    },
+    CHARTS_TTL_MS,
+    opts,
+  );
 
-// ดึงตารางไซส์ 1 รายการ
+// หลัง mutation ตารางไซส์ (หรือ product_count เปลี่ยน) — mark stale ให้หน้า list โหลดใหม่
+export const invalidateCharts = (slug: string) =>
+  invalidate(chartsKey(slug), { keepStale: true });
+
+// ดึงตารางไซส์ 1 รายการ (ไม่ cache — ฟอร์มแก้ไขต้องได้ข้อมูลสด)
 export const getBrandSizeChartById = async (
   slug: string,
   chartId: string
@@ -47,7 +67,11 @@ export const createBrandSizeChart = async (
   slug: string,
   form: SizeChartForm
 ) => {
-  return api.post(`/brands/${slug}/size-charts`, toPayload(form));
+  const response = await api.post(`/brands/${slug}/size-charts`, toPayload(form));
+
+  invalidateCharts(slug);
+
+  return response;
 };
 
 // แก้ไขตารางไซส์
@@ -56,7 +80,14 @@ export const updateBrandSizeChart = async (
   chartId: string,
   form: SizeChartForm
 ) => {
-  return api.put(`/brands/${slug}/size-charts/${chartId}`, toPayload(form));
+  const response = await api.put(
+    `/brands/${slug}/size-charts/${chartId}`,
+    toPayload(form),
+  );
+
+  invalidateCharts(slug);
+
+  return response;
 };
 
 // ลบตารางไซส์ (block ถ้ามีสินค้าใช้อ้างอิง)
@@ -64,7 +95,11 @@ export const deleteBrandSizeChart = async (
   slug: string,
   chartId: string
 ) => {
-  return api.delete(`/brands/${slug}/size-charts/${chartId}`);
+  const response = await api.delete(`/brands/${slug}/size-charts/${chartId}`);
+
+  invalidateCharts(slug);
+
+  return response;
 };
 
 // helper: แปลง rows ของ entry เป็น rows สำหรับฟอร์ม

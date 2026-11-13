@@ -65,7 +65,6 @@ const withImageUrls = async (
   );
 };
 
-type WithImageUrl<I> = Omit<I, "s3_key"> & { image_url: string | null };
 const withProductImageUrls = async <
   T extends { images: { id: string; s3_key: string; sort_order: number }[] }
 >(
@@ -79,56 +78,39 @@ const withProductImageUrls = async <
   );
 };
 
-const withShopImageUrls = async <I extends { id: string; s3_key: string; quality_reason?: string | null }>(
-  images: I[]
-): Promise<(WithImageUrl<I> & { quality_error: boolean })[]> => {
-  return Promise.all(
-    images.map(async ({ s3_key, ...rest }) => {
-      try {
-        return {
-          ...rest,
-          image_url: await getImageUrl(s3_key),
-          // FAILED เพราะระบบตรวจล้มเหลว (ไม่ใช่รูปไม่ผ่านจริง) — frontend ใช้แยกปุ่ม recheck
-          quality_error: isQualitySystemError(rest.quality_reason),
-        };
-      } catch (error) {
-        console.error("Failed to build image url:", rest.id, error);
-        return {
-          ...rest,
-          image_url: null,
-          quality_error: isQualitySystemError(rest.quality_reason),
-        };
-      }
-    })
-  );
+// presign ครั้งเดียวต่อ s3_key ต่อ response — รูปเดียวกันถูกอ้างทั้งใน images และ colors[].images
+const createImageUrlResolver = () => {
+  const urlByKey = new Map<string, string | null>();
+
+  return async (s3_key: string): Promise<string | null> => {
+    const cached = urlByKey.get(s3_key);
+    if (cached !== undefined) return cached;
+
+    try {
+      const url = await getImageUrl(s3_key);
+      urlByKey.set(s3_key, url);
+      return url;
+    } catch (error) {
+      console.error("Failed to build image url:", s3_key, error);
+      urlByKey.set(s3_key, null);
+      return null;
+    }
+  };
 };
 
-// รูปแบบข้อมูลที่รับเข้า/ส่งออกของ shop product (รูปต้องมี s3_key ก่อนแปลงเป็น URL)
-type ShopImageInput = { id: string; s3_key: string };
-type ShopColorInput = {
-  id: string;
-  name: string;
-  hex: string | null;
-  images: ShopImageInput[];
-};
-
-const withShopProductImageUrls = async <
-  I extends ShopImageInput,
-  C extends { id: string; name: string; hex: string | null; images: I[] },
-  T extends { images: I[]; colors: C[] }
+// แปลงรูป shop product เป็น image_url + คำนวณ quality_error
+const withShopImageUrls = async <
+  I extends { id: string; s3_key: string; quality_reason?: string | null }
 >(
-  products: T[]
-) => {
+  images: I[],
+  resolveUrl: (s3_key: string) => Promise<string | null>
+): Promise<(Omit<I, "s3_key"> & { image_url: string | null; quality_error: boolean })[]> => {
   return Promise.all(
-    products.map(async ({ images, colors, ...rest }) => ({
+    images.map(async ({ s3_key, ...rest }) => ({
       ...rest,
-      images: await withShopImageUrls(images),
-      colors: await Promise.all(
-        colors.map(async (color) => ({
-          ...color,
-          images: await withShopImageUrls(color.images),
-        }))
-      ),
+      image_url: await resolveUrl(s3_key),
+      // FAILED เพราะระบบตรวจล้มเหลว (ไม่ใช่รูปไม่ผ่านจริง) — frontend ใช้แยกปุ่ม recheck
+      quality_error: isQualitySystemError(rest.quality_reason),
     }))
   );
 };
@@ -228,7 +210,7 @@ export const getPublicProduct = async (productId: string) => {
 
 //------------------------------------------- Shop Admin
 
-// ดึงสินค้าทั้งหมดของ Brand
+// ดึงสินค้าทั้งหมดของ Brand (list ใช้ select แบบย่อ — ข้อมูลเต็มใช้ getProductById)
 export const getProducts = async (brandId: string) => {
   const products = await prisma.product.findMany({
     where: {
@@ -250,33 +232,28 @@ export const getProducts = async (brandId: string) => {
       created_at: true,
       updated_at: true,
       images: shopProductImageSelect,
-      colors: shopProductColorSelect,
-      size_chart_id: true,
-      // ตารางกลางที่อ้างอิง (frontend เลือก entry ตาม category ของสินค้า)
-      size_chart: {
+      // list ใช้แค่ metadata ของสี (จัดกลุ่มรูปด้วย images[].color_id)
+      colors: {
+        orderBy: { created_at: "asc" as const },
         select: {
           id: true,
           name: true,
-          gender: true,
-          entries: {
-            orderBy: { category: "asc" },
-            include: {
-              rows: {
-                orderBy: { sort_order: "asc" },
-              },
-            },
-          },
+          hex: true,
         },
       },
-      size_charts: {
-        orderBy: { size: "asc" },
-      },
     },
-    orderBy: {
-      created_at: "desc",
-    },
+    orderBy: [{ created_at: "desc" }, { id: "desc" }],
   });
-  return withShopProductImageUrls(products);
+
+  const resolveUrl = createImageUrlResolver();
+
+  return Promise.all(
+    products.map(async ({ images, colors, ...rest }) => ({
+      ...rest,
+      images: await withShopImageUrls(images, resolveUrl),
+      colors,
+    }))
+  );
 };
 
 // ดึงรายละเอียดสินค้าของ Brand พร้อม URL รูปภาพ
@@ -334,13 +311,16 @@ export const getProductById = async (
     return null;
   }
 
+  // presign ครั้งเดียวต่อ key — รูปชุดเดียวกันถูกอ้างทั้งใน images และ colors[].images
+  const resolveUrl = createImageUrlResolver();
+
   return {
     ...product,
-    images: await withShopImageUrls(product.images),
+    images: await withShopImageUrls(product.images, resolveUrl),
     colors: await Promise.all(
       product.colors.map(async (color) => ({
         ...color,
-        images: await withShopImageUrls(color.images),
+        images: await withShopImageUrls(color.images, resolveUrl),
       }))
     ),
     };

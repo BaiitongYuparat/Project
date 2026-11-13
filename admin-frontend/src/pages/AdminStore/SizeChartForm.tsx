@@ -299,23 +299,18 @@ export default function SizeChartForm() {
         setSaving(true);
         setError("");
 
-        let chartId: string | undefined;
-
         if (isEdit && id) {
           await updateBrandSizeChart(slug, id, form);
         } else {
-          const response = await createBrandSizeChart(slug, form);
-
-          chartId = response.data?.chart?.id;
+          await createBrandSizeChart(slug, form);
         }
 
-        // มาจากฟอร์มสินค้า → กลับหน้า Products ตรง ๆ (ส่ง id ตารางใหม่ให้เลือกอัตโนมัติ)
+        // cache ของ charts ถูก invalidate ใน service แล้ว
+
+        // มาจากฟอร์มสินค้า → กลับหน้า Products ตรง ๆ (draft ยังเก็บอยู่ ฟอร์มสินค้าจะถูกกู้)
         // ไม่งั้นกลับหน้าก่อนหน้า (หน้า list)
         if (fromProducts && slug) {
-          navigate(`/shopadmin/${slug}/products`, {
-            state: chartId ? { newChartId: chartId } : undefined,
-            replace: true,
-          });
+          navigate(`/shopadmin/${slug}/products`, { replace: true });
         } else {
           navigate(-1);
         }

@@ -8,7 +8,8 @@ import ProductTable from "../../components/shopadmin/product/ProductTable";
 import ProductQualityPanel from "../../components/shopadmin/product/ProductQuantityPanel";
 
 import { deleteProduct, getProducts } from "../../services/ShopAdmin/productService";
-import type { Product } from "../../types/product";
+import { useCachedQuery } from "../../hooks/useCachedQuery";
+import type { ProductSummary } from "../../types/product";
 
 type QualityStatus = "PENDING" | "PASSED" | "FAILED";
 type StatusFilter = "ALL" | QualityStatus;
@@ -21,7 +22,7 @@ const statusFilters: { value: StatusFilter; label: string }[] = [
 ];
 
 // สถานะรวมของสินค้า: มีรูปไม่ผ่าน = ไม่ผ่าน, ผ่านครบทุกรูป = ผ่าน, นอกนั้น = รอตรวจ
-const getProductStatus = (product: Product): QualityStatus => {
+const getProductStatus = (product: ProductSummary): QualityStatus => {
   const statuses = product.images.map((image) => image.quality_status);
 
   if (statuses.length === 0) return "PENDING";
@@ -34,50 +35,34 @@ export default function ProductManagement() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
 
-  // Product data
-  const [products, setProducts] = useState<Product[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // รายการสินค้า — มี cache จะแสดงทันทีแล้ว refetch เบื้องหลัง (กด Refresh ใช้ refresh ปกติ)
+  const {
+    data,
+    loading,
+    error: loadError,
+    refresh,
+  } = useCachedQuery<ProductSummary[]>(
+    slug ?? null,
+    (opts) =>
+      slug ? getProducts(slug, opts) : Promise.reject(new Error("Missing brand slug")),
+  );
 
-  // Loading states
-  const [loading, setLoading] = useState(true);
+  const products = data ?? [];
+
+  // รหัสสินค้าที่เลือก
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Filters
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
 
-  const [error, setError] = useState("");
+  // error จาก action (ลบสินค้า) — แยกจาก error ของการโหลด
+  const [actionError, setActionError] = useState("");
 
   // ลบสินค้า: state ของ modal ยืนยัน
-  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [productToDelete, setProductToDelete] = useState<ProductSummary | null>(null);
   const [deleting, setDeleting] = useState(false);
-
-  // โหลดรายการสินค้า
-  const loadProducts = useCallback(
-    async (silent = true) => {
-      if (!slug) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        if (!silent) setLoading(true);
-        setError("");
-
-        setProducts(await getProducts(slug));
-      } catch (err) {
-        console.error("Load products error:", err);
-        setError("ไม่สามารถโหลดรายการสินค้าได้");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [slug],
-  );
-
-  useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
 
   // รายการ category dropdown
   const categories = useMemo(
@@ -110,33 +95,33 @@ export default function ProductManagement() {
     filteredProducts[0] ??
     null;
 
-  // ขณะสินค้าที่เลือกมีรูป "รอตรวจ" (สร้างใหม่/กดตรวจซ้ำ) ให้ poll ทุก 5 วิ
-  // จนกว่าจะไม่มีรูปที่รอตรวจ — ผล AI ค่อย ๆ ไหลเข้า UI เอง
+  // ขณะสินค้าที่เลือกมีรูป "รอตรวจ" ให้ refresh เบื้องหลังแบบไม่ force ให้ลดโหลดวนซ้ำ
   const hasPendingImages = !!selectedProduct?.images.some(
     (image) => image.quality_status === "PENDING",
   );
 
+  const refreshList = useCallback(() => refresh(), [refresh]);
+
   useEffect(() => {
     if (!hasPendingImages) return;
 
-    const timer = window.setInterval(() => {
-      if (!document.hidden) {
-        loadProducts(true);
-      }
-    }, 5000);
+    const timer = window.setTimeout(() => {
+      refresh().catch(() => {});
+    }, 3000);
 
-    return () => window.clearInterval(timer);
-  }, [hasPendingImages, loadProducts]);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [hasPendingImages, refresh]);
 
   // แก้ไขสินค้า → เปิด wizard (tab "เพิ่ม/แก้สินค้า")
-  const handleEdit = (product: Product) => {
+  const handleEdit = (product: ProductSummary) => {
     navigate(`/shopadmin/${slug}/products/${product.id}/edit`);
   };
 
   // ลบสินค้า: ขอยืนยันผ่าน ConfirmModal แทน window.confirm
   const handleDelete = (productId: string) => {
-    const product =
-      products.find((item) => item.id === productId) ?? null;
+    const product = products.find((item) => item.id === productId) ?? null;
 
     setProductToDelete(product);
   };
@@ -146,20 +131,23 @@ export default function ProductManagement() {
 
     try {
       setDeleting(true);
-      setError("");
+      setActionError("");
 
       await deleteProduct(slug, productToDelete.id);
 
       setProductToDelete(null);
-      await loadProducts(true);
+      await refresh();
     } catch (err) {
       console.error("Delete product error:", err);
-      setError("ไม่สามารถลบสินค้าได้");
+      setActionError("ไม่สามารถลบสินค้าได้");
       setProductToDelete(null);
     } finally {
       setDeleting(false);
     }
   };
+
+  const displayError =
+    actionError || (loadError ? "ไม่สามารถโหลดรายการสินค้าได้" : "");
 
   return (
     <div>
@@ -229,14 +217,14 @@ export default function ProductManagement() {
       </div>
 
       {/* Error */}
-      {error && (
+      {displayError && (
         <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-          {error}
+          {displayError}
         </div>
       )}
 
       {/* Content */}
-      {loading ? (
+      {loading && products.length === 0 ? (
         <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-[#E9DFC9] bg-white text-sm text-[#8B806E]">
           กำลังโหลดสินค้า...
         </div>
@@ -264,7 +252,9 @@ export default function ProductManagement() {
               <ProductQualityPanel
                 key={selectedProduct.id}
                 product={selectedProduct}
-                onRefresh={() => loadProducts(true)}
+                onRefresh={() => {
+                  refreshList().catch(() => {});
+                }}
               />
             </div>
           )}

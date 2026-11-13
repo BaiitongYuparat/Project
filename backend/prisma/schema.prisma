@@ -362,7 +362,8 @@ model Product {
   tryOnLogs TryOnLog[]
   clicks    ProductClick[]
 
-  @@index([brand_id])
+  // (brand_id) เดิมถูกแทนที่ด้วย composite (brand_id, created_at) — sort ตอน list ใช้ index เดียวกัน
+  @@index([brand_id, created_at])
   @@index([category])
   @@unique([brand_id, sku])
   @@map("products")

@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
@@ -98,18 +97,26 @@ export default function ShopAdminManagement() {
       setLoading(true);
       setError("");
 
-      const membersResponse = await getBrandMembers(slug);
-      setMembers(membersResponse.members);
-      setCurrentRole(membersResponse.currentRole);
+      const [membersResult, transferResult] = await Promise.allSettled([
+        getBrandMembers(slug),
+        getOwnerTransferStatus(slug),
+      ]);
 
-      // โหลดสถานะคำขอเปลี่ยน OWNER ล่าสุด (ไว้แสดง "รออนุมัติ" / ปิดปุ่มยื่นซ้ำ)
-      try {
-        const transferResponse = await getOwnerTransferStatus(slug);
-        setOwnerTransferRequest(transferResponse.request);
-      } catch (transferErr) {
-        // โหลดสถานะคำขอไม่ได้ไม่ควรบล็อกการใช้หน้า — แค่ซ่อนสถานะไว้
+      if (membersResult.status === "fulfilled") {
+        setMembers(membersResult.value.members);
+        setCurrentRole(membersResult.value.currentRole);
+      } else {
+        setMembers([]);
+        setError(getApiErrorMessage(membersResult.reason, "ไม่สามารถโหลดรายชื่อสมาชิกได้"));
+        console.error("Failed to load members:", membersResult.reason);
+        return;
+      }
+
+      if (transferResult.status === "fulfilled") {
+        setOwnerTransferRequest(transferResult.value.request);
+      } else {
         setOwnerTransferRequest(null);
-        console.error("Failed to load owner transfer status:", transferErr);
+        console.error("Failed to load owner transfer status:", transferResult.reason);
       }
     } catch (err) {
       setMembers([]);
