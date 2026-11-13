@@ -74,9 +74,8 @@ export default function AdminLoginPage() {
             เข้าสู่ระบบผู้ดูแล
           </h1>
           <p className="mt-2 text-sm text-gray-500">
+            
             สำหรับเจ้าของร้าน แอดมินร้าน และผู้ดูแลระบบ
-            <br />
-            (ลูกค้าทั่วไปเข้าสู่ระบบจากเว็บไซต์หลัก)
           </p>
         </div>
 
