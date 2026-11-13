@@ -1,6 +1,6 @@
 
 import { Request, Response } from "express";
-import { createProduct, deleteProduct, getProductById, getProducts, getPublicProduct, getPublicProducts, updateProductWithImages , getAdminProducts , getAdminProductStats, getSizeChartTemplates, getProductOptions} from "../services/productService";
+import { createProduct, deleteProduct, getProductById, getProducts, getPublicProduct, getPublicProducts, updateProductWithImages, getAdminProducts, getAdminProductStats, getSizeChartTemplates, getProductOptions } from "../services/productService";
 import { resolveSizeChartForProduct } from "../services/sizeChartService";
 import { BrandAccessError } from "../services/brandAccessService";
 import { processProductImageQuality, recheckProductImage } from "../services/productImageQuality";

@@ -53,8 +53,8 @@ export const analyzeAndSaveBodyType = async (req: Request, res: Response) => {
             select: { gender: true },
         })
 
-        // เพศจำเป็นสำหรับการวิเคราะห์รูปร่าง (มีแค่ MALE / FEMALE)
-        if (!user?.gender) {
+        // เพศจำเป็นสำหรับการวิเคราะห์รูปร่าง (มีแค่ MALE / FEMALE — ตัด UNSPECIFIED ทิ้ง)
+        if (user?.gender !== "MALE" && user?.gender !== "FEMALE") {
             return res.status(400).json({ message: "Gender is required before analyzing body type" });
         }
 
