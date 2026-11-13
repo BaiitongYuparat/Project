@@ -212,6 +212,15 @@ model Brand {
   slug              String?     @unique
   ebiz_reg_no       String? // เลขทะเบียนพาณิชย์อิเล็กทรอนิกส์
   ebiz_registration String? // ไฟล์ทะเบียนพาณิชย์ (URL ใน S3)
+
+  // ข้อมูลร้านสำหรับหน้า Store Settings (แก้ได้โดย OWNER/ADMIN ของร้าน)
+  logo_key          String? // โลโก้ร้าน (S3 key — ส่งออกเป็น signed URL ชื่อ logo_url)
+  description       String? // รายละเอียดร้าน
+  address           String? // ที่อยู่ร้าน
+  facebook_url      String?
+  instagram_url     String?
+  line_id           String?
+
   status            BrandStatus @default(PENDING)
   created_at        DateTime    @default(now()) @db.Timestamp(6)
   updated_at        DateTime    @updatedAt @db.Timestamp(6)

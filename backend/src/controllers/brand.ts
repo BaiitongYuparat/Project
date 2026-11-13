@@ -5,6 +5,7 @@ import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { s3 } from "../middlewares/upload";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { getImageUrl } from "../utils/s3Utils";
 import {
   assertCanManageMember,
   BrandAccessError,
@@ -737,6 +738,190 @@ export const updateBrandMemberRole = async (
 
     return res.status(500).json({
       message: "Failed to update member role",
+    });
+  }
+};
+
+
+//---------------------Store Settings (ข้อมูลร้าน)-------------------------
+
+// ดึงข้อมูลร้านสำหรับ Store Settings (logo_key → signed URL ชื่อ logo_url)
+const getBrandSettingsData = async (brandId: string) => {
+  const brand = await prisma.brand.findUnique({
+    where: { id: brandId },
+    select: {
+      id: true,
+      brand_name: true,
+      slug: true,
+      email: true,
+      phone_number: true,
+      store_url: true,
+      status: true,
+      description: true,
+      address: true,
+      facebook_url: true,
+      instagram_url: true,
+      line_id: true,
+      logo_key: true,
+      created_at: true,
+    },
+  });
+
+  if (!brand) return null;
+
+  const { logo_key, ...rest } = brand;
+  const logo_url = logo_key ? await getImageUrl(logo_key) : null;
+
+  return { ...rest, logo_url };
+};
+
+// GET: ข้อมูลร้านสำหรับหน้า Store Settings
+export const getBrandSettings = async (req: Request, res: Response) => {
+  const brandId = req.brand?.id;
+
+  if (!brandId) {
+    return res.status(403).json({
+      message: "Brand access required",
+    });
+  }
+
+  try {
+    const brand = await getBrandSettingsData(brandId);
+
+    if (!brand) {
+      return res.status(404).json({ message: "Brand not found" });
+    }
+
+    return res.status(200).json(brand);
+  } catch (error) {
+    console.error("getBrandSettings error:", error);
+
+    return res.status(500).json({
+      message: "Failed to fetch brand settings",
+    });
+  }
+};
+
+// PATCH: แก้ข้อมูลร้าน (ชื่อ, เบอร์, ที่อยู่, รายละเอียด, social links, โลโก้)
+// ล็อกไว้: store_url, slug, email และข้อมูลทะเบียน — ห้ามแก้ผ่าน endpoint นี้
+export const updateBrandSettings = async (req: Request, res: Response) => {
+  const brandId = req.brand?.id;
+
+  if (!brandId) {
+    deleteS3File((req.file as Express.MulterS3.File | undefined)?.key ?? null);
+    return res.status(403).json({
+      message: "Brand access required",
+    });
+  }
+
+  const file = req.file as Express.MulterS3.File | undefined;
+  const newLogoKey = file?.key ?? null;
+  const body = req.body ?? {};
+
+  // อ่าน field เป็น string แล้ว trim (ค่าว่าง → null เพื่อเคลียร์ค่า)
+  const readTextField = (value: unknown): string | null | undefined => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  };
+
+  const cleanupAndRespond = (status: number, payload: object) => {
+    deleteS3File(newLogoKey);
+    return res.status(status).json(payload);
+  };
+
+  try {
+    const data: Prisma.BrandUpdateInput = {};
+
+    const brand_name = readTextField(body.brand_name);
+    if (brand_name !== undefined) {
+      if (!brand_name) {
+        return cleanupAndRespond(400, { message: "กรุณากรอกชื่อร้าน", field: "brand_name" });
+      }
+      data.brand_name = brand_name;
+    }
+
+    // field ข้อความทั่วไป (ค่าว่างเคลียร์ได้)
+    for (const field of ["phone_number", "address", "description", "line_id"] as const) {
+      const value = readTextField(body[field]);
+      if (value !== undefined) {
+        data[field] = value;
+      }
+    }
+
+    // facebook / instagram ต้องเป็น http(s) URL เท่านั้น (ถ้ากรอก)
+    for (const field of ["facebook_url", "instagram_url"] as const) {
+      const value = readTextField(body[field]);
+      if (value !== undefined) {
+        if (value && !isValidUrl(value)) {
+          return cleanupAndRespond(400, {
+            message: `${field === "facebook_url" ? "ลิงก์ Facebook" : "ลิงก์ Instagram"} ต้องขึ้นต้นด้วย http:// หรือ https://`,
+            field,
+          });
+        }
+        data[field] = value;
+      }
+    }
+
+    if (!newLogoKey && Object.keys(data).length === 0) {
+      return cleanupAndRespond(400, { message: "ไม่มีข้อมูลที่ต้องการแก้ไข" });
+    }
+
+    // ตรวจชื่อร้านซ้ำ (ยกเว้นร้านตัวเอง)
+    if (brand_name) {
+      const duplicate = await prisma.brand.findFirst({
+        where: { brand_name, NOT: { id: brandId } },
+        select: { id: true },
+      });
+
+      if (duplicate) {
+        return cleanupAndRespond(409, {
+          message: "ชื่อร้านนี้ถูกใช้งานแล้ว กรุณาใช้ชื่ออื่น",
+          field: "brand_name",
+        });
+      }
+    }
+
+    const current = await prisma.brand.findUnique({
+      where: { id: brandId },
+      select: { logo_key: true },
+    });
+
+    if (!current) {
+      return cleanupAndRespond(404, { message: "Brand not found" });
+    }
+
+    if (newLogoKey) {
+      data.logo_key = newLogoKey;
+    }
+
+    await prisma.brand.update({ where: { id: brandId }, data });
+
+    // อัปโหลดโลโก้ใหม่สำเร็จ → ลบโลโก้เก่าใน S3 (กันไฟล์ค้าง)
+    if (newLogoKey && current.logo_key && current.logo_key !== newLogoKey) {
+      deleteS3File(current.logo_key);
+    }
+
+    const brand = await getBrandSettingsData(brandId);
+
+    return res.status(200).json({
+      message: "Store settings updated successfully",
+      brand,
+    });
+  } catch (error) {
+    deleteS3File(newLogoKey);
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return res.status(409).json({
+        message: "ข้อมูลนี้ถูกใช้งานแล้ว",
+        fields: (error.meta?.target as string[]) ?? [],
+      });
+    }
+
+    console.error("updateBrandSettings error:", error);
+
+    return res.status(500).json({
+      message: "Failed to update store settings",
     });
   }
 };

@@ -13,6 +13,7 @@ import ProductsLayout from "./pages/AdminStore/ProductsLayout";
 import ProductWizard from "./pages/AdminStore/ProductWizard";
 import SizeChartManagement from "./pages/AdminStore/SizeChartManagement";
 import SizeChartForm from "./pages/AdminStore/SizeChartForm";
+import StoreSettings from "./pages/AdminStore/StoreSettings";
 import ShopAdminManagement from "./pages/AdminStore/AdminManagement";
 import Dashboard from "./pages/SuperAdmin/Dashboard";
 import StoreManagement from "./pages/SuperAdmin/storemanagement/StoreManagement";
@@ -88,6 +89,7 @@ function App() {
               <Route path="size-charts/new" element={<SizeChartForm />} />
               <Route path="size-charts/:id/edit" element={<SizeChartForm />} />
               <Route path="admin" element={<ShopAdminManagement />} />
+              <Route path="settings" element={<StoreSettings />} />
             </Route>
           </Route>
         </Route>

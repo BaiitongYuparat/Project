@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { IonIcon } from "@ionic/react";
@@ -13,10 +13,47 @@ import {
   logOutOutline,
   storefrontOutline,
   personOutline,
+  settingsOutline,
 } from "ionicons/icons";
 import { logoutAdmin as logoutAdminApi } from "../services/adminAuthService";
 import { logoutAdmin as clearAdminAuth } from "../store/adminSlice";
 import ConfirmLogoutModal from "./ConfirmLogoutModal";
+import { getBrandSettings } from "../services/ShopAdmin/brandService";
+import type { BrandSettings } from "../types/brand";
+
+// ชื่อร้าน/โลโก้ที่แสดงบนหัว sidebar (ดึงจาก Store Settings ของร้าน)
+function useShopBrand(slug: string | undefined) {
+  const [brand, setBrand] = useState<Pick<
+    BrandSettings,
+    "brand_name" | "logo_url"
+  > | null>(null);
+
+  useEffect(() => {
+    if (!slug) return;
+
+    let cancelled = false;
+
+    getBrandSettings(slug)
+      .then((data) => {
+        if (!cancelled) {
+          setBrand({
+            brand_name: data.brand_name,
+            logo_url: data.logo_url,
+          });
+        }
+      })
+      .catch((error) => {
+        // โหลดไม่ได้ก็ยังแสดงหน้าได้ แค่ใช้ชื่อ default
+        console.error("Failed to load shop brand:", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
+  return brand;
+}
 
 // รายการเมนู — มี children = กลุ่มแบบ dropdown (กดหัวข้อแล้วกาง/หุบ)
 const menuItems = [
@@ -46,19 +83,41 @@ const menuItems = [
     path: "/admin",
     icon: personOutline,
   },
+  {
+    name: "Store Settings",
+    path: "/settings",
+    icon: settingsOutline,
+  },
 ];
 
 const itemBase =
   "group flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary";
 
-function Logo() {
+// ตัวอักษรแรกของชื่อร้าน สำหรับ initial avatar กรณีไม่มีโลโก้
+const getBrandInitial = (name: string) => {
+  const first = Array.from(name.trim())[0];
+  return first ? first.toUpperCase() : "";
+};
+
+function Logo({ name, logoUrl }: { name: string; logoUrl: string | null }) {
   return (
-    <span className="flex items-center gap-2.5">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-xl text-secondary">
-        <IonIcon icon={storefrontOutline} />
-      </span>
-      <span className="text-lg font-bold leading-none text-[#766454]">
-        LongDress
+    <span className="flex min-w-0 items-center gap-2.5">
+      {logoUrl ? (
+        <img
+          src={logoUrl}
+          alt={`โลโก้ร้าน${name}`}
+          className="h-9 w-9 shrink-0 rounded-xl object-cover ring-1 ring-[#D9CDB9]"
+        />
+      ) : (
+        // ร้านที่ยังไม่มีโลโก้ → วงกลมสี primary แสดงตัวอักษรแรกของชื่อร้าน
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary text-lg font-bold text-secondary">
+          {getBrandInitial(name) || <IonIcon icon={storefrontOutline} />}
+        </span>
+      )}
+      <span className="min-w-0">
+        <span className="block truncate text-lg font-bold leading-none text-[#766454]">
+          {name || "LongDress"}
+        </span>
         <span className="mt-1 block text-[10px] font-semibold uppercase tracking-widest text-[#A99A87]">
           Shop Admin
         </span>
@@ -71,10 +130,15 @@ export default function ShopAdminSidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const { slug } = useParams();
+  const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  // ชื่อร้าน/โลโก้สำหรับหัว sidebar (fallback เป็น LongDress ถ้าโหลดไม่ได้)
+  const shopBrand = useShopBrand(slug);
+  const brandName = shopBrand?.brand_name ?? "";
+  const brandLogoUrl = shopBrand?.logo_url ?? null;
 
   const basePath = `/shopadmin/${slug}`;
 
@@ -117,7 +181,7 @@ export default function ShopAdminSidebar() {
     <>
       {/* Mobile Header */}
       <div className="fixed left-0 top-0 z-40 flex h-16 w-full items-center justify-between border-b border-[#D9CDB9] bg-[#E9E0D2] px-5 md:hidden">
-        <Logo />
+        <Logo name={brandName} logoUrl={brandLogoUrl} />
 
         <button
           type="button"
@@ -147,7 +211,7 @@ export default function ShopAdminSidebar() {
       >
         {/* Logo */}
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-[#D9CDB9] bg-[#E9E0D2] px-5">
-          <Logo />
+          <Logo name={brandName} logoUrl={brandLogoUrl} />
 
           <button
             type="button"

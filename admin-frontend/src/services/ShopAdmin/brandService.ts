@@ -1,5 +1,5 @@
 import api from "../api";
-import type { RegisterBrandResponse , CheckBrandAccessResponse, BrandMember, BrandMembersResponse } from "../../types/brand";
+import type { RegisterBrandResponse , CheckBrandAccessResponse, BrandMember, BrandMembersResponse, BrandSettings, UpdateBrandSettingsResponse } from "../../types/brand";
 
 const baseUrl = "/brands";
 
@@ -66,6 +66,33 @@ export async function updateBrandMemberRole(
   const response = await api.patch(
     `${baseUrl}/${encodeURIComponent(slug)}/members/${encodeURIComponent(memberId)}/role`,
     { role }
+  );
+
+  return response.data;
+}
+
+// ข้อมูลร้านสำหรับหน้า Store Settings (และใช้แสดงชื่อ/โลโก้ร้านใน sidebar)
+export async function getBrandSettings(
+  slug: string
+): Promise<BrandSettings> {
+  const response = await api.get<BrandSettings>(
+    `${baseUrl}/${encodeURIComponent(slug)}`
+  );
+
+  return response.data;
+}
+
+// บันทึกข้อมูลร้าน (ส่ง logo ผ่าน FormData เมื่อมีการเปลี่ยนรูป)
+export async function updateBrandSettings(
+  slug: string,
+  formData: FormData
+): Promise<UpdateBrandSettingsResponse> {
+  const response = await api.patch<UpdateBrandSettingsResponse>(
+    `${baseUrl}/${encodeURIComponent(slug)}`,
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    }
   );
 
   return response.data;

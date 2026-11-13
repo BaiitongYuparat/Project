@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { getBrands, registerBrand , getBrandById  , checkBrandAccess, getBrandMembers, addBrandMember, removeBrandMember, updateBrandMemberRole} from "../controllers/brand";
-import { uploadEbizRegistration, handleUploadError,uploadProductImages } from "../middlewares/upload";
+import { getBrands, registerBrand , getBrandById  , checkBrandAccess, getBrandMembers, addBrandMember, removeBrandMember, updateBrandMemberRole, getBrandSettings, updateBrandSettings} from "../controllers/brand";
+import { uploadEbizRegistration, handleUploadError,uploadProductImages, uploadBrandLogoSingle } from "../middlewares/upload";
 import { adminAuthMiddleware } from "../middlewares/adminAuth";
 import { requireBrandAccess } from "../middlewares/brandAccess";
 import { createProductController, deleteProductController, getProductByIdController, getProductsController, recheckProductImageController, updateProductController } from "../controllers/product";
@@ -48,5 +48,16 @@ router.post("/:slug/members",addBrandMember);
 router.patch("/:slug/members/:memberId/role",updateBrandMemberRole);
 router.delete("/:slug/members/:memberId",removeBrandMember);
 
+// Store Settings — ดู/แก้ข้อมูลร้าน (ชื่อ, โลโก้, รายละเอียด, social ฯลฯ)
+// วางไว้ท้ายสุดเพื่อไม่ให้ /:slug กลืน /register, /size-chart-templates, /product-options
+router.get("/:slug", adminAuthMiddleware, requireBrandAccess, getBrandSettings);
+router.patch(
+  "/:slug",
+  adminAuthMiddleware,
+  requireBrandAccess,
+  uploadBrandLogoSingle,
+  handleUploadError,
+  updateBrandSettings
+);
 
 export default router;
