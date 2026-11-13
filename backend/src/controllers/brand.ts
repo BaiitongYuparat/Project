@@ -647,6 +647,15 @@ export const updateBrandMemberRole = async (
       });
     }
 
+    // [REQ] ห้ามเปลี่ยน role เป็น OWNER ไม่ว่าผู้เรียกจะมี role ใดก็ตาม
+    // การเปลี่ยน OWNER ต้องยื่นคำขอไปยัง Super Admin เท่านั้น (owner-transfer)
+    if (newRole === BrandMemberRole.OWNER) {
+      return res.status(403).json({
+        message:
+          "Cannot change role to OWNER. Ownership transfer must be requested via Super Admin",
+      });
+    }
+
     // ค้นหาเฉพาะสมาชิกในร้านนี้
     const targetMember = await prisma.brandMember.findFirst({
       where: {

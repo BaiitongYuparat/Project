@@ -6,17 +6,20 @@ import {
   getBrandMembers,
   addBrandMember,
   removeBrandMember,
-  updateBrandMemberRole,
+  getOwnerTransferStatus,
+  requestOwnerTransfer,
 } from "../../services/ShopAdmin/brandService";
 import type {
   BrandMember,
   BrandMemberRole,
+  OwnerTransferRequest,
 } from "../../types/brand";
 
 import Button from "../../components/Button";
 import AddMemberForm from "../../components/shopadmin/admin/AddMemberForm";
 import MemberTable from "../../components/shopadmin/admin/MemberTable";
 import ConfirmRemoveModal from "../../components/shopadmin/admin/ConfirmRemoveModal";
+import OwnerTransferModal from "../../components/shopadmin/admin/OwnerTransferModal";
 
 type Toast = {
   type: "success" | "error";
@@ -65,9 +68,13 @@ export default function ShopAdminManagement() {
   // toggle แสดงฟอร์มเพิ่มสมาชิก
   const [showAddForm, setShowAddForm] = useState(false);
 
-  const [pendingMemberId, setPendingMemberId] = useState<string | null>(null);
   const [confirmMember, setConfirmMember] = useState<BrandMember | null>(null);
   const [removing, setRemoving] = useState(false);
+
+  // คำขอเปลี่ยน OWNER (ยื่นได้เฉพาะ OWNER ปัจจุบัน — รอ Super Admin อนุมัติ)
+  const [ownerTransferRequest, setOwnerTransferRequest] =
+    useState<OwnerTransferRequest | null>(null);
+  const [showTransferModal, setShowTransferModal] = useState(false);
 
   const [toast, setToast] = useState<Toast | null>(null);
   const toastTimerRef = useRef<number | undefined>(undefined);
@@ -94,6 +101,16 @@ export default function ShopAdminManagement() {
       const membersResponse = await getBrandMembers(slug);
       setMembers(membersResponse.members);
       setCurrentRole(membersResponse.currentRole);
+
+      // โหลดสถานะคำขอเปลี่ยน OWNER ล่าสุด (ไว้แสดง "รออนุมัติ" / ปิดปุ่มยื่นซ้ำ)
+      try {
+        const transferResponse = await getOwnerTransferStatus(slug);
+        setOwnerTransferRequest(transferResponse.request);
+      } catch (transferErr) {
+        // โหลดสถานะคำขอไม่ได้ไม่ควรบล็อกการใช้หน้า — แค่ซ่อนสถานะไว้
+        setOwnerTransferRequest(null);
+        console.error("Failed to load owner transfer status:", transferErr);
+      }
     } catch (err) {
       setMembers([]);
       setError(getApiErrorMessage(err, "ไม่สามารถโหลดรายชื่อสมาชิกได้"));
@@ -150,29 +167,17 @@ export default function ShopAdminManagement() {
     }
   };
 
-  const handleUpdateRole = async (
-    member: BrandMember,
-    newRole: BrandMemberRole
-  ) => {
+  const handleSubmitOwnerTransfer = async (email: string) => {
     if (!slug) return;
 
-    try {
-      setPendingMemberId(member.id);
-      const res = await updateBrandMemberRole(slug, member.id, newRole);
-      showToast({
-        type: "success",
-        message: res.message || "อัปเดตบทบาทสมาชิกสำเร็จแล้ว",
-      });
-      await fetchMembers();
-    } catch (err) {
-      showToast({
-        type: "error",
-        message: getApiErrorMessage(err, "อัปเดตบทบาทสมาชิกไม่สำเร็จ"),
-      });
-      await fetchMembers();
-    } finally {
-      setPendingMemberId(null);
-    }
+    const res = await requestOwnerTransfer(slug, email);
+    showToast({
+      type: "success",
+      message: res.message || "ส่งคำขอเปลี่ยน OWNER แล้ว รอ Super Admin อนุมัติ",
+    });
+    setOwnerTransferRequest(res.request);
+    setShowTransferModal(false);
+    await fetchMembers();
   };
 
   return (
@@ -189,21 +194,48 @@ export default function ShopAdminManagement() {
             จัดการผู้ใช้ที่สามารถเข้าถึงร้านของคุณได้
           </p>
 
-          {/* บทบาทของผู้ใช้ปัจจุบัน + ปุ่มเปิดฟอร์มเพิ่มสมาชิก */}
+          {/* บทบาทของผู้ใช้ปัจจุบัน + ปุ่มจัดการ (เพิ่มสมาชิก / ขอเปลี่ยน OWNER) */}
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <CurrentRoleBadge role={currentRole} />
             </div>
 
-            <Button
-              type="button"
-              variant={showAddForm ? "outline" : "primary"}
-              size="sm"
-              onClick={() => setShowAddForm((prev) => !prev)}
-            >
-              {showAddForm ? "ยกเลิก" : "+ เพิ่มสมาชิก"}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {currentRole === "OWNER" &&
+                (!ownerTransferRequest ||
+                  ownerTransferRequest.status !== "PENDING") && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowTransferModal(true)}
+                  >
+                    ขอเปลี่ยน OWNER
+                  </Button>
+                )}
+
+              <Button
+                type="button"
+                variant={showAddForm ? "outline" : "primary"}
+                size="sm"
+                onClick={() => setShowAddForm((prev) => !prev)}
+              >
+                {showAddForm ? "ยกเลิก" : "+ เพิ่มสมาชิก"}
+              </Button>
+            </div>
           </div>
+
+          {/* แถบสถานะคำขอเปลี่ยน OWNER ที่กำลังรอ Super Admin อนุมัติ */}
+          {currentRole === "OWNER" &&
+            ownerTransferRequest?.status === "PENDING" && (
+              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                มีคำขอเปลี่ยน OWNER ไปยัง{" "}
+                <span className="font-medium">
+                  {ownerTransferRequest.new_owner_email}
+                </span>{" "}
+                ที่กำลังรอ Super Admin อนุมัติ
+              </div>
+            )}
         </div>
 
         {/* Add Member: กดปุ่มเพื่อเปิดฟอร์มเพิ่มสมาชิก (OWNER / ADMIN) */}
@@ -230,14 +262,24 @@ export default function ShopAdminManagement() {
         ) : (
           <MemberTable
             members={members}
-            currentRole={currentRole}
-            pendingMemberId={pendingMemberId}
             onRemove={handleRemoveClick}
-            onUpdateRole={handleUpdateRole}
           />
         )}
 
       </div>
+
+      {/* Owner transfer modal — ยื่นคำขอเปลี่ยน OWNER (เฉพาะ OWNER ปัจจุบัน) */}
+      {showTransferModal && (
+        <OwnerTransferModal
+          currentOwnerEmail={
+            members.find(
+              (m) => m.role === "OWNER" && m.email
+            )?.email ?? ""
+          }
+          onSubmit={handleSubmitOwnerTransfer}
+          onCancel={() => setShowTransferModal(false)}
+        />
+      )}
 
       {/* Confirm remove modal */}
       <ConfirmRemoveModal

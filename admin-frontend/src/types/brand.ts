@@ -74,3 +74,52 @@ export interface BrandMembersResponse {
   currentRole: BrandMemberRole
   members: BrandMember[];
 }
+
+// คำขอเปลี่ยน OWNER — OWNER ยื่นแจ้ง Super Admin เพื่อขอเปลี่ยน owner เป็นอีเมลอื่น
+export type OwnerTransferStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export type OwnerTransferRequest = {
+  id: string;
+  brand_id: string;
+  current_owner_member_id: string;
+  current_owner_email: string;
+  new_owner_email: string;
+  status: OwnerTransferStatus;
+  requested_by: string;
+  decided_by: string | null;
+  decided_at: string | null;
+  created_at: string;
+};
+
+export type OwnerTransferStatusResponse = {
+  request: OwnerTransferRequest | null;
+};
+
+export type RequestOwnerTransferResponse = {
+  message: string;
+  request: OwnerTransferRequest;
+};
+
+// ข้อมูลคำขอสำหรับ Super Admin (มีข้อมูลร้าน/ผู้ยื่นเพิ่มจาก backend)
+export type SuperAdminOwnerTransferRequest = OwnerTransferRequest & {
+  brand: {
+    id: string;
+    brand_name: string;
+    slug: string | null;
+    status: BrandStatus;
+  };
+  requester: {
+    id: string;
+    name: string | null;
+    email: string;
+  };
+};
+
+export type OwnerTransferRequestsResponse = {
+  requests: SuperAdminOwnerTransferRequest[];
+};
+
+export type DecideOwnerTransferResponse = {
+  message: string;
+  request: OwnerTransferRequest;
+};

@@ -1,5 +1,5 @@
 import api from "../api";
-import type { RegisterBrandResponse , CheckBrandAccessResponse, BrandMember, BrandMembersResponse, BrandSettings, UpdateBrandSettingsResponse } from "../../types/brand";
+import type { RegisterBrandResponse , CheckBrandAccessResponse, BrandMember, BrandMembersResponse, BrandSettings, UpdateBrandSettingsResponse, OwnerTransferStatusResponse, RequestOwnerTransferResponse } from "../../types/brand";
 
 const baseUrl = "/brands";
 
@@ -58,14 +58,25 @@ export async function removeBrandMember(
   return response.data;
 }
 
-export async function updateBrandMemberRole(
+// ดึงคำขอเปลี่ยน OWNER ล่าสุดของร้าน (ไว้โชว์สถานะ "รอ Super Admin อนุมัติ")
+export async function getOwnerTransferStatus(
+  slug: string
+): Promise<OwnerTransferStatusResponse> {
+  const response = await api.get<OwnerTransferStatusResponse>(
+    `${baseUrl}/${encodeURIComponent(slug)}/members/owner-transfer`
+  );
+
+  return response.data;
+}
+
+// ยื่นคำขอเปลี่ยน OWNER (เฉพาะ OWNER ปัจจุบัน) — ระบุอีเมลใหม่ที่จะเป็น OWNER
+export async function requestOwnerTransfer(
   slug: string,
-  memberId: string,
-  role: "OWNER" | "ADMIN"
-): Promise<{ message: string }> {
-  const response = await api.patch(
-    `${baseUrl}/${encodeURIComponent(slug)}/members/${encodeURIComponent(memberId)}/role`,
-    { role }
+  email: string
+): Promise<RequestOwnerTransferResponse> {
+  const response = await api.post(
+    `${baseUrl}/${encodeURIComponent(slug)}/members/owner-transfer`,
+    { email }
   );
 
   return response.data;

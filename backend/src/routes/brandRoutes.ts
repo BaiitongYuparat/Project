@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getBrands, registerBrand , getBrandById  , checkBrandAccess, getBrandMembers, addBrandMember, removeBrandMember, updateBrandMemberRole, getBrandSettings, updateBrandSettings} from "../controllers/brand";
+import { getOwnerTransferRequestStatus, requestOwnerTransfer } from "../controllers/ownerTransfer";
 import { uploadEbizRegistration, handleUploadError,uploadProductImages, uploadBrandLogoSingle } from "../middlewares/upload";
 import { adminAuthMiddleware } from "../middlewares/adminAuth";
 import { requireBrandAccess } from "../middlewares/brandAccess";
@@ -47,6 +48,10 @@ router.get("/:slug/members",getBrandMembers);
 router.post("/:slug/members",addBrandMember);
 router.patch("/:slug/members/:memberId/role",updateBrandMemberRole);
 router.delete("/:slug/members/:memberId",removeBrandMember);
+
+// คำขอเปลี่ยน OWNER — OWNER ยื่นแจ้ง Super Admin (ดูสถานะ / ยื่นคำขอ)
+router.get("/:slug/members/owner-transfer",getOwnerTransferRequestStatus);
+router.post("/:slug/members/owner-transfer",requestOwnerTransfer);
 
 // Store Settings — ดู/แก้ข้อมูลร้าน (ชื่อ, โลโก้, รายละเอียด, social ฯลฯ)
 // วางไว้ท้ายสุดเพื่อไม่ให้ /:slug กลืน /register, /size-chart-templates, /product-options

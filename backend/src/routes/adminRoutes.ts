@@ -15,6 +15,10 @@ import {
 } from "../controllers/product";
 import { deleteUser , updateUserStatus , getUsers } from "../controllers/user";
 import { getAppeals, decideAppeal } from "../controllers/appeal";
+import {
+  getOwnerTransferRequests,
+  decideOwnerTransferRequest,
+} from "../controllers/ownerTransfer";
 const router = Router();
 
 // ทุก Route ต้องเป็น Super Admin (session ฝั่ง Admin — cookie admin_token)
@@ -40,6 +44,10 @@ router.put("/users/:id/status", updateUserStatus);
 // Appeals (คำร้องขอปลดระงับบัญชี shopper)
 router.get("/appeals", getAppeals);
 router.post("/appeals/:id/decision", decideAppeal);
+
+// Owner Transfer Requests (คำขอเปลี่ยน OWNER ของร้าน)
+router.get("/owner-transfer-requests", getOwnerTransferRequests);
+router.post("/owner-transfer-requests/:id/decision", decideOwnerTransferRequest);
 
 
 
