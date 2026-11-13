@@ -1,5 +1,6 @@
 import type { ProductFormController } from "../../../../pages/AdminStore/useProductForm";
 import { CATEGORY_OPTIONS } from "./constants";
+import { optionLabelTh } from "./optionLabels";
 
 interface StepReviewProps {
   ctl: ProductFormController;
@@ -70,8 +71,14 @@ export default function StepReview({ ctl }: StepReviewProps) {
         <ReviewRow label="หมวดหมู่" value={categoryLabel(form.category)} />
         <ReviewRow label="เพศสินค้า" value={genderLabel(form.gender)} />
         <ReviewRow label="เนื้อผ้า" value={form.fabric} />
-        <ReviewRow label="ฤดู" value={form.seasons.join(", ")} />
-        <ReviewRow label="โอกาสในการใช้งาน" value={form.occasions.join(", ")} />
+        <ReviewRow
+          label="ฤดู"
+          value={form.seasons.map(optionLabelTh).join(", ")}
+        />
+        <ReviewRow
+          label="โอกาสในการใช้งาน"
+          value={form.occasions.map(optionLabelTh).join(", ")}
+        />
         <ReviewRow
           label="ราคา"
           value={form.price ? `฿${Number(form.price).toLocaleString()}` : ""}

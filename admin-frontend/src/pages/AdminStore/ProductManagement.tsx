@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { IonIcon } from "@ionic/react";
-import { chevronDownOutline, searchOutline } from "ionicons/icons";
+import { chevronDownOutline, searchOutline, trashOutline } from "ionicons/icons";
 
+import ConfirmModal from "../../components/ConfirmModal";
 import ProductTable from "../../components/shopadmin/product/ProductTable";
 import ProductQualityPanel from "../../components/shopadmin/product/ProductQuantityPanel";
 
@@ -46,6 +47,10 @@ export default function ProductManagement() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
 
   const [error, setError] = useState("");
+
+  // ลบสินค้า: state ของ modal ยืนยัน
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // โหลดรายการสินค้า
   const loadProducts = useCallback(
@@ -128,21 +133,31 @@ export default function ProductManagement() {
     navigate(`/shopadmin/${slug}/products/${product.id}/edit`);
   };
 
-  // ลบสินค้า
-  const handleDelete = async (productId: string) => {
-    if (!slug) return;
+  // ลบสินค้า: ขอยืนยันผ่าน ConfirmModal แทน window.confirm
+  const handleDelete = (productId: string) => {
+    const product =
+      products.find((item) => item.id === productId) ?? null;
 
-    const confirmed = window.confirm("คุณต้องการลบสินค้านี้ใช่หรือไม่?");
+    setProductToDelete(product);
+  };
 
-    if (!confirmed) return;
+  const handleConfirmDelete = async () => {
+    if (!slug || !productToDelete) return;
 
     try {
+      setDeleting(true);
       setError("");
-      await deleteProduct(slug, productId);
+
+      await deleteProduct(slug, productToDelete.id);
+
+      setProductToDelete(null);
       await loadProducts(true);
     } catch (err) {
       console.error("Delete product error:", err);
       setError("ไม่สามารถลบสินค้าได้");
+      setProductToDelete(null);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -239,6 +254,7 @@ export default function ProductManagement() {
               onSelect={(product) => setSelectedId(product.id)}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              deletingId={deleting ? (productToDelete?.id ?? null) : null}
             />
           </div>
 
@@ -254,6 +270,34 @@ export default function ProductManagement() {
           )}
         </div>
       )}
+
+      {/* Confirm delete modal */}
+      <ConfirmModal
+        open={productToDelete !== null}
+        title="ลบสินค้า"
+        icon={trashOutline}
+        iconTone="danger"
+        confirmLabel="ลบสินค้า"
+        cancelLabel="ยกเลิก"
+        loadingLabel="กำลังลบ..."
+        loading={deleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setProductToDelete(null)}
+        message={
+          productToDelete ? (
+            <>
+              คุณแน่ใจหรือไม่ว่าต้องการลบ{" "}
+              <span className="font-medium text-[#332F29]">
+                {productToDelete.name}
+              </span>
+              {productToDelete.sku && (
+                <span className="text-[#A39988]"> (SKU: {productToDelete.sku})</span>
+              )}{" "}
+              ออกจากร้าน? การลบไม่สามารถย้อนกลับได้
+            </>
+          ) : null
+        }
+      />
     </div>
   );
 }

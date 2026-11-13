@@ -126,6 +126,46 @@ export const uploadBrandDoc = multer({
 
 export const uploadEbizRegistration = uploadBrandDoc.single("ebiz_registration");
 
+// Upload โลโก้ร้าน (Store Settings) — ต้องผ่าน requireBrandAccess ก่อน จึงมี req.brand
+export const uploadBrandLogo = multer({
+  storage: multerS3({
+    s3: s3,
+    bucket: process.env.AWS_S3_BUCKET_NAME!,
+    contentType: multerS3.AUTO_CONTENT_TYPE,
+    metadata: (req, file, cb) => {
+      cb(null, { fieldName: file.fieldname });
+    },
+    key: (req: any, file, cb) => {
+      const brandId = req.brand?.id;
+
+      if (!brandId) {
+        return cb(new Error("Brand access required"));
+      }
+
+      const sanitizedBrandId = String(brandId)
+        .trim()
+        .replace(/[^a-zA-Z0-9_-]/g, "");
+
+      const ext = path.extname(file.originalname).toLowerCase();
+
+      cb(
+        null,
+        `brand-logos/${sanitizedBrandId}/${Date.now()}_${Math.round(
+          Math.random() * 1e9
+        )}${ext}`
+      );
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Only JPG, PNG or WEBP files are allowed"));
+  },
+});
+
+export const uploadBrandLogoSingle = uploadBrandLogo.single("logo");
+
 // Upload สำหรับ Product Images
 export const uploadProduct = multer({
   storage: multerS3({

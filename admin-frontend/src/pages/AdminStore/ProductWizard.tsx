@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { IonIcon } from "@ionic/react";
-import { arrowBackOutline, arrowForwardOutline } from "ionicons/icons";
+import { arrowBackOutline, arrowForwardOutline, refreshOutline } from "ionicons/icons";
 
 import WizardSteps from "../../components/shopadmin/product/wizard/WizardSteps";
 import StepDetails from "../../components/shopadmin/product/wizard/StepDetails";
@@ -22,6 +22,32 @@ export default function ProductWizard() {
 
   const [toast, setToast] = useState<Toast | null>(null);
   const [toastTimer, setToastTimer] = useState<number | undefined>(undefined);
+
+  // ปุ่ม "เริ่มใหม่" — กดครั้งแรกขึ้น "ยืนยันเริ่มใหม่?" กดซ้ำถึงล้างทั้ง wizard (กันกดพลาด)
+  const [confirmReset, setConfirmReset] = useState(false);
+  const confirmResetTimer = useRef<number | undefined>(undefined);
+
+  const handleResetClick = () => {
+    if (!confirmReset) {
+      setConfirmReset(true);
+
+      window.clearTimeout(confirmResetTimer.current);
+      confirmResetTimer.current = window.setTimeout(
+        () => setConfirmReset(false),
+        4000,
+      );
+
+      return;
+    }
+
+    window.clearTimeout(confirmResetTimer.current);
+    setConfirmReset(false);
+    ctl.cancelWizard();
+  };
+
+  useEffect(() => {
+    return () => window.clearTimeout(confirmResetTimer.current);
+  }, []);
 
   const showToast = (next: Toast) => {
     setToast(next);
@@ -106,10 +132,16 @@ export default function ProductWizard() {
             <div className="flex flex-wrap items-center justify-between gap-3">
             <button
               type="button"
-              onClick={ctl.cancelWizard}
-              className="rounded-lg px-4 py-2 text-sm text-[#8B806E] hover:bg-[#F8F4EA]"
+              onClick={handleResetClick}
+              aria-label="ล้างทั้ง wizard แล้วเริ่มกรอกใหม่จากขั้นที่ 1"
+              className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors ${
+                confirmReset
+                  ? "bg-red-50 text-red-600 hover:bg-red-100"
+                  : "text-[#8B806E] hover:bg-[#F8F4EA]"
+              }`}
             >
-              ยกเลิก
+              <IonIcon icon={refreshOutline} />
+              {confirmReset ? "ยืนยันเริ่มใหม่?" : "เริ่มใหม่"}
             </button>
 
             <div className="flex items-center gap-3">

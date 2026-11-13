@@ -351,7 +351,7 @@ type ProductImageInput = {
   s3_key: string;
   sort_order: number;
   view: "FRONT" | "BACK" | "LEFT" | "RIGHT";
-  // ชนิดรูปของสินค้าแบบชุด (เช่น pajamas): SET = รูปรวมทั้งชุด (รูปหลัก)
+  // ชนิดรูปของสินค้าแบบชุด (เช่น set): SET = รูปรวมทั้งชุด (รูปหลัก)
   piece?: "SET" | "TOP" | "BOTTOM" | null;
 };
 

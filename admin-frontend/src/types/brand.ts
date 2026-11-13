@@ -35,6 +35,29 @@ export type CheckBrandAccessResponse = {
   role: BrandMemberRole
 };
 
+// ข้อมูลร้านสำหรับหน้า Store Settings (logo_url เป็น signed URL จาก backend)
+export type BrandSettings = {
+  id: string;
+  brand_name: string;
+  slug: string;
+  email: string | null;
+  phone_number: string | null;
+  store_url: string | null;
+  status: BrandStatus;
+  description: string | null;
+  address: string | null;
+  facebook_url: string | null;
+  instagram_url: string | null;
+  line_id: string | null;
+  logo_url: string | null;
+  created_at: string;
+};
+
+export type UpdateBrandSettingsResponse = {
+  message: string;
+  brand: BrandSettings;
+};
+
 // types/brand.ts
 export type BrandMember = {
   id: string;

@@ -228,8 +228,8 @@ export const resolveSizeChartForProduct = async (
     return { error: "SIZE_CHART_NOT_FOUND" as const };
   }
 
-  // pajamas = สินค้า 1 ชุด → ตารางต้องมี entry ทั้งท่อนบน (top) และท่อนล่าง (bottom)
-  if (category === "pajamas") {
+  // set = สินค้า 1 ชุด → ตารางต้องมี entry ทั้งท่อนบน (top) และท่อนล่าง (bottom)
+  if (category === "set") {
     const entries = await prisma.brandSizeChartEntry.findMany({
       where: { chart_id: chartId, category: { in: ["top", "bottom"] } },
       include: {

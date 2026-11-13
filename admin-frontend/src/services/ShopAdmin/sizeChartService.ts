@@ -85,13 +85,13 @@ const chartHasCategory = (chart: BrandSizeChart, category: string) =>
     (entry) => entry.category === category && entry.rows.length > 0,
   );
 
-// pajamas = สินค้า 1 ชุด → ตารางต้องมี entry ครบทั้งท่อนบน (top) และท่อนล่าง (bottom)
+// set = สินค้า 1 ชุด → ตารางต้องมี entry ครบทั้งท่อนบน (top) และท่อนล่าง (bottom)
 // freesize = แถวอาจว่าง (0 แถว) ได้ — ขอแค่ entry มีอยู่
 export const chartMatchesCategory = (chart: BrandSizeChart, category: string) => {
   const hasCategory = (cat: string) =>
     chart.entries.some((entry) => entry.category === cat);
 
-  if (category === "pajamas") {
+  if (category === "set") {
     return chart.is_freesize
       ? hasCategory("top") && hasCategory("bottom")
       : hasCategory("top") &&

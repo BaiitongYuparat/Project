@@ -44,7 +44,7 @@ import type {
 
 export const WIZARD_STEPS = [
   { title: "รายละเอียดสินค้า", description: "ชื่อ หมวดหมู่ เพศ เนื้อผ้า ฤดู โอกาส ราคา" },
-  { title: "ตารางไซส์", description: "เลือกตารางของร้าน หรือสร้างใหม่" },
+  { title: "ตารางไซส์", description: "ใช้ตารางของร้าน ตาราง standard หรือใส่เฉพาะตัว" },
   { title: "รูปสินค้า & สี", description: "เพิ่มสีและอัปโหลดรูป 4 มุม" },
   { title: "ตรวจสอบ & บันทึก", description: "ตรวจข้อมูลก่อนบันทึก" },
 ];
@@ -191,9 +191,9 @@ const pickBestChart = (
   );
 };
 
-// หมวดที่สินค้าต้องใช้ entry จากตาราง (pajamas = top + bottom)
+// หมวดที่สินค้าต้องใช้ entry จากตาราง (set = top + bottom)
 export const requiredChartCategories = (category: string): string[] =>
-  category === "pajamas" ? ["top", "bottom"] : [category];
+  category === "set" ? ["top", "bottom"] : [category];
 
 // รวมแถวของ entry ที่ต้องใช้ — คืน null ถ้าขาดส่วนใดส่วนหนึ่งหรือไม่มีแถว
 // ไม่ตรวจเงื่อนไขซ้ำ — ให้ผู้เรียกเช็ก chartMatchesCategory ก่อน
@@ -833,15 +833,15 @@ const handleOverrideFromChart = (chartId: string) => {
     setError("");
 
     setForm((previous) => {
-      // pajamas: รูปแรกของสินค้า = รูปรวมทั้งชุด (SET) อัตโนมัติ
-      const isPajamas = previous.category === "pajamas";
+      // set: รูปแรกของสินค้า = รูปรวมทั้งชุด (SET) อัตโนมัติ
+      const isSet = previous.category === "set";
       const hasSetImage = previous.colors.some(
         (color) =>
           color.new_images.some((image) => image.piece === "SET") ||
           color.existing_images.some((image) => image.piece === "SET"),
       );
       const defaultPiece: ProductPiece | null =
-        isPajamas && !hasSetImage ? "SET" : null;
+        isSet && !hasSetImage ? "SET" : null;
 
       return {
         ...previous,
@@ -869,7 +869,7 @@ const handleOverrideFromChart = (chartId: string) => {
     });
   };
 
-  // เปลี่ยนชนิดรูปของรูปใหม่ (ใช้กับสินค้าแบบชุด เช่น pajamas)
+  // เปลี่ยนชนิดรูปของรูปใหม่ (ใช้กับสินค้าแบบชุด เช่น set)
   const handleColorImagePieceChange = (
     colorIndex: number,
     view: ProductColorForm["new_images"][number]["view"],
@@ -945,8 +945,8 @@ const handleOverrideFromChart = (chartId: string) => {
       }
 
       if (!chartMatchesCategory(chart, form.category)) {
-        return form.category === "pajamas"
-          ? "ชุดนอนต้องใช้ตารางที่มีทั้งท่อนบน (top) และท่อนล่าง (bottom) ครบ"
+        return form.category === "set"
+          ? "ชุด (set) ต้องใช้ตารางที่มีทั้งท่อนบน (top) และท่อนล่าง (bottom) ครบ"
           : `ตารางไซส์ที่เลือกไม่มีข้อมูลสำหรับหมวด "${form.category}"`;
       }
     } else {
@@ -983,6 +983,43 @@ const handleOverrideFromChart = (chartId: string) => {
 
           if (!hasFront) {
             return `สี "${color.name || "สีใหม่"}" ต้องมีรูปภาพด้านหน้าอย่างน้อย 1 รูป`;
+          }
+        }
+
+        // สินค้าชุด (set): ทุกสีต้องมีรูปด้านหน้าของ SET / TOP / BOTTOM ครบ
+        // รูปที่ยังไม่ระบุชนิด (piece = null) นับเป็นตัวรองทุกชนิด (เช่นรูปเดิมก่อนมีฟีเจอร์นี้)
+        if (form.category === "set") {
+          const requiredPieces: ProductPiece[] = ["SET", "TOP", "BOTTOM"];
+
+          const pieceLabels: Record<ProductPiece, string> = {
+            SET: "รูปเต็มชุด (SET)",
+            TOP: "ท่อนบน (TOP)",
+            BOTTOM: "ท่อนล่าง (BOTTOM)",
+          };
+
+          for (const color of realColors) {
+            const hasFrontPiece = (piece: ProductPiece) =>
+              color.new_images.some(
+                (image) =>
+                  image.view === "FRONT" &&
+                  (image.piece === piece || image.piece === null),
+              ) ||
+              color.existing_images.some(
+                (image) =>
+                  image.view === "FRONT" &&
+                  image.piece === piece &&
+                  !color.removed_image_ids.includes(image.id),
+              );
+
+            const missing = requiredPieces.filter(
+              (piece) => !hasFrontPiece(piece),
+            );
+
+            if (missing.length > 0) {
+              return `สี "${color.name || "สีใหม่"}" ต้องมีรูปด้านหน้าของทั้ง 3 ชนิด (ขาด: ${missing
+                .map((piece) => pieceLabels[piece])
+                .join(", ")})`;
+            }
           }
         }
 
@@ -1097,10 +1134,47 @@ const handleOverrideFromChart = (chartId: string) => {
     }
   };
 
-  // ยกเลิกฟอร์มเอง → ทิ้ง draft กลับหน้า list
+  // เริ่มใหม่ = ล้างทั้ง wizard (ทุกขั้นตอน) แล้วกลับไปขั้นที่ 1 — อยู่ในหน้าเดิมให้กรอกใหม่
+  // (โหมดแก้ไข: กลับไปค่าตั้งต้นของสินค้าที่โหลดจาก DB ไม่ใช่ฟอร์มว่าง กันข้อมูลสินค้าหาย)
   const cancelWizard = () => {
     clearDraft();
-    navigate(`/shopadmin/${slug}/products`);
+
+    // กัน effect เซฟ draft (ที่จะรันหลัง state reset) เขียนฟอร์มเปล่าทับกลับ
+    skipNextDraftSave.current = true;
+
+    setRemoveColorIds([]);
+    setActiveTemplateId(null);
+    setShowChartCreator(false);
+    setError("");
+    setStep(0);
+    setFurthestStep(0);
+
+    if (productId && editingProduct) {
+      setForm(productToForm(editingProduct));
+      sizeChartTouched.current = true;
+    } else {
+      // สร้างใหม่ — ฟอร์มว่าง + prefill ตารางเหมือนตอนเข้าหน้าครั้งแรก
+      sizeChartTouched.current = false;
+
+      const base = { ...initialForm };
+      const best = pickBestChart(charts, base.gender, base.category);
+
+      setForm(
+        best
+          ? { ...base, size_chart_id: best.id }
+          : (() => {
+              const template = pickDefaultTemplate(
+                templates,
+                base.gender,
+                base.category,
+              );
+
+              return template
+                ? { ...base, size_chart: templateToRows(template) }
+                : base;
+            })(),
+      );
+    }
   };
 
   return {

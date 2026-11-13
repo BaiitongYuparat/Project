@@ -183,7 +183,7 @@ type ProductGenderValue = (typeof GENDERS)[number];
 const VIEWS = ["FRONT", "BACK", "LEFT", "RIGHT"] as const;
 type ViewValue = (typeof VIEWS)[number];
 
-// ชนิดรูปของสินค้าแบบชุด (เช่น pajamas): SET = รูปรวมทั้งชุด (รูปหลัก), TOP/BOTTOM = รูปแยกท่อน
+// ชนิดรูปของสินค้าแบบชุด (เช่น set): SET = รูปรวมทั้งชุด (รูปหลัก), TOP/BOTTOM = รูปแยกท่อน
 const PIECES = ["SET", "TOP", "BOTTOM"] as const;
 type PieceValue = (typeof PIECES)[number];
 
@@ -528,7 +528,7 @@ export const createProductController = async (
       });
     }
 
-    // pieces: ชนิดรูป (optional — ใช้กับสินค้าแบบชุด เช่น pajamas)
+    // pieces: ชนิดรูป (optional — ใช้กับสินค้าแบบชุด เช่น set)
     let parsedPieces = parsePieces(pieces, files.length);
 
     if (!parsedPieces) {
@@ -537,9 +537,9 @@ export const createProductController = async (
       });
     }
 
-    // pajamas = สินค้า 1 ชุด → ต้องมีรูปรวมทั้งชุด (SET) อย่างน้อย 1 รูป
+    // set = สินค้า 1 ชุด → ต้องมีรูปรวมทั้งชุด (SET) อย่างน้อย 1 รูป
     // ถ้าไม่ระบุ pieces มาเลย ถือว่ารูปแรกเป็นรูปชุด
-    if (category.trim() === "pajamas") {
+    if (category.trim() === "set") {
       if (!parsedPieces.some((piece) => piece === "SET")) {
         if (parsedPieces.every((piece) => piece === null)) {
           parsedPieces = parsedPieces.map((piece, index) =>
@@ -547,7 +547,7 @@ export const createProductController = async (
           );
         } else {
           return res.status(400).json({
-            message: "สินค้าชุดนอนต้องมีรูปรวมทั้งชุดอย่างน้อย 1 รูป",
+            message: "สินค้าชุด (set) ต้องมีรูปรวมทั้งชุดอย่างน้อย 1 รูป",
           });
         }
       }
@@ -576,6 +576,36 @@ export const createProductController = async (
         return res.status(400).json({
           message: `สี "${color.name}" ต้องมีรูปภาพด้านหน้าอย่างน้อย 1 รูป`,
         });
+      }
+    }
+
+    // สินค้าชุด (set): ทุกสีต้องมีรูปด้านหน้าของ SET / TOP / BOTTOM ครบ
+    // (create บังคับเคร่งครัด — ชนิดรูปต้องระบุครบ เพราะ frontend wizard ส่ง pieces มาเสมอ)
+    if (category.trim() === "set") {
+      const requiredPieces: PieceValue[] = ["SET", "TOP", "BOTTOM"];
+
+      for (const [colorIndex, color] of parsedColors.entries()) {
+        const frontPieces = files
+          .map((_, index) => index)
+          .filter(
+            (index) =>
+              colorIndexes[index] === colorIndex && views[index] === "FRONT"
+          )
+          .map((index) => parsedPieces[index]);
+
+        const present = new Set(
+          frontPieces.filter((piece): piece is PieceValue => piece !== null)
+        );
+
+        const missing = requiredPieces.filter(
+          (piece) => !present.has(piece)
+        );
+
+        if (missing.length > 0) {
+          return res.status(400).json({
+            message: `สี "${color.name}" ต้องมีรูปด้านหน้าของทั้ง SET, TOP และ BOTTOM (ขาด: ${missing.join(", ")})`,
+          });
+        }
       }
     }
 
@@ -883,7 +913,7 @@ export const updateProductController = async (
       });
     }
 
-    // pieces: ชนิดรูป (optional — ใช้กับสินค้าแบบชุด เช่น pajamas)
+    // pieces: ชนิดรูป (optional — ใช้กับสินค้าแบบชุด เช่น set)
     let parsedPieces: (PieceValue | null)[] = [];
 
     if (files.length > 0) {
@@ -997,6 +1027,99 @@ export const updateProductController = async (
         return res.status(400).json({
           message: "Invalid remove_color_ids",
         });
+      }
+    }
+
+    // สินค้าชุด (set): ตรวจสถานะรวมหลังบันทึกว่าทุกสีมีรูปด้านหน้าของ SET / TOP / BOTTOM ครบ
+    // (รูปเดิมที่ยังไม่ระบุชนิด piece = null นับเป็นตัวรองทุกชนิด เพื่อไม่บล็อกสินค้าเก่าที่แก้ไข)
+    if (effectiveCategory === "set") {
+      const existingProduct = await getProductById(brandId, id);
+
+      if (existingProduct) {
+        type SetColorCheck = { name: string; pieces: (PieceValue | null)[] };
+
+        const requiredPieces: PieceValue[] = ["SET", "TOP", "BOTTOM"];
+
+        // รูปเดิมของแต่ละสี (หักรูปที่ขอลบ) — เฉพาะสีที่ยังไม่ถูกลบ
+        const frontPiecesByColorId = new Map<string, (PieceValue | null)[]>();
+
+        for (const color of existingProduct.colors) {
+          if (parsedRemoveColorIds.includes(color.id)) continue;
+
+          frontPiecesByColorId.set(
+            color.id,
+            color.images
+              .filter(
+                (image) =>
+                  image.view === "FRONT" && !removeImageIds.includes(image.id)
+              )
+              .map((image) => image.piece)
+          );
+        }
+
+        // รูปใหม่ผูกกับสีตำแหน่งไหน — สีเดิมเติมเข้า id เดิม, สีใหม่เก็บตามตำแหน่ง
+        const frontPiecesByNewColorIndex = new Map<
+          number,
+          (PieceValue | null)[]
+        >();
+
+        (parsedColors ?? []).forEach((color, index) => {
+          const newFrontPieces = files
+            .map((_, fileIndex) => fileIndex)
+            .filter(
+              (fileIndex) =>
+                colorIndexes[fileIndex] === index &&
+                views![fileIndex] === "FRONT"
+            )
+            .map((fileIndex) => parsedPieces[fileIndex]);
+
+          if (newFrontPieces.length === 0) return;
+
+          if (color.id && frontPiecesByColorId.has(color.id)) {
+            frontPiecesByColorId.set(color.id, [
+              ...frontPiecesByColorId.get(color.id)!,
+              ...newFrontPieces,
+            ]);
+          } else if (!color.id) {
+            frontPiecesByNewColorIndex.set(index, [
+              ...(frontPiecesByNewColorIndex.get(index) ?? []),
+              ...newFrontPieces,
+            ]);
+          }
+        });
+
+        const colorsToCheck: SetColorCheck[] = [
+          ...existingProduct.colors
+            .filter((color) => !parsedRemoveColorIds.includes(color.id))
+            .map((color) => ({
+              name: color.name,
+              pieces: frontPiecesByColorId.get(color.id) ?? [],
+            })),
+          ...(parsedColors ?? [])
+            .map((color, index) =>
+              !color.id && frontPiecesByNewColorIndex.has(index)
+                ? {
+                    name: color.name,
+                    pieces: frontPiecesByNewColorIndex.get(index)!,
+                  }
+                : null
+            )
+            .filter((item): item is SetColorCheck => item !== null),
+        ];
+
+        for (const color of colorsToCheck) {
+          const present = new Set(color.pieces);
+
+          const missing = requiredPieces.filter(
+            (piece) => !present.has(piece) && !present.has(null)
+          );
+
+          if (missing.length > 0) {
+            return res.status(400).json({
+              message: `สี "${color.name}" ต้องมีรูปด้านหน้าของทั้ง SET, TOP และ BOTTOM (ขาด: ${missing.join(", ")})`,
+            });
+          }
+        }
       }
     }
 

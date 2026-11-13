@@ -15,7 +15,7 @@ import type {
 
 interface ProductColorsEditorProps {
   colors: ProductColorForm[];
-  // หมวดสินค้า — ใช้แสดงตัวเลือกชนิดรูปของสินค้าแบบชุด เช่น pajamas
+  // หมวดสินค้า — ใช้แสดงตัวเลือกชนิดรูปของสินค้าแบบชุด เช่น set
   category?: string;
   onAddColor: () => void;
   onUpdateColor: (index: number, patch: Partial<ProductColorForm>) => void;
@@ -54,6 +54,27 @@ const hasFrontImage = (color: ProductColorForm) => {
   return hasNewFront || hasExistingFront;
 };
 
+// สินค้า set ต้องมีรูปหน้าของ SET / TOP / BOTTOM ครบต่อสี
+// รูปที่ยังไม่ระบุชนิด (piece = null) นับเป็นตัวรองทุกชนิด (เช่นรูปเดิมก่อนมีฟีเจอร์นี้)
+const REQUIRED_SET_PIECES: ProductPiece[] = ["SET", "TOP", "BOTTOM"];
+
+const missingSetFrontPieces = (color: ProductColorForm): ProductPiece[] => {
+  const hasFrontPiece = (piece: ProductPiece) =>
+    color.new_images.some(
+      (image) =>
+        image.view === "FRONT" &&
+        (image.piece === piece || image.piece === null),
+    ) ||
+    color.existing_images.some(
+      (image) =>
+        image.view === "FRONT" &&
+        image.piece === piece &&
+        !color.removed_image_ids.includes(image.id),
+    );
+
+  return REQUIRED_SET_PIECES.filter((piece) => !hasFrontPiece(piece));
+};
+
 // ส่วนแก้ไขสี & รูปสินค้า (เดิมอยู่ใน modal — ตอนนี้ฝังใน step 3 ของ wizard)
 export default function ProductColorsEditor({
   colors,
@@ -67,7 +88,7 @@ export default function ProductColorsEditor({
   onRemoveNewImage,
 }: ProductColorsEditorProps) {
   const [rawActiveIndex, setActiveColorIndex] = useState(0);
-  const [selectedPajamasPiece, setSelectedPajamasPiece] =
+  const [selectedSetPiece, setSelectedSetPiece] =
     useState<ProductPiece>("SET");
 
   // clamp index กันสีที่เลือกถูกลบไป
@@ -140,7 +161,7 @@ export default function ProductColorsEditor({
     (color) => !color.legacy && !hasFrontImage(color),
   );
 
-  const pajamasPieceLabels: Record<ProductPiece, string> = {
+  const setPieceLabels: Record<ProductPiece, string> = {
     SET: "รูปเต็มชุด (SET)",
     TOP: "รูปท่อนบน (TOP)",
     BOTTOM: "รูปท่อนล่าง (BOTTOM)",
@@ -155,12 +176,12 @@ export default function ProductColorsEditor({
 
     onImageChange(colorIndex, view, file);
 
-    if (category === "pajamas") {
-      onImagePieceChange?.(colorIndex, view, selectedPajamasPiece);
+    if (category === "set") {
+      onImagePieceChange?.(colorIndex, view, selectedSetPiece);
     }
   };
 
-  const pajamasSteps: ProductPiece[] = ["SET", "TOP", "BOTTOM"];
+  const setSteps: ProductPiece[] = ["SET", "TOP", "BOTTOM"];
 
   return (
     <div className="overflow-hidden rounded-2xl border border-[#E9DFC9] bg-white">
@@ -283,29 +304,41 @@ export default function ProductColorsEditor({
                   </p>
 
                   <p className="mt-1 text-xs text-[#8B806E]">
-                    ต้องมีรูปภาพด้านหน้าอย่างน้อย 1 รูปต่อสี
-                    เพื่อใช้งาน Virtual Try-On
+                    {category === "set"
+                      ? "ต้องมีรูปด้านหน้าของ SET, TOP และ BOTTOM ครบทุกชนิดต่อสี เพื่อใช้งาน Virtual Try-On"
+                      : "ต้องมีรูปภาพด้านหน้าอย่างน้อย 1 รูปต่อสี เพื่อใช้งาน Virtual Try-On"}
                   </p>
 
-                  {category === "pajamas" && (
+                  {category === "set" && (
                     <div className="mt-3 rounded-xl border border-[#DCCFB8] bg-[#F8F4EA] p-3">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6B7A5E]">
-                        ต้องอัปโหลดแบบบังคับ
+                        สินค้าแบบชุด — เลือกชนิดรูปก่อนอัปโหลด
+                      </p>
+
+                      <p className="mt-1.5 text-[11px] text-[#6B7A5E]">
+                        ต้องมีรูป{" "}
+                        <span className="font-semibold text-[#332F29]">
+                          ด้านหน้า
+                        </span>{" "}
+                        อย่างน้อย 1 รูป ของแต่ละชนิดต่อ 1 สี:
+                        รูปเต็มชุด (SET), รูปท่อนบน (TOP) และรูปท่อนล่าง
+                        (BOTTOM) — เลือกชนิดรูปด้านล่าง แล้วอัปโหลดรูปทับช่อง
+                        ด้านหน้า/ด้านหลัง ทีละชนิด
                       </p>
 
                       <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                        {pajamasSteps.map((piece) => (
+                        {setSteps.map((piece) => (
                           <button
                             key={piece}
                             type="button"
-                            onClick={() => setSelectedPajamasPiece(piece)}
+                            onClick={() => setSelectedSetPiece(piece)}
                             className={`rounded-xl border px-3 py-2 text-left text-[11px] font-medium transition-colors ${
-                              selectedPajamasPiece === piece
+                              selectedSetPiece === piece
                                 ? "border-[#87947A] bg-[#E9F0E3] text-[#332F29]"
                                 : "border-[#DCCFB8] bg-white text-[#6B7A5E]"
                             }`}
                           >
-                            {pajamasPieceLabels[piece]}
+                            {setPieceLabels[piece]}
                           </button>
                         ))}
                       </div>
@@ -313,15 +346,15 @@ export default function ProductColorsEditor({
                       <p className="mt-2 text-[11px] text-[#6B7A5E]">
                         ขั้นตอนที่กำลังเลือก:{" "}
                         <span className="font-semibold text-[#332F29]">
-                          {pajamasPieceLabels[selectedPajamasPiece]}
+                          {setPieceLabels[selectedSetPiece]}
                         </span>
                       </p>
                     </div>
                   )}
 
-                  {category === "pajamas" && (
+                  {category === "set" && (
                     <p className="mt-1 text-xs text-[#6B7A5E]">
-                      ชุดนอน: อัปโหลดรูป 4 ด้านตามลำดับ{" "}
+                      ชุด (Set): อัปโหลดรูป 4 ด้านตามลำดับ{" "}
                       <span className="font-semibold">SET → TOP → BOTTOM</span>
                     </p>
                   )}
@@ -394,10 +427,10 @@ export default function ProductColorsEditor({
                               </label>
                             </div>
 
-                            {category === "pajamas" && image.isNew && (
+                            {category === "set" && image.isNew && (
                               <div className="mt-2 rounded-lg border border-[#EFE7D8] bg-white px-2 py-1.5 text-[11px] text-[#6B7A5E]">
                                 {image.piece
-                                  ? `ประเภท: ${pajamasPieceLabels[image.piece]}`
+                                  ? `ประเภท: ${setPieceLabels[image.piece]}`
                                   : "ยังไม่ได้ระบุประเภทรูป"}
                               </div>
                             )}
@@ -420,8 +453,8 @@ export default function ProductColorsEditor({
                               />
 
                               <span className="text-xs text-[#8B806E]">
-                                {category === "pajamas"
-                                  ? `อัปโหลด ${pajamasPieceLabels[selectedPajamasPiece]}`
+                                {category === "set"
+                                  ? `อัปโหลด ${setPieceLabels[selectedSetPiece]}`
                                   : "คลิกเพื่ออัปโหลด"}
                               </span>
 
@@ -475,7 +508,36 @@ export default function ProductColorsEditor({
 
       {/* Footer hint */}
       <div className="border-t border-[#EFE7D8] bg-[#FCFAF6] px-6 py-3">
-        {missingFrontColors.length > 0 ? (
+        {category === "set" ? (
+          (() => {
+            const missingByColor = colors
+              .filter((color) => !color.legacy)
+              .map((color) => ({
+                color,
+                missing: missingSetFrontPieces(color),
+              }))
+              .filter(({ missing }) => missing.length > 0);
+
+            return missingByColor.length > 0 ? (
+              <p className="text-xs text-red-500">
+                ยังขาดรูปด้านหน้า:{" "}
+                {missingByColor
+                  .map(
+                    ({ color, missing }) =>
+                      `${color.name || "สีใหม่"} (ขาด: ${missing
+                        .map((piece) => setPieceLabels[piece])
+                        .join(", ")})`,
+                  )
+                  .join(" | ")}
+              </p>
+            ) : (
+              <p className="text-xs text-[#8B806E]">
+                {colors.filter((color) => !color.legacy).length} สี
+                — ครบรูปหน้าของ SET / TOP / BOTTOM ทุกสีแล้ว
+              </p>
+            );
+          })()
+        ) : missingFrontColors.length > 0 ? (
           <p className="text-xs text-red-500">
             ยังขาดรูปด้านหน้า: {" "}
             {missingFrontColors.map((color) => color.name || "สีใหม่").join(", ")}

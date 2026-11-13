@@ -123,9 +123,9 @@ const standardTemplates: SeedTemplate[] = [
       { size: "XXL", waist: 100, hips: 122, length: 109 },
     ],
   },
-  // pajamas = สินค้า 1 ชุด → ร้านใช้ template คู่ top + bottom สร้างตารางเดียวรองรับทั้งชุด
+  // set = สินค้า 1 ชุด → ร้านใช้ template คู่ top + bottom สร้างตารางเดียวรองรับทั้งชุด
   {
-    name: "Standard Unisex — Pajamas (Top)",
+    name: "Standard Unisex — Set (Top)",
     gender: "UNISEX",
     category: "top",
     rows: [
@@ -136,7 +136,7 @@ const standardTemplates: SeedTemplate[] = [
     ],
   },
   {
-    name: "Standard Unisex — Pajamas (Bottom)",
+    name: "Standard Unisex — Set (Bottom)",
     gender: "UNISEX",
     category: "bottom",
     rows: [
