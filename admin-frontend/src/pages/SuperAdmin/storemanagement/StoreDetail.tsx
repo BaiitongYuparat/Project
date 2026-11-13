@@ -5,7 +5,7 @@ import type { BrandDetail, BrandStatus } from "../../../types/brand";
 import Button from "../../../components/Button";
 
 
-const linkClass = "text-blue-700 hover:underline";
+const linkClass = "text-stone-700 hover:underline";
 
 // แสดงข้อมูลแถวของร้านค้า
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -112,7 +112,7 @@ export default function StoreDetail() {
     <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-6 md:p-8">
       <Link
         to={`/superadmin/store-management`}
-        className="text-sm text-blue-700 hover:underline"
+        className="text-sm text-stone-700 hover:underline"
       >
         ← กลับไปรายชื่อร้านค้า
       </Link>
@@ -184,7 +184,7 @@ export default function StoreDetail() {
             )}
             {brand.status !== "APPROVED" && (
              <Button
-  variant="secondary"
+  variant="cream-outline"
   onClick={() => handleStatusChange("APPROVED")}
   disabled={updating || deleting}
 >

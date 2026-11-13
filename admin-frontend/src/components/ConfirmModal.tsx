@@ -1,5 +1,4 @@
 import { useEffect, useId, type ReactNode } from "react";
-import type { Icon } from "@ionic/react";
 import { IonIcon } from "@ionic/react";
 import { trashOutline } from "ionicons/icons";
 
@@ -15,13 +14,15 @@ interface ConfirmModalProps {
   /** ข้อความยืนยัน — รองรับ JSX (เช่น <span className="font-medium">ชื่อ</span>) */
   message: ReactNode;
   /** icon บนกล่อง (ionicons) — default: trashOutline */
-  icon?: Icon;
+  icon?: string;
   /** โทนสีของวงกลม icon */
   iconTone?: IconTone;
   confirmLabel?: string;
   cancelLabel?: string;
   /** ข้อความบนปุ่มยืนยันขณะ loading เช่น "กำลังลบ..." */
   loadingLabel?: string;
+  /** "cream" = ใช้ปุ่ม/ไอคอนโทนเหลืองครีม (ธีม Super Admin) — default: "default" (โทนเบจฝั่งร้านค้า) */
+  tone?: "default" | "cream";
   /** ขณะ loading จะ disable ปุ่มทั้งสองและปิดการปิด modal (Esc/overlay) */
   loading?: boolean;
   onConfirm: () => void;
@@ -45,8 +46,10 @@ export default function ConfirmModal({
   loading = false,
   onConfirm,
   onCancel,
+  tone = "default",
 }: ConfirmModalProps) {
   const titleId = useId();
+  const isTeal = tone === "cream";
 
   // ปิดด้วยปุ่ม Esc — ยกเว้นตอน loading กันปิดทิ้งระหว่างทำรายการ
   useEffect(() => {
@@ -79,7 +82,13 @@ export default function ConfirmModal({
         {/* Icon */}
         <div className="flex justify-center">
           <div
-            className={`flex h-14 w-14 items-center justify-center rounded-full ${iconToneStyles[iconTone]}`}
+            className={`flex h-14 w-14 items-center justify-center rounded-full ${
+              isTeal
+                ? iconTone === "danger"
+                  ? "bg-red-100 text-red-600"
+                  : "bg-admin-100 text-admin-700"
+                : iconToneStyles[iconTone]
+            }`}
           >
             <IonIcon icon={icon} className="text-2xl" aria-hidden="true" />
           </div>
@@ -100,7 +109,7 @@ export default function ConfirmModal({
         <div className="mt-6 flex justify-end gap-3">
           <Button
             type="button"
-            variant="outline"
+            variant={isTeal ? "cream-outline" : "outline"}
             onClick={onCancel}
             disabled={loading}
           >

@@ -536,9 +536,14 @@ model Model {
   id              String   @id @default(uuid())
   name            String
   gender          Gender?
-  body_type       String
+  bust            Decimal? @db.Decimal(5, 2) // รอบอก (ซม.)
+  waist           Decimal? @db.Decimal(5, 2) // รอบเอว (ซม.)
+  hips            Decimal? @db.Decimal(5, 2) // รอบสะโพก (ซม.)
   height          Decimal  @db.Decimal(5, 2)
-  image_url       String
+  image_front     String   // รูปด้านหน้า (บังคับ)
+  image_back      String?  // รูปด้านหลัง
+  image_left      String?  // รูปด้านซ้าย
+  image_right     String?  // รูปด้านขวา
   supported_sizes String[] @default([])
   is_active       Boolean  @default(true)
   is_selectable   Boolean  @default(true)
@@ -547,7 +552,6 @@ model Model {
   updated_at DateTime @updatedAt @db.Timestamp(6)
 
   @@index([gender])
-  @@index([body_type])
   @@index([is_active, is_selectable])
   @@map("try_on_models")
 }

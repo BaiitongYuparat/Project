@@ -92,16 +92,16 @@ const menuSections: Array<{ label?: string; items: MenuItem[] }> = [
 
 
 const itemBase =
-    "group flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary";
+    "group flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-admin-500";
 function Logo() {
     return (
         <span className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-700 text-xl text-white">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-admin-700 text-xl text-white">
             <IonIcon icon={storefrontOutline} />
             </span>
-            <span className="text-lg font-bold leading-none text-gray-700">
+            <span className="text-lg font-bold leading-none text-gray-900">
                 LongDress
-                <span className="mt-1 block text-[10px] font-semibold uppercase tracking-widest text-gray-700">
+                <span className="mt-1 block text-[10px] font-semibold uppercase tracking-widest text-admin-600">
                     Super Admin
                 </span>
             </span>
@@ -241,8 +241,8 @@ export default function SuperAdminSidebar() {
                                         end={item.path === ""}
                                         onClick={() => setIsOpen(false)}
                                         className={({ isActive }) =>
-                                            `${itemBase} ${isActive
-                                                ? "bg-gray-900 text-white"
+                                            `${itemBase} pl-11 w-full text-left flex justify-start ${isActive
+                                                ? "bg-admin-700 text-white"
                                                 : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                                             }`
                                         }
@@ -251,7 +251,7 @@ export default function SuperAdminSidebar() {
                                             <>
                                                 <IonIcon
                                                     icon={item.icon}
-                                                    className={`text-xl transition-colors ${isActive
+                                                    className={`text-xl text-left transition-colors ${isActive
                                                         ? "text-white"
                                                         : "text-gray-400 group-hover:text-gray-900"
                                                         }`}
@@ -259,9 +259,9 @@ export default function SuperAdminSidebar() {
                                                 {item.name}
                                                 {itemPendingCount > 0 && (
                                                     <span
-                                                        className={`ml-auto rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                                        className={`text-left rounded-full px-2 py-0.5 text-xs font-semibold ${
                                                             isActive
-                                                                ? "bg-white text-gray-900"
+                                                                ? "bg-white text-admin-800"
                                                                 : "bg-amber-100 text-amber-700"
                                                         }`}
                                                     >

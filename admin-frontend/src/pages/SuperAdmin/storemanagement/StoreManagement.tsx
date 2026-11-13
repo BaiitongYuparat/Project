@@ -42,7 +42,7 @@ function DetailLink({ id, name }: { id: string; name: string }) {
     <Link
       to={`/superadmin/store-management/${id}`}
       aria-label={`ดูรายละเอียด ${name}`}
-      className="inline-flex text-sm items-center gap-1 whitespace-nowrap text-blue-700 hover:text-blue-900 hover:underline"
+      className="inline-flex text-sm items-center gap-1 whitespace-nowrap text-stone-700 hover:text-stone-900 hover:underline"
     >
       ดูรายละเอียด
       <svg
@@ -202,7 +202,7 @@ export default function StoreManagement() {
         {!loading && error && (
           <div className="border-t border-stone-200 px-4 py-10 text-center text-red-600">
             {error}{" "}
-            <button type="button" onClick={fetchStores} className="text-blue-700 underline">
+            <button type="button" onClick={fetchStores} className="text-stone-700 underline">
               ลองใหม่
             </button>
           </div>
@@ -296,7 +296,7 @@ export default function StoreManagement() {
                   </svg>
                 </button>
 
-                <span className="flex h-9 min-w-9 items-center justify-center rounded-xl bg-indigo-50 px-3 text-sm font-medium text-blue-700">
+                <span className="flex h-9 min-w-9 items-center justify-center rounded-xl bg-admin-100 px-3 text-sm font-medium text-admin-800">
                   {formatNumber(currentPage)}
                 </span>
 

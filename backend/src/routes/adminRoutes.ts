@@ -8,7 +8,8 @@ import {
 } from "../controllers/brand";
 import { adminAuthMiddleware } from "../middlewares/adminAuth";
 import { requireSuperAdmin } from "../middlewares/requireSuperAdmin";
-import { getModels } from "../controllers/model";
+import { getModels, createModel, updateModel, updateModelStatus, deleteModel } from "../controllers/model";
+import { uploadModelImages, handleUploadError } from "../middlewares/upload";
 import {
   getAdminProductsController,
   getAdminProductStatsController,
@@ -33,6 +34,10 @@ router.delete("/brands/:id", deleteBrand);
 
 // Model Management
 router.get("/models", getModels);
+router.post("/models", uploadModelImages, handleUploadError, createModel);
+router.put("/models/:id", uploadModelImages, handleUploadError, updateModel);
+router.put("/models/:id/status", updateModelStatus);
+router.delete("/models/:id", deleteModel);
 router.get("/products/stats", getAdminProductStatsController); // ต้องมาก่อน /products/:id ถ้าเพิ่มทีหลัง
 router.get("/products", getAdminProductsController);
 

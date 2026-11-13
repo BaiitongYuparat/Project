@@ -2,16 +2,10 @@ import { Request, Response } from "express"
 import { prisma } from "../../lib/prisma"
 
 // เรียกผ่าน /admin (adminRoutes) — Super Admin เท่านั้น
-// User Management แสดงเฉพาะ shopper — ตัดบัญชีเจ้าของร้าน/แอดมิน (ตาราง Admin) ออก
+// แสดง user ทุกคนในตาราง User (บัญชี admin/เจ้าของร้านอยู่ตาราง Admin แยกอยู่แล้ว จึงไม่ต้องกรอง)
 export const getUsers = async (req: Request, res: Response) => {
     try {
-        const adminEmails = (
-            await prisma.admin.findMany({ select: { email: true } })
-        ).map((a) => a.email);
-
-        const users = await prisma.user.findMany({
-            where: { email: { notIn: adminEmails } },
-        });
+        const users = await prisma.user.findMany();
         res.json(users)
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch users' })

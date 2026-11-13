@@ -190,7 +190,7 @@ export default function OwnerTransferRequests() {
                             onClick={() => setTab(t.key)}
                             className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300 ${
                                 tab === t.key
-                                    ? "bg-gray-900 text-white"
+                                    ? "bg-admin-600 text-white"
                                     : "bg-white text-stone-600 ring-1 ring-inset ring-stone-200 hover:bg-stone-50"
                             }`}
                         >
@@ -199,7 +199,7 @@ export default function OwnerTransferRequests() {
                                 <span
                                     className={`rounded-full px-1.5 text-xs font-semibold ${
                                         tab === t.key
-                                            ? "bg-white text-gray-900"
+                                            ? "bg-white text-stone-800"
                                             : "bg-amber-100 text-amber-700"
                                     }`}
                                 >
@@ -249,7 +249,7 @@ export default function OwnerTransferRequests() {
                 {!loading && error && (
                     <div className="border-t border-stone-200 px-4 py-10 text-center text-red-600">
                         {error}{" "}
-                        <button type="button" onClick={fetchRequests} className="text-blue-700 underline">
+                        <button type="button" onClick={fetchRequests} className="text-stone-700 underline">
                             ลองใหม่
                         </button>
                     </div>
@@ -286,7 +286,7 @@ export default function OwnerTransferRequests() {
                                         <span className="text-xs text-stone-400">
                                             {formatDateTime(request.created_at)}
                                         </span>
-                                        <Button size="sm" variant="outline" onClick={() => openDetail(request)}>
+                                        <Button size="sm" variant="cream-outline" onClick={() => openDetail(request)}>
                                             ดูรายละเอียด
                                         </Button>
                                     </div>
@@ -450,7 +450,7 @@ export default function OwnerTransferRequests() {
                         {selected.status === "PENDING" && (
                             <div className="flex flex-col gap-2 border-t border-stone-200 px-6 py-4 sm:flex-row">
                                 <Button
-                                    variant="secondary"
+                                    variant="cream-outline"
                                     className="flex-1"
                                     disabled={deciding}
                                     onClick={() => handleDecision("REJECTED")}
@@ -461,7 +461,7 @@ export default function OwnerTransferRequests() {
                                     </span>
                                 </Button>
                                 <Button
-                                    variant="primary"
+                                    variant="cream"
                                     className="flex-1"
                                     disabled={deciding}
                                     onClick={() => handleDecision("APPROVED")}

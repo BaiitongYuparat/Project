@@ -211,7 +211,7 @@ export default function UserManagement() {
                 {!loading && error && (
                     <div className="border-t border-stone-200 px-4 py-10 text-center text-red-600">
                         {error}{" "}
-                        <button type="button" onClick={fetchUsers} className="text-blue-700 underline">
+                        <button type="button" onClick={fetchUsers} className="text-stone-700 underline">
                             ลองใหม่
                         </button>
                     </div>
@@ -245,7 +245,7 @@ export default function UserManagement() {
                                         <div className="ml-auto flex gap-2">
                                             <Button
                                                 size="sm"
-                                                variant="outline"
+                                                variant="cream-outline"
                                                 disabled={actionLoadingId === user.id || user.status === "suspended"}
                                                 onClick={() => handleAction("suspend", user)}
                                             >
@@ -296,7 +296,7 @@ export default function UserManagement() {
                                                 <div className="flex justify-end gap-2">
                                                     <Button
                                                         size="sm"
-                                                        variant="outline"
+                                                        variant="cream-outline"
                                                         disabled={actionLoadingId === user.id || user.status === "suspended"}
                                                         onClick={() => handleAction("suspend", user)}
                                                     >
@@ -348,7 +348,7 @@ export default function UserManagement() {
                                     </svg>
                                 </button>
 
-                                <span className="flex h-9 min-w-9 items-center justify-center rounded-xl bg-indigo-50 px-3 text-sm font-medium text-blue-700">
+                                <span className="flex h-9 min-w-9 items-center justify-center rounded-xl bg-admin-100 px-3 text-sm font-medium text-admin-800">
                                     {formatNumber(currentPage)}
                                 </span>
 

@@ -263,7 +263,7 @@
 //                                     </svg>
 //                                 </button>
 
-//                                 <span className="flex h-9 min-w-9 items-center justify-center rounded-xl bg-indigo-50 px-3 text-sm font-medium text-blue-700">
+//                                 <span className="flex h-9 min-w-9 items-center justify-center rounded-xl bg-admin-100 px-3 text-sm font-medium text-admin-800">
 //                                     {formatNumber(currentPage)}
 //                                 </span>
 

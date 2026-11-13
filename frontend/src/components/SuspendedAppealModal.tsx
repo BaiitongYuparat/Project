@@ -91,7 +91,7 @@ export default function SuspendedAppealModal({ onClose }: Props) {
     const canSubmit =
         title.trim().length >= 3 &&
         title.trim().length <= 120 &&
-        message.trim().length >= 10 &&
+        message.trim().length >= 9 &&
         message.trim().length <= 2000 &&
         !submitting;
 
