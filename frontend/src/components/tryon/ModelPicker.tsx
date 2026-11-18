@@ -48,6 +48,8 @@ interface Props {
   angle: Angle;
   onSubjectChange: (subject: TryOnSubject | null) => void;
   onAngleChange: (angle: Angle) => void;
+  /** สั่งให้เลือกผู้ลองตาม key (กู้คืนสถานะ/ใช้ลุคที่บันทึก) — nonce เปลี่ยน = สั่งใหม่ */
+  requestedSubject?: { key: string; nonce: number } | null;
   /** ล็อกการเลือกระหว่าง AI กำลังสร้างภาพ */
   disabled?: boolean;
 }
@@ -93,6 +95,7 @@ export default function ModelPicker({
   angle,
   onSubjectChange,
   onAngleChange,
+  requestedSubject = null,
   disabled = false,
 }: Props) {
   const user = useSelector((state: RootState) => state.user.user);
@@ -178,6 +181,26 @@ export default function ModelPicker({
     if (!stillHere) onSubjectChange(genderModels[0] ? modelToSubject(genderModels[0]) : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, genderModels, myPhotos, models, disabled]);
+
+  // ทำตามคำสั่งเลือกผู้ลอง: ปรับแท็บเพศระหว่าง render (ตั้ง state ของตัวเอง) แล้วค่อยแจ้ง parent ใน effect
+  // effect นี้ต้องอยู่หลัง effect เลือกตัวแรกอัตโนมัติ เพื่อให้คำสั่งนี้ชนะ
+  const [appliedNonce, setAppliedNonce] = useState<number | null>(null);
+  const requestedModel =
+    requestedSubject && models
+      ? models.find((m) => `model:${m.id}` === requestedSubject.key) ?? null
+      : null;
+  if (requestedSubject && appliedNonce !== requestedSubject.nonce && (models !== null || requestedSubject.key === "me")) {
+    setAppliedNonce(requestedSubject.nonce);
+    if (requestedModel && (requestedModel.gender === "MALE" || requestedModel.gender === "FEMALE")) {
+      setGender(requestedModel.gender);
+    }
+  }
+  useEffect(() => {
+    if (requestedModel && requestedSubject && appliedNonce === requestedSubject.nonce) {
+      onSubjectChange(modelToSubject(requestedModel));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedNonce]);
 
   const handleGender = (value: Gender) => {
     setGender(value);
