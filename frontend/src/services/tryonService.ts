@@ -19,7 +19,7 @@ export type TryOnSourceInput = { type: "body" } | { type: "model"; model_id: str
 export interface StartTryOnInput {
   view: Angle;
   source: TryOnSourceInput;
-  items: { product_id: string }[];
+  items: { product_id: string; color_id?: string }[];
   /** true = ข้าม cache สร้างภาพใหม่ (ไม่ส่ง = ถ้าเคยสร้างชุดเดิมแล้วจะได้ผลเดิมทันที) */
   regenerate?: boolean;
 }

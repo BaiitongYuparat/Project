@@ -1,11 +1,22 @@
 import type { Product } from "../../services/productService";
-import { ANGLES, formatBaht, productPrice, type Angle, type TryOnSubject } from "./types";
+import {
+  ANGLES,
+  colorOf,
+  formatBaht,
+  garmentImage,
+  productPrice,
+  type Angle,
+  type ColorSelection,
+  type TryOnSubject,
+} from "./types";
 
 interface Props {
   subject: TryOnSubject | null;
   angle: Angle;
   garments: Product[];
   onRemove: (productId: string) => void;
+  colorSelection: ColorSelection;
+  onColorChange: (productId: string, colorId: string) => void;
   /** ภาพผลลัพธ์จาก AI (ตรงกับตัวเลือกปัจจุบัน) — ถ้าไม่มีจะแสดงรูปโมเดลเดิม */
   resultUrl?: string | null;
   /** ชื่อโมเดล · มุม ของภาพผลลัพธ์ (อาจไม่ตรงกับที่เลือกอยู่ตอนนี้) */
@@ -18,6 +29,8 @@ export default function TryOnCanvas({
   angle,
   garments,
   onRemove,
+  colorSelection,
+  onColorChange,
   resultUrl = null,
   resultLabel,
   generating = false,
@@ -67,18 +80,47 @@ export default function TryOnCanvas({
 
       {garments.length > 0 && (
         <div className="mb-4 flex flex-wrap justify-center gap-3">
-          {garments.map((g) => (
+          {garments.map((g) => {
+            const colorId = colorOf(g, colorSelection);
+            const thumb = garmentImage(g, colorId);
+            const colors = g.colors ?? [];
+            return (
             <div
               key={g.id}
               className="flex items-center gap-2 rounded-full bg-white/80 py-1 pl-1 pr-2 text-xs text-[#332F29]"
             >
-              {g.images?.[0]?.image_url ? (
-                <img src={g.images[0].image_url} alt={g.name} className="h-8 w-8 rounded-full object-cover" />
+              {thumb ? (
+                <img src={thumb} alt={g.name} className="h-8 w-8 rounded-full object-cover" />
               ) : (
                 <span className="h-8 w-8 rounded-full bg-[#F0E9DD]" />
               )}
               <span className="max-w-[140px] truncate">{g.name}</span>
               <span className="text-[#8A7F72]">{formatBaht(productPrice(g))}</span>
+              {colors.length > 1 && (
+                <span className="flex items-center gap-1" role="group" aria-label={`สีของ ${g.name}`}>
+                  {colors.map((c) => {
+                    const active = c.id === colorId;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        title={c.name}
+                        aria-label={`เลือกสี${c.name}`}
+                        aria-pressed={active}
+                        disabled={generating}
+                        onClick={() => onColorChange(g.id, c.id)}
+                        className={`h-5 w-5 rounded-full border transition disabled:cursor-not-allowed ${
+                          active
+                            ? "border-[#3B2C25] ring-2 ring-[#3B2C25]/30"
+                            : "border-[#D9CFC2] hover:border-[#3B2C25]/50"
+                        }`}
+                        style={{ backgroundColor: c.hex ?? "#EFE3D6" }}
+                      />
+                    );
+                  })}
+                </span>
+              )}
+              {!generating && (
               <button
                 type="button"
                 onClick={() => onRemove(g.id)}
@@ -87,8 +129,10 @@ export default function TryOnCanvas({
               >
                 ×
               </button>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

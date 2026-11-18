@@ -11,6 +11,7 @@ const publicProductImageSelect = {
     },
   select: {
     id: true,
+    color_id: true,
     s3_key: true,
     sort_order: true,
     piece: true,
@@ -19,6 +20,17 @@ const publicProductImageSelect = {
   orderBy: [{ sort_order: "asc" }, { id: "asc" }],
   take: 10,
 } satisfies Prisma.ProductImageFindManyArgs;
+
+// สีของสินค้า + รูปต่อสี (หน้า Try-On ใช้เลือกสี) — แยก take ต่อสี ไม่ให้สีหลัง ๆ ถูกตัดทิ้ง
+const publicProductColorSelect = {
+  orderBy: { created_at: "asc" as const },
+  select: {
+    id: true,
+    name: true,
+    hex: true,
+    images: { ...publicProductImageSelect, take: 4 },
+  },
+};
 
 const shopProductImageSelect = {
   select: {
@@ -48,32 +60,36 @@ const shopProductColorSelect = {
   },
 };
 
-type PublicImage = { id: string; sort_order: number; image_url: string | null };
-
-const withImageUrls = async (
-  images: { id: string; s3_key: string; sort_order: number, }[]
-): Promise<PublicImage[]> => {
-   return Promise.all(
-    images.map(async ({ id, s3_key, sort_order }) => {
-      try {
-        return { id, sort_order, image_url: await getImageUrl(s3_key) };
-      } catch (error) {
-        console.error("Failed to build image url:", id, error);
-        return { id, sort_order, image_url: null };
-      }
-    })
-  );
-};
+type RawImage = { id: string; s3_key: string; sort_order: number };
 
 const withProductImageUrls = async <
-  T extends { images: { id: string; s3_key: string; sort_order: number }[] }
+  I extends RawImage,
+  T extends { images: I[]; colors?: { images: I[] }[] }
 >(
   products: T[]
 ) => {
+  // presign ครั้งเดียวต่อ s3_key — รูปเดียวกันอยู่ทั้งใน images และ colors[].images
+  const resolveUrl = createImageUrlResolver();
+  const toPublic = (images: I[]) =>
+    Promise.all(
+      images.map(async ({ s3_key, ...rest }) => ({
+        ...rest,
+        image_url: await resolveUrl(s3_key),
+      }))
+    );
+
   return Promise.all(
     products.map(async (product) => ({
       ...product,
-      images: await withImageUrls(product.images),
+      images: await toPublic(product.images),
+      ...(product.colors && {
+        colors: await Promise.all(
+          product.colors.map(async (color) => ({
+            ...color,
+            images: await toPublic(color.images),
+          }))
+        ),
+      }),
     }))
   );
 };
@@ -148,6 +164,7 @@ const publicProductSelect = {
   description: true,
   created_at: true,
   images: publicProductImageSelect,
+  colors: publicProductColorSelect,
   brand: {
     select: {
       brand_name: true,
