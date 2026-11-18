@@ -813,25 +813,60 @@ export const updateProductWithImages = async (
     newImages: result.newImages,
   };
 };
-// ลบสินค้า
-export const deleteProduct = async (brandId: string, productId: string) => {
-  const product = await prisma.product.findFirst({
-    where: { id: productId, brand_id: brandId },
-    select: { id: true, images: { select: { s3_key: true } } },
+// ลบสินค้าหลายรายการพร้อมกัน — ลบเฉพาะสินค้าที่อยู่ในแบรนด์นี้
+export const deleteProducts = async (
+  brandId: string,
+  productIds: string[]
+) => {
+  const ids = Array.from(new Set(productIds)).filter(Boolean);
+  if (ids.length === 0) {
+    return { deletedIds: [] as string[], deletedCount: 0 };
+  }
+
+  // ดึง s3_key ไว้ลบไฟล์หลังลบ DB สำเร็จ + ลบใน transaction เดียว
+  const { products, deletedIds } = await prisma.$transaction(async (tx) => {
+    const found = await tx.product.findMany({
+      where: { id: { in: ids }, brand_id: brandId },
+      select: { id: true, images: { select: { s3_key: true } } },
+    });
+
+    if (found.length === 0) {
+      return { products: found, deletedIds: [] as string[] };
+    }
+
+    const idsToDelete = found.map((product) => product.id);
+
+    // deleteMany ลบในคำสั่งเดียว (รูป/สี/ตารางไซส์ cascade ตาม schema)
+    await tx.product.deleteMany({
+      where: { id: { in: idsToDelete }, brand_id: brandId },
+    });
+
+    return { products: found, deletedIds: idsToDelete };
   });
-  if (!product) return null;
 
-  await prisma.product.delete({ where: { id: productId } });
+  if (deletedIds.length === 0) {
+    return { deletedIds: [] as string[], deletedCount: 0 };
+  }
 
-  for (const { s3_key } of product.images) {
-    try {
-      await deleteImage(s3_key);
-    } catch (error) {
-      console.error("Failed to delete image from S3:", s3_key, error);
+  // ลบไฟล์ S3 แบบ best-effort — ลบไม่สำเร็จก็ไม่ทำให้ API fail
+  for (const { images } of products) {
+    for (const { s3_key } of images) {
+      try {
+        await deleteImage(s3_key);
+      } catch (error) {
+        console.error("Failed to delete image from S3:", s3_key, error);
+      }
     }
   }
 
-  return { id: productId };
+  return { deletedIds, deletedCount: deletedIds.length };
+};
+
+// ลบสินค้า
+export const deleteProduct = async (brandId: string, productId: string) => {
+  const { deletedCount } = await deleteProducts(brandId, [productId]);
+
+  return deletedCount > 0 ? { id: productId } : null;
 };
 
 

@@ -1,6 +1,6 @@
 
 import { Request, Response } from "express";
-import { createProduct, deleteProduct, getProductById, getProducts, getPublicProduct, getPublicProducts, updateProductWithImages, getAdminProducts, getAdminProductStats, getSizeChartTemplates, getProductOptions } from "../services/productService";
+import { createProduct, deleteProduct, deleteProducts, getProductById, getProducts, getPublicProduct, getPublicProducts, updateProductWithImages, getAdminProducts, getAdminProductStats, getSizeChartTemplates, getProductOptions } from "../services/productService";
 import { resolveSizeChartForProduct } from "../services/sizeChartService";
 import { BrandAccessError } from "../services/brandAccessService";
 import { processProductImageQuality, recheckProductImage } from "../services/productImageQuality";
@@ -1315,6 +1315,53 @@ export const deleteProductController = async (
   } catch (error) {
     console.error("Delete product error:", error);
     return res.status(500).json({ message: "Failed to delete product" });
+  }
+};
+
+// POST /brands/:slug/products/bulk-delete
+// ลบสินค้าหลายรายการในคำขอเดียว — จำกัดสูงสุด 100 รายการต่อครั้ง
+export const deleteProductsController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const brandId = req.brand?.id;
+    const productIds = req.body?.productIds;
+
+    if (!brandId) {
+      return res.status(403).json({ message: "Brand access required" });
+    }
+
+    if (
+      !Array.isArray(productIds) ||
+      productIds.length === 0 ||
+      productIds.length > 100 ||
+      productIds.some(
+        (id): boolean => typeof id !== "string" || id.trim() === ""
+      )
+    ) {
+      return res.status(400).json({
+        message: "productIds must be an array of 1-100 product IDs",
+      });
+    }
+
+    const { deletedIds, deletedCount } = await deleteProducts(
+      brandId,
+      productIds
+    );
+
+    if (deletedCount === 0) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    return res.status(200).json({
+      message: "Products deleted successfully",
+      deletedCount,
+      deletedIds,
+    });
+  } catch (error) {
+    console.error("Delete products error:", error);
+    return res.status(500).json({ message: "Failed to delete products" });
   }
 };
 

@@ -1,4 +1,6 @@
 
+import { useEffect, useRef } from "react";
+
 import type { ProductSummary } from "../../../types/product";
 
 interface ProductTableProps {
@@ -9,6 +11,15 @@ interface ProductTableProps {
   onDelete: (productId: string) => void;
   /** id ของสินค้าที่กำลังลบอยู่ — ปุ่มลบของแถวนั้นจะ disable กันกดซ้ำ */
   deletingId?: string | null;
+  /** id ของสินค้าที่ถูกเลือกด้วย checkbox (สำหรับลบหลายรายการ) */
+  selectedIds: Set<string>;
+  onToggleSelect: (productId: string, checked: boolean) => void;
+  /** เลือก/ยกเลิกทั้งหมด — มีผลกับรายการที่แสดงอยู่ (หลังกรอง) เท่านั้น */
+  onToggleSelectAll: (checked: boolean) => void;
+  onBulkDelete: () => void;
+  onClearSelection: () => void;
+  /** true = ปิด checkbox ชั่วคราวระหว่างลบ */
+  selectionDisabled?: boolean;
 }
 
 type QualityStatus = "PENDING" | "PASSED" | "FAILED";
@@ -60,11 +71,31 @@ export default function ProductTable({
   onEdit,
   onDelete,
   deletingId = null,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
+  onBulkDelete,
+  onClearSelection,
+  selectionDisabled = false,
 }: ProductTableProps) {
+  const selectAllRef = useRef<HTMLInputElement>(null);
+
+  const allSelected =
+    products.length > 0 && products.every((product) => selectedIds.has(product.id));
+  const someSelected = products.some((product) => selectedIds.has(product.id));
+  const selectedCount = selectedIds.size;
+
+  // indeterminate เป็น property ของ DOM ไม่ใช่ prop ของ React — ต้อง set ผ่าน ref
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = someSelected && !allSelected;
+    }
+  }, [someSelected, allSelected]);
+
   return (
     <div className="overflow-hidden rounded-2xl border border-[#E9DFC9] bg-white shadow-sm">
       {/* Table Header */}
-      <div className="flex items-center justify-between border-b border-[#EFE7D8] px-5 py-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EFE7D8] px-5 py-5">
         <div className="flex items-center gap-3">
           <h2 className="font-semibold text-[#332F29]">
             รายการสินค้า
@@ -75,9 +106,35 @@ export default function ProductTable({
           </span>
         </div>
 
-        <span className="hidden text-xs text-[#8B806E] sm:block">
-          เลือกสินค้าเพื่อตรวจสอบรูป
-        </span>
+        {selectedCount > 0 ? (
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-medium text-[#6B7A5E]">
+              เลือกแล้ว {selectedCount} รายการ
+            </span>
+
+            <button
+              type="button"
+              onClick={onClearSelection}
+              disabled={selectionDisabled}
+              className="text-xs font-medium text-[#8B806E] hover:text-[#332F29] hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              ยกเลิกการเลือก
+            </button>
+
+            <button
+              type="button"
+              onClick={onBulkDelete}
+              disabled={selectionDisabled}
+              className="rounded-lg bg-red-500 px-3.5 py-2 text-xs font-medium text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-300"
+            >
+              ลบที่เลือก
+            </button>
+          </div>
+        ) : (
+          <span className="hidden text-xs text-[#8B806E] sm:block">
+            เลือกสินค้าเพื่อตรวจสอบรูป
+          </span>
+        )}
       </div>
 
       {/* Table */}
@@ -85,6 +142,17 @@ export default function ProductTable({
         <table className="w-full min-w-[750px] text-left text-sm">
           <thead className="bg-[#FCFAF6] text-xs text-[#786E5D]">
             <tr>
+              <th className="w-12 px-5 py-4 font-medium">
+                <input
+                  ref={selectAllRef}
+                  type="checkbox"
+                  checked={allSelected}
+                  disabled={selectionDisabled || products.length === 0}
+                  onChange={(event) => onToggleSelectAll(event.target.checked)}
+                  aria-label="เลือกสินค้าทั้งหมด"
+                  className="h-4 w-4 cursor-pointer rounded accent-[#87947A] disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </th>
               <th className="px-5 py-4 font-medium">รูป</th>
               <th className="px-5 py-4 font-medium">สินค้า / SKU</th>
               <th className="px-5 py-4 font-medium">Category</th>
@@ -99,6 +167,7 @@ export default function ProductTable({
             {products.map((product) => {
               const qualityStatus = getProductQualityStatus(product);
               const isSelected = selectedProductId === product.id;
+              const isChecked = selectedIds.has(product.id);
               const firstImage = product.images[0];
 
               return (
@@ -108,9 +177,28 @@ export default function ProductTable({
                   className={`cursor-pointer transition-colors ${
                     isSelected
                       ? "bg-[#F8F2E5]"
-                      : "hover:bg-[#FCFAF6]"
+                      : isChecked
+                        ? "bg-[#FAF6EC]"
+                        : "hover:bg-[#FCFAF6]"
                   }`}
                 >
+                  {/* Checkbox */}
+                  <td
+                    className="px-5 py-4"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      disabled={selectionDisabled}
+                      onChange={(event) =>
+                        onToggleSelect(product.id, event.target.checked)
+                      }
+                      aria-label={`เลือก ${product.name}`}
+                      className="h-4 w-4 cursor-pointer rounded accent-[#87947A] disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                  </td>
+
                   {/* Image */}
                   <td className="px-5 py-4">
                     {firstImage?.image_url ? (
@@ -198,7 +286,7 @@ export default function ProductTable({
             {products.length === 0 && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-5 py-16 text-center text-[#A39988]"
                 >
                   <div className="mb-2 text-3xl">📦</div>

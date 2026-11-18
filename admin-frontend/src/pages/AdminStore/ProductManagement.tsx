@@ -7,7 +7,7 @@ import ConfirmModal from "../../components/ConfirmModal";
 import ProductTable from "../../components/shopadmin/product/ProductTable";
 import ProductQualityPanel from "../../components/shopadmin/product/ProductQuantityPanel";
 
-import { deleteProduct, getProducts } from "../../services/ShopAdmin/productService";
+import { deleteProduct, deleteProducts, getProducts } from "../../services/ShopAdmin/productService";
 import { useCachedQuery } from "../../hooks/useCachedQuery";
 import type { ProductSummary } from "../../types/product";
 
@@ -64,6 +64,26 @@ export default function ProductManagement() {
   const [productToDelete, setProductToDelete] = useState<ProductSummary | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // เลือกหลายรายการด้วย checkbox เพื่อลบทีเดียว
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  // ตัด id ที่ไม่มีอยู่ในรายการล่าสุดออก (เช่น สินค้าถูกลบจากที่อื่นแล้ว)
+  const effectiveSelectedIds = useMemo(() => {
+    const validIds = new Set(products.map((product) => product.id));
+
+    if (Array.from(selectedIds).every((id) => validIds.has(id))) {
+      return selectedIds;
+    }
+
+    return new Set(
+      Array.from(selectedIds).filter((id) => validIds.has(id)),
+    );
+  }, [products, selectedIds]);
+
   // รายการ category dropdown
   const categories = useMemo(
     () => Array.from(new Set(products.map((p) => p.category))).sort(),
@@ -88,6 +108,43 @@ export default function ProductManagement() {
       return matchSearch && matchCategory && matchStatus;
     });
   }, [products, search, category, statusFilter]);
+
+  const handleToggleSelect = useCallback(
+    (productId: string, checked: boolean) => {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+
+        if (checked) {
+          next.add(productId);
+        } else {
+          next.delete(productId);
+        }
+
+        return next;
+      });
+    },
+    [],
+  );
+
+  // เลือกทั้งหมดมีผลกับรายการที่แสดงอยู่ (หลังกรอง) เท่านั้น
+  const handleToggleSelectAll = useCallback(
+    (checked: boolean) => {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+
+        filteredProducts.forEach((product) => {
+          if (checked) {
+            next.add(product.id);
+          } else {
+            next.delete(product.id);
+          }
+        });
+
+        return next;
+      });
+    },
+    [filteredProducts],
+  );
 
   // สินค้าที่เลือก: หาจาก id ในรายการที่แสดงอยู่ จึงอัปเดตตามข้อมูลล่าสุดเสมอ
   const selectedProduct =
@@ -133,7 +190,18 @@ export default function ProductManagement() {
       setDeleting(true);
       setActionError("");
 
-      await deleteProduct(slug, productToDelete.id);
+      const deletedId = productToDelete.id;
+
+      await deleteProduct(slug, deletedId);
+
+      setSelectedIds((prev) => {
+        if (!prev.has(deletedId)) return prev;
+
+        const next = new Set(prev);
+        next.delete(deletedId);
+
+        return next;
+      });
 
       setProductToDelete(null);
       await refresh();
@@ -146,8 +214,45 @@ export default function ProductManagement() {
     }
   };
 
+  // ลบหลายรายการ: เปิด ConfirmModal → ยิง bulk endpoint ครั้งเดียว
+  const handleConfirmBulkDelete = async () => {
+    if (!slug || effectiveSelectedIds.size === 0) return;
+
+    const ids = Array.from(effectiveSelectedIds);
+
+    try {
+      setBulkDeleting(true);
+      setActionError("");
+
+      const { deletedCount } = await deleteProducts(slug, ids);
+
+      setBulkConfirmOpen(false);
+      setSelectedIds(new Set());
+
+      // ลบไม่ครบทุกรายการ (เช่น มีบางรายการถูกลบไปแล้ว) — แจ้งให้ผู้ใช้รู้
+      if (deletedCount < ids.length) {
+        setActionError(
+          `ลบสินค้าไม่สำเร็จ ${ids.length - deletedCount} รายการ`,
+        );
+      }
+
+      await refresh();
+    } catch (err) {
+      console.error("Bulk delete products error:", err);
+      setActionError("ไม่สามารถลบสินค้าได้");
+      setBulkConfirmOpen(false);
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   const displayError =
     actionError || (loadError ? "ไม่สามารถโหลดรายการสินค้าได้" : "");
+
+  // สินค้าที่เลือกอยู่ (ใช้แสดงชื่อใน modal ยืนยันลบ)
+  const selectedProducts = products.filter((product) =>
+    effectiveSelectedIds.has(product.id),
+  );
 
   return (
     <div>
@@ -169,7 +274,10 @@ export default function ProductManagement() {
           <input
             type="text"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setSelectedIds(new Set());
+            }}
             placeholder="ค้นหาชื่อสินค้า / SKU"
             className="w-full bg-transparent outline-none placeholder:text-[#8B806E]"
           />
@@ -178,7 +286,10 @@ export default function ProductManagement() {
         <div className="relative w-full rounded-xl border border-[#E9DFC9] bg-white focus-within:border-[#87947A] lg:w-48">
           <select
             value={category}
-            onChange={(event) => setCategory(event.target.value)}
+            onChange={(event) => {
+              setCategory(event.target.value);
+              setSelectedIds(new Set());
+            }}
             aria-label="กรองตามหมวดหมู่"
             className="w-full appearance-none bg-transparent py-3 pl-4 pr-10 text-sm outline-none"
           >
@@ -203,7 +314,10 @@ export default function ProductManagement() {
               key={filter.value}
               type="button"
               aria-pressed={statusFilter === filter.value}
-              onClick={() => setStatusFilter(filter.value)}
+              onClick={() => {
+                setStatusFilter(filter.value);
+                setSelectedIds(new Set());
+              }}
               className={`flex-1 whitespace-nowrap rounded-lg px-4 py-2 text-sm transition-colors lg:flex-none ${
                 statusFilter === filter.value
                   ? "bg-[#87947A] font-medium text-white"
@@ -243,6 +357,12 @@ export default function ProductManagement() {
               onEdit={handleEdit}
               onDelete={handleDelete}
               deletingId={deleting ? (productToDelete?.id ?? null) : null}
+              selectedIds={effectiveSelectedIds}
+              onToggleSelect={handleToggleSelect}
+              onToggleSelectAll={handleToggleSelectAll}
+              onBulkDelete={() => setBulkConfirmOpen(true)}
+              onClearSelection={() => setSelectedIds(new Set())}
+              selectionDisabled={deleting || bulkDeleting}
             />
           </div>
 
@@ -286,6 +406,39 @@ export default function ProductManagement() {
               ออกจากร้าน? การลบไม่สามารถย้อนกลับได้
             </>
           ) : null
+        }
+      />
+
+      {/* Confirm bulk delete modal */}
+      <ConfirmModal
+        open={bulkConfirmOpen}
+        title={`ลบสินค้า ${selectedProducts.length} รายการ`}
+        icon={trashOutline}
+        iconTone="danger"
+        confirmLabel="ลบสินค้าที่เลือก"
+        cancelLabel="ยกเลิก"
+        loadingLabel="กำลังลบ..."
+        loading={bulkDeleting}
+        onConfirm={handleConfirmBulkDelete}
+        onCancel={() => setBulkConfirmOpen(false)}
+        message={
+          <>
+            คุณแน่ใจหรือไม่ว่าต้องการลบ{" "}
+            <span className="font-medium text-[#332F29]">
+              {selectedProducts.length} รายการ
+            </span>
+            {selectedProducts.length > 0 && (
+              <>
+                {" "}
+                ({selectedProducts.slice(0, 3).map((product) => product.name).join(", ")}
+                {selectedProducts.length > 3
+                  ? ` และอีก ${selectedProducts.length - 3} รายการ`
+                  : ""}
+                )
+              </>
+            )}{" "}
+            ออกจากร้าน? การลบไม่สามารถย้อนกลับได้
+          </>
         }
       />
     </div>

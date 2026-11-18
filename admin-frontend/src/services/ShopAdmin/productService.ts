@@ -246,3 +246,18 @@ export const deleteProduct = async (
 
   return response;
 };
+
+// ลบสินค้าหลายรายการพร้อมกัน (checkbox ในตารางสินค้า)
+export const deleteProducts = async (
+  slug: string,
+  productIds: string[]
+): Promise<{ deletedCount: number; deletedIds: string[] }> => {
+  const response = await api.post(
+    `/brands/${slug}/products/bulk-delete`,
+    { productIds }
+  );
+
+  invalidateProducts(slug);
+
+  return response.data;
+};
