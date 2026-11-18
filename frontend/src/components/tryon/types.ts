@@ -60,3 +60,10 @@ export const productPrice = (product: Product) => {
 };
 
 export const formatBaht = (value: number) => `฿${value.toLocaleString("th-TH")}`;
+
+/** สินค้านี้มีรูปมุมที่เลือกหรือไม่ (ดูทั้งรูปรวมและรูปต่อสี) — รูปที่ไม่ระบุมุมนับเป็นด้านหน้า */
+export const hasView = (product: Product, angle: Angle): boolean => {
+  const view = angle.toUpperCase();
+  const images = [...(product.images ?? []), ...(product.colors ?? []).flatMap((c) => c.images ?? [])];
+  return images.some((i) => i.image_url && (i.view ?? "FRONT") === view);
+};

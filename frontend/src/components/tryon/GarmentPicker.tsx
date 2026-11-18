@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 
 import type { Product } from "../../services/productService";
-import { colorOf, formatBaht, garmentImage, productPrice, slotOf, type ColorSelection } from "./types";
+import { colorOf, formatBaht, garmentImage, hasView, productPrice, slotOf, type Angle, type ColorSelection } from "./types";
 
 type Tab = "top" | "bottom" | "full" | "accessory";
 
@@ -23,16 +23,18 @@ interface Props {
   selectedIds: string[];
   onToggle: (product: Product) => void;
   colorSelection: ColorSelection;
+  /** มุมที่เลือกอยู่ — แสดงเฉพาะสินค้าที่มีรูปมุมนี้ */
+  angle: Angle;
   /** ระหว่างสร้างภาพ — ดูแท็บได้ แต่เลือก/เอาออกไม่ได้ */
   disabled?: boolean;
 }
 
-export default function GarmentPicker({ products, error, selectedIds, onToggle, colorSelection, disabled = false }: Props) {
+export default function GarmentPicker({ products, error, selectedIds, onToggle, colorSelection, angle, disabled = false }: Props) {
   const [tab, setTab] = useState<Tab>("top");
 
   const visible = useMemo(
-    () => (products ?? []).filter((p) => tabOf(p) === tab),
-    [products, tab],
+    () => (products ?? []).filter((p) => tabOf(p) === tab && hasView(p, angle)),
+    [products, tab, angle],
   );
 
   // จำนวนชิ้นที่เลือกแล้วในแต่ละหมวด (แสดงบนแท็บ)
@@ -40,10 +42,10 @@ export default function GarmentPicker({ products, error, selectedIds, onToggle, 
     const counts: Record<Tab, number> = { top: 0, bottom: 0, full: 0, accessory: 0 };
     for (const p of products ?? []) {
       const t = tabOf(p);
-      if (t && selectedIds.includes(p.id)) counts[t]++;
+      if (t && hasView(p, angle) && selectedIds.includes(p.id)) counts[t]++;
     }
     return counts;
-  }, [products, selectedIds]);
+  }, [products, selectedIds, angle]);
 
   return (
     <section>
@@ -87,7 +89,7 @@ export default function GarmentPicker({ products, error, selectedIds, onToggle, 
           ))
         ) : visible.length === 0 ? (
           <p className="col-span-2 py-8 text-center text-sm text-[#8A7F72]">
-            {error || "ยังไม่มีสินค้าในหมวดนี้"}
+            {error || angle === "front" ? "ยังไม่มีสินค้าในหมวดนี้" : "ไม่มีสินค้าที่มีรูปมุมนี้ในหมวดนี้"}
           </p>
         ) : (
           visible.map((product) => {

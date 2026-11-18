@@ -4,10 +4,12 @@ import { useLocation } from "react-router-dom";
 import { getProducts, type Product } from "../../../services/productService";
 import ModelPicker from "../../../components/tryon/ModelPicker";
 import GarmentPicker from "../../../components/tryon/GarmentPicker";
+import ResultActions from "../../../components/tryon/ResultActions";
 import TryOnCanvas from "../../../components/tryon/TryOnCanvas";
 import {
   ANGLES,
   colorOf,
+  hasView,
   slotOf,
   type Angle,
   type ColorSelection,
@@ -51,7 +53,7 @@ export default function TryOnPage() {
 
   const [generating, setGenerating] = useState(false);
   // ผลลัพธ์ล่าสุด — แสดงค้างไว้จนกว่าจะสร้างภาพใหม่ (เปลี่ยนโมเดล/มุม/ชุดไม่ทำให้ภาพหาย)
-  const [result, setResult] = useState<{ url: string; signature: string; label: string } | null>(null);
+  const [result, setResult] = useState<{ id: string; url: string; signature: string; label: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   // สิ่งที่กำลัง gen อยู่ — ให้หน้าจอแสดงตามนี้จนกว่าจะเสร็จ แม้ state ปัจจุบันจะเปลี่ยน
   const [pending, setPending] = useState<{
@@ -100,7 +102,17 @@ export default function TryOnPage() {
   };
 
   const handleAngleChange = (next: Angle) => {
-    if (!generatingRef.current) setAngle(next);
+    if (generatingRef.current) return;
+    setAngle(next);
+    // เอาสินค้าที่ไม่มีรูปมุมนี้ออกจากที่เลือกไว้
+    const dropped = garments.filter((g) => !hasView(g, next));
+    if (dropped.length > 0) {
+      const ids = new Set(dropped.map((g) => g.id));
+      setSelectedIds((prev) => prev.filter((id) => !ids.has(id)));
+      setNotice(`เอาออก ${dropped.length} ชิ้นที่ไม่มีรูปมุมนี้: ${dropped.map((g) => g.name).join(", ")}`);
+    } else {
+      setNotice("");
+    }
   };
 
   const toggleGarment = (product: Product) => {
@@ -155,7 +167,7 @@ export default function TryOnPage() {
 
       if (done.status === "SUCCESS" && done.image_url) {
         const angleLabel = ANGLES.find((a) => a.key === angle)?.label ?? angle;
-        setResult({ url: done.image_url, signature, label: `${subject.name} · ${angleLabel}` });
+        setResult({ id: done.id, url: done.image_url, signature, label: `${subject.name} · ${angleLabel}` });
       } else {
         setNotice(failedJobMessage(done.error_code));
       }
@@ -209,6 +221,7 @@ export default function TryOnPage() {
             selectedIds={selectedIds}
             onToggle={toggleGarment}
             colorSelection={colorSelection}
+            angle={angle}
             disabled={generating}
           />
         </aside>
@@ -234,6 +247,7 @@ export default function TryOnPage() {
           >
             {generating ? "กำลังสร้างภาพ..." : resultUrl ? "สร้างภาพใหม่ (AI)" : "สร้างภาพสวมใส่ (AI)"}
           </button>
+          {resultUrl && !generating && <ResultActions jobId={result!.id} url={resultUrl} label={result?.label} />}
           <p className="mt-3 text-center text-sm text-[#8A7F72]">{notice || hint}</p>
         </main>
       </div>

@@ -8,6 +8,9 @@ import {
   TryOnItem,
   TryOnSource,
 } from "../services/tryon/tryOnService";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { Readable } from "stream";
+import { s3 } from "../middlewares/upload";
 import { getTryOnConfig, saveTryOnConfig } from "../services/tryon/config";
 
 const parseItems = (raw: unknown): TryOnItem[] | null => {
@@ -64,6 +67,29 @@ export const getTryOn = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("getTryOn error:", err);
     return res.status(500).json({ message: "Failed to load try-on" });
+  }
+};
+
+// GET /tryon/:id/download — ส่งไฟล์ภาพให้ดาวน์โหลด (เจ้าของเท่านั้น; stream ผ่าน backend กันปัญหา CORS ของ S3)
+export const downloadTryOn = async (req: Request, res: Response) => {
+  try {
+    const log = await prisma.tryOnLog.findFirst({
+      where: { id: String(req.params.id), user_id: req.user!.id, status: "SUCCESS" },
+    });
+    if (!log?.result_s3_key) return res.status(404).json({ message: "Not found" });
+
+    const object = await s3.send(
+      new GetObjectCommand({ Bucket: process.env.AWS_S3_BUCKET_NAME!, Key: log.result_s3_key }),
+    );
+    if (!object.Body) return res.status(404).json({ message: "Not found" });
+
+    res.setHeader("Content-Type", object.ContentType ?? "image/png");
+    res.setHeader("Content-Disposition", `attachment; filename="tryon-${log.id}.png"`);
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    (object.Body as Readable).pipe(res);
+  } catch (err) {
+    console.error("downloadTryOn error:", err);
+    if (!res.headersSent) res.status(500).json({ message: "Failed to download" });
   }
 };
 

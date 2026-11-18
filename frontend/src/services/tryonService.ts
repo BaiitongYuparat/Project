@@ -30,8 +30,20 @@ export async function startTryOn(input: StartTryOnInput): Promise<{ id: string; 
   return response.data;
 }
 
+/** ประวัติการลองที่สำเร็จ (ล่าสุด 20 รายการ) */
+export async function listTryOns(): Promise<TryOnJob[]> {
+  const response = await api.get<TryOnJob[]>("/tryon");
+  return response.data;
+}
+
 export async function getTryOn(id: string): Promise<TryOnJob> {
   const response = await api.get<TryOnJob>(`/tryon/${id}`);
+  return response.data;
+}
+
+/** ดึงไฟล์ภาพผลลัพธ์ผ่าน backend (ไม่ติด CORS ของ S3) */
+export async function downloadTryOnImage(id: string): Promise<Blob> {
+  const response = await api.get<Blob>(`/tryon/${id}/download`, { responseType: "blob" });
   return response.data;
 }
 
