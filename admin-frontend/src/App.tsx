@@ -21,6 +21,7 @@ import OwnerTransferRequests from "./pages/SuperAdmin/storemanagement/OwnerTrans
 import StoreDetail from "./pages/SuperAdmin/storemanagement/StoreDetail";
 import UserManagement from "./pages/SuperAdmin/usermanagement/UserManagement";
 import Appeals from "./pages/SuperAdmin/appeals/Appeals";
+import AiReports from "./pages/SuperAdmin/reports/AiReports";
 import ModelManagement from "./pages/SuperAdmin/modelmanagement/ModelManagement";
 import AI_PromptManagement from "./pages/SuperAdmin/ai_promptmanagement/AI_PromptManagement";
 import System from "./pages/SuperAdmin/System";
@@ -74,6 +75,7 @@ function App() {
             <Route path="store-management/:id" element={<StoreDetail />} />
             <Route path="user-management" element={<UserManagement />} />
             <Route path="appeals" element={<Appeals />} />
+            <Route path="ai-reports" element={<AiReports />} />
             <Route path="model-management" element={<ModelManagement />} />
             <Route path="ai-prompt-management" element={<AI_PromptManagement />} />
             <Route path="system" element={<System />} />

@@ -17,6 +17,7 @@ import brandRoutes from "./routes/brandRoutes";
 import publicRoutes from "./routes/publicRoutes";
 import adminRoutes from "./routes/adminRoutes";
 import appealRoutes from "./routes/appealRoutes";
+import aiReportRoutes from "./routes/aiReportRoutes";
 
 const app = express();
 app.use(express.json());
@@ -39,6 +40,8 @@ app.use("/userconsent", authMiddleware, userconsentRoutes);
 app.use("/", publicRoutes);
 app.use("/brands", brandRoutes);
 app.use("/body-type", authMiddleware, bodyTypeRoutes);
+// รายงานปัญหาการใช้ AI จาก shopper
+app.use("/ai-reports", authMiddleware, aiReportRoutes);
 app.use("/admin", adminRoutes);
 // คำร้องขอปลดระงับ — auth ด้วย appeal_token แยกจาก session ปกติ (บัญชีที่ถูกระงับ)
 app.use("/appeals", appealRoutes);

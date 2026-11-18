@@ -166,6 +166,20 @@ export const getModels = async (req: Request, res: Response) => {
   }
 };
 
+/** สำหรับฝั่ง shopper (ไม่ต้อง login) — เฉพาะโมเดลที่เปิดใช้งานและให้ลูกค้าเลือกได้ */
+export const getPublicModels = async (_req: Request, res: Response) => {
+  try {
+    const models = await prisma.model.findMany({
+      where: { is_active: true, is_selectable: true },
+      orderBy: { created_at: "desc" },
+    });
+    res.status(200).json(await Promise.all(models.map(serializeModel)));
+  } catch (error) {
+    console.error("getPublicModels error:", error);
+    res.status(500).json({ error: "Failed to fetch models" });
+  }
+};
+
 export const createModel = async (req: Request, res: Response) => {
   try {
     const { errors, data } = parseModelFields(req.body);

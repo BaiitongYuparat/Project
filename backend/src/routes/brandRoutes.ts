@@ -4,7 +4,7 @@ import { getOwnerTransferRequestStatus, requestOwnerTransfer } from "../controll
 import { uploadEbizRegistration, handleUploadError,uploadProductImages, uploadBrandLogoSingle } from "../middlewares/upload";
 import { adminAuthMiddleware } from "../middlewares/adminAuth";
 import { requireBrandAccess } from "../middlewares/brandAccess";
-import { createProductController, deleteProductController, getProductByIdController, getProductsController, recheckProductImageController, updateProductController } from "../controllers/product";
+import { createProductController, deleteProductController, deleteProductsController, getProductByIdController, getProductsController, recheckProductImageController, updateProductController } from "../controllers/product";
 import { getSizeChartTemplatesController, getProductOptionsController } from "../controllers/productConfig";
 import { createBrandSizeChartController, deleteBrandSizeChartController, getBrandSizeChartByIdController, getBrandSizeChartsController, updateBrandSizeChartController } from "../controllers/sizeChart";
 
@@ -38,6 +38,8 @@ router.get("/:slug/products/:id", getProductByIdController);
 router.post("/:slug/products",uploadProductImages, handleUploadError, createProductController);
 router.put("/:slug/products/:id",uploadProductImages, handleUploadError, updateProductController);
 router.delete("/:slug/products/:id", deleteProductController);
+// ลบสินค้าหลายรายการพร้อมกัน (checkbox ในตารางสินค้า)
+router.post("/:slug/products/bulk-delete", deleteProductsController);
 // ส่งรูปที่ FAILED กลับเข้าคิวตรวจคุณภาพใหม่ (cooldown 30 วินาทีฝั่ง service)
 router.post("/:slug/products/:productId/images/:imageId/recheck", recheckProductImageController);
 //BrandMember Management

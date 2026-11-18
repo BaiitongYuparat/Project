@@ -88,7 +88,7 @@ Roles are two-dimensional (`UserRole` and `BrandMemberRole` in the Prisma schema
 | AI Mix & Match | Shopper | TBD | 📝 planned |
 | Admin-editable AI prompts | Super admin | — | 📝 planned |
 | AI rate limiting | Platform | — | 📝 planned |
-| Reports management | Super admin | — | 📝 planned |
+| Reports management | Super admin | — | ✅ shopper แจ้ง **ภาพที่ AI สร้างผิดพลาด** จากเมนูโปรไฟล์ (`POST /ai-reports`) + หน้า Super Admin "AI Reports" (`pages/SuperAdmin/reports`, อนุมัติ/ปฏิเสธผ่าน `/admin/ai-reports`; อนุมัติ = คืนเครดิต 1 เครดิต) |
 
 **Conventions for AI work:**
 - Prompts must be **editable from the super-admin panel** [REQ] — keep prompts in DB/config, never hardcoded in service files.
@@ -99,7 +99,7 @@ Roles are two-dimensional (`UserRole` and `BrandMemberRole` in the Prisma schema
 
 Layered structure: `routes/` → `controllers/` → `services/`; cross-cutting concerns in `middlewares/` (`auth`, `requireSuperAdmin`, `brandAccess`, `upload` → S3), helpers in `utils/`, shared clients in `lib/`.
 
-Mounted routes (`src/index.ts`): `/auth`, `/user`, `/body`, `/images`, `/clothings`, `/userconsent`, `/body-type`, `/brands`, `/admin`, plus `/` public routes. Port: `PORT` env or **3000**. CORS allows `http://localhost:5173` with credentials (JWT cookies).
+Mounted routes (`src/index.ts`): `/auth`, `/user`, `/body`, `/images`, `/clothings`, `/userconsent`, `/body-type`, `/ai-reports`, `/brands`, `/admin`, plus `/` public routes. Port: `PORT` env or **3000**. CORS allows `http://localhost:5173` with credentials (JWT cookies).
 
 Prisma models: `User`, `Body`, `BodyType`, `Image`, `UserConsent`, `Clothing`, `Brand`, `BrandMember`, `BrandInvite`, `BrandCustomer`, `Product`, `ProductSizeChart`, `ProductImage`, `TryOnLog`, `ProductClick`, `Model`.
 

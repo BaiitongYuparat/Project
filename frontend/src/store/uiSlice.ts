@@ -7,6 +7,8 @@ const uiSlice = createSlice({
     isLoginOpen: false,
     isBodyOpen: false,
     isSuspendedOpen: false,
+    // Modal รายงานปัญหาการใช้ AI (เปิดจากเมนูโปรไฟล์ใน Navbar)
+    isAiReportOpen: false,
     // คำร้องล่าสุดของบัญชีที่ถูกระงับ (จาก response ตอน login) — ใช้แสดงแจ้งเตือนบน SuspendedAppealModal
     latestAppeal: null as AppealSummary | null,
   },
@@ -29,6 +31,12 @@ const uiSlice = createSlice({
     closeSuspended: (state) => {
       state.isSuspendedOpen = false;
     },
+    openAiReport: (state) => {
+      state.isAiReportOpen = true;
+    },
+    closeAiReport: (state) => {
+      state.isAiReportOpen = false;
+    },
     setSuspendedAppeal: (state, action) => {
       state.latestAppeal = action.payload;
     },
@@ -45,6 +53,8 @@ export const {
   closeBody,
   openSuspended,
   closeSuspended,
+  openAiReport,
+  closeAiReport,
   setSuspendedAppeal,
   clearSuspendedAppeal,
 } = uiSlice.actions;
