@@ -17,6 +17,7 @@ import brandRoutes from "./routes/brandRoutes";
 import publicRoutes from "./routes/publicRoutes";
 import adminRoutes from "./routes/adminRoutes";
 import appealRoutes from "./routes/appealRoutes";
+import tryonRoutes from "./routes/tryonRoutes";
 
 const app = express();
 app.use(express.json());
@@ -34,6 +35,7 @@ app.use("/body", authMiddleware, bodyRoutes);
 app.use("/images", authMiddleware, imageRoutes);
 app.use("/clothings", authMiddleware, clothingRoutes);
 app.use("/userconsent", authMiddleware, userconsentRoutes);
+app.use("/tryon", authMiddleware, tryonRoutes);
 
 
 app.use("/", publicRoutes);

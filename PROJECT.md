@@ -105,7 +105,9 @@ Prisma models: `User`, `Body`, `BodyType`, `Image`, `UserConsent`, `Clothing`, `
 
 ### Environment variables (`backend/.env` — never commit)
 
-`DATABASE_URL`, `PORT`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CLIENT_ID_APP`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET_NAME`, `GEMINI_API_KEY`, `GEMINI_MODEL`. (Flux/try-on keys will be added with §4.2.)
+`DATABASE_URL`, `PORT`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CLIENT_ID_APP`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET_NAME`, `GEMINI_API_KEY`, `GEMINI_MODEL`.
+
+Try-on (§4.2): primary = Black Forest Labs `vto-v2` (`BFL_API_KEY`); fallbacks via fal.ai (`FAL_KEY`) = `fal-ai/flux-pro/v1/vto` (`fal`) then `fal-ai/flux-2/edit` (`fal-edit`). Providers without a key are skipped automatically. Optional env: `TRYON_PROVIDER` (`bfl`|`fal`|`fal-edit`, default `bfl`), `BFL_TRYON_MODEL`, `FAL_TRYON_MODEL`, `FAL_EDIT_MODEL`, `BFL_API_BASE`, `TRYON_DAILY_LIMIT` (default 30/user/day). Provider order and prompt template live in table `ai_configs` (key `tryon`: `provider`, `fallbacks[]`, `prompt_template`) and are edited by super admin via `GET/PUT /admin/ai-config/tryon`. Fallback runs only for retryable errors (credit exhausted, outage, timeout), not for rejected input. Endpoints: `POST /tryon`, `GET /tryon/:id` (poll), `GET /tryon`.
 
 ## 7. Web app (`frontend/`)
 
