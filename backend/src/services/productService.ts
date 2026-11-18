@@ -164,7 +164,7 @@ export const getPublicProducts = async () => {
   return withProductImageUrls(products);
 };
 
-// ดึงรายละเอียดสินค้า 1 รายการ
+// ดึงรายละเอียดสินค้า 1 รายการ (สำหรับหน้า ProductDetail ฝั่งลูกค้า)
 export const getPublicProduct = async (productId: string) => {
   const product = await prisma.product.findFirst({
     where: {
@@ -185,14 +185,74 @@ export const getPublicProduct = async (productId: string) => {
       category: true,
       price: true,
       description: true,
+      gender: true,
+      fabric: true,
+      seasons: true,
+      occasions: true,
+      sku: true,
       created_at: true,
       updated_at: true,
-      images: publicProductImageSelect,
-      size_charts: true,
+      // รูปทุกด้าน (หน้า/หลัง/ซ้าย/ขวา) + ท่อน (set/top/bottom) + สีที่ผูกไว้
+      images: {
+        where: {
+          quality_status: "PASSED",
+        },
+        select: {
+          id: true,
+          color_id: true,
+          s3_key: true,
+          sort_order: true,
+          piece: true,
+          view: true,
+        },
+        orderBy: [{ sort_order: "asc" }, { id: "asc" }],
+        take: 30,
+      },
+      // สีของสินค้า + รูปเฉพาะของแต่ละสี
+      colors: {
+        orderBy: { created_at: "asc" as const },
+        select: {
+          id: true,
+          name: true,
+          hex: true,
+          images: {
+            where: {
+              quality_status: "PASSED",
+            },
+            select: {
+              id: true,
+              color_id: true,
+              s3_key: true,
+              sort_order: true,
+              piece: true,
+              view: true,
+            },
+            orderBy: [{ sort_order: "asc" }, { id: "asc" }],
+            take: 10,
+          },
+        },
+      },
+      // ตารางไซส์เฉพาะตัวของสินค้า (null ได้ — หน้าเว็บซ่อนตารางถ้าไม่มีข้อมูล)
+      size_charts: {
+        orderBy: [{ size: "asc" }],
+        select: {
+          id: true,
+          size: true,
+          chest: true,
+          waist: true,
+          hips: true,
+          length: true,
+        },
+      },
       brand: {
         select: {
           brand_name: true,
           slug: true,
+          logo_key: true,
+          store_url: true,
+          facebook_url: true,
+          instagram_url: true,
+          line_id: true,
         },
       },
     },
@@ -202,9 +262,41 @@ export const getPublicProduct = async (productId: string) => {
     return null;
   }
 
+  // presign ครั้งเดียวต่อ s3_key ต่อ response — รูปเดียวกันใน images/colors/logo ใช้ URL เดียวกัน
+  const resolveUrl = createImageUrlResolver();
+
+  const toPublicImage = async <
+    I extends { id: string; s3_key: string; sort_order: number }
+  >(
+    images: I[]
+  ): Promise<(Omit<I, "s3_key"> & { image_url: string | null })[]> => {
+    return Promise.all(
+      images.map(async ({ s3_key, ...rest }) => ({
+        ...rest,
+        image_url: await resolveUrl(s3_key),
+      }))
+    );
+  };
+
+  const [images, colors, logo_url] = await Promise.all([
+    toPublicImage(product.images),
+    Promise.all(
+      product.colors.map(async (color) => ({
+        ...color,
+        images: await toPublicImage(color.images),
+      }))
+    ),
+    product.brand.logo_key ? resolveUrl(product.brand.logo_key) : null,
+  ]);
+
   return {
     ...product,
-    images: await withImageUrls(product.images),
+    images,
+    colors,
+    brand: {
+      ...product.brand,
+      logo_url,
+    },
   };
 };
 

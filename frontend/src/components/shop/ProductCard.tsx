@@ -1,4 +1,5 @@
 import type { Product } from "../../services/productService";
+import { useNavigate } from "react-router-dom";
 
 interface ProductCardProps {
   product: Product;
@@ -28,10 +29,15 @@ export default function ProductCard({
   onToggleFavorite,
   onTryOn,
 }: ProductCardProps) {
+  const navigate = useNavigate();
+
   const imageUrl = product.images?.[0]?.image_url;
 
   return (
-    <article className="group min-w-0">
+    <article
+      className="group min-w-0 cursor-pointer"
+      onClick={() => navigate(`/product/${product.id}`)}
+    >
       <div className="overflow-hidden rounded-2xl border border-[#DCC3B3] bg-white p-2 transition-all duration-300 hover:-translate-y-1 hover:border-[#C9A98F] hover:shadow-lg hover:shadow-[#3E2C25]/10">
         {/* Image */}
         <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-[#F3E1D4]">
@@ -55,7 +61,11 @@ export default function ProductCard({
           {/* Favorite */}
           <button
             type="button"
-            onClick={() => onToggleFavorite(product.id)}
+            onClick={(e) => {
+              // กันการเด้งไปหน้า ProductDetail ตอนกดหัวใจบนการ์ด
+              e.stopPropagation();
+              onToggleFavorite(product.id);
+            }}
             aria-label="เพิ่มหรือลบรายการโปรด"
             className={`absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/85 text-lg shadow-sm backdrop-blur-sm transition hover:scale-110 ${
               isFavorite ? "text-[#C2645A]" : "text-[#49352D]"
@@ -82,7 +92,11 @@ export default function ProductCard({
 
             <button
               type="button"
-              onClick={() => onTryOn(product)}
+              onClick={(e) => {
+                // กันการเด้งไปหน้า ProductDetail ตอนกดปุ่มลองใส่
+                e.stopPropagation();
+                onTryOn(product);
+              }}
               className="shrink-0 rounded-full bg-[#3E2C25] px-4 py-1.5 text-xs font-medium text-white transition hover:bg-[#5A443A]"
             >
               ลองใส่

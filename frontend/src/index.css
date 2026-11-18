@@ -113,3 +113,102 @@ code {
   background: var(--code-bg);
 }
 
+
+/* ---------------------------------------------
+   ProductDetail — effects & ลูกเล่น
+   (ใช้ร่วมกันในหน้า ProductDetail เท่านั้น)
+   --------------------------------------------- */
+
+/* Fade-in-up ตอนเข้าหน้า — ค่อยๆ ไล่ delay ทีละบล็อกให้หน้ามีจังหวะ */
+@keyframes pd-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pd-fade-up {
+  animation: pd-fade-up 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* เปลี่ยนรูปในแกลเลอรี — เฟดนุ่มๆ + ซูมกลับเบาๆ */
+@keyframes pd-image-in {
+  from {
+    opacity: 0;
+    transform: scale(1.03);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.pd-image-in {
+  animation: pd-image-in 0.35s ease-out both;
+}
+
+/* เงามาตรฐานของการ์ดขาวบนพื้นครีม — เงาสองชั้นโทนน้ำตาลให้ตัดกับพื้นหลัง */
+.pd-card {
+  box-shadow:
+    0 1px 2px rgb(62 44 37 / 0.06),
+    0 12px 32px -14px rgb(62 44 37 / 0.22);
+}
+
+/* ยกการ์ดขึ้นเมื่อชี้ — ใช้กับการ์ดขาวในหน้า */
+.pd-lift {
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.pd-lift:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 3px 6px rgb(62 44 37 / 0.08),
+    0 20px 40px -14px rgb(62 44 37 / 0.3);
+}
+
+/* ปุ่มลองใส่ — แสงวาบกวาดผ่านเมื่อ hover */
+.pd-btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.pd-btn-shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 32%,
+    rgb(255 255 255 / 0.22) 50%,
+    transparent 68%
+  );
+  transform: translateX(-110%);
+  transition: transform 0.65s ease;
+  pointer-events: none;
+}
+
+.pd-btn-shine:hover::after {
+  transform: translateX(110%);
+}
+
+/* ผู้ใช้ขอลด motion ใน OS — ปิด effect ทั้งหมด */
+@media (prefers-reduced-motion: reduce) {
+  .pd-fade-up,
+  .pd-image-in,
+  .pd-btn-shine::after {
+    animation: none;
+    transition: none;
+  }
+
+  .pd-lift,
+  .pd-lift:hover {
+    transform: none;
+    transition: none;
+  }
+}

@@ -10,6 +10,7 @@ import RegisterPage from "../pages/User/RegisterStore/RegisterPage";
 import TryOnPage from "../pages/User/Tryon";
 import AIStylistPage from "../pages/User/AIStylist";
 import MyOutfitPage from "../pages/User/myoutfit/MyOutfit";
+import ProductDetailPage from "../pages/User/shop/ProductDetail";
 
 // เว็บไซต์ฝั่งลูกค้าเท่านั้น — หน้าผู้ดูแลทั้งหมดอยู่ที่ admin-frontend/ (port 5174)
 function AppRoutes() {
@@ -19,6 +20,8 @@ function AppRoutes() {
       <Route element={<CustomerLayout />}>
         {/* Home */}
         <Route path="/" element={<ShopPage />} />
+        {/* Product Detail */}
+        <Route path="/product/:id" element={<ProductDetailPage />} />
         {/* Try On */}
         <Route path="/tryon" element={<TryOnPage />} />
         {/* AI */}
