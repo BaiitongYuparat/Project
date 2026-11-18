@@ -85,52 +85,65 @@ export default function TryOnCanvas({
             const thumb = garmentImage(g, colorId);
             const colors = g.colors ?? [];
             return (
-            <div
-              key={g.id}
-              className="flex items-center gap-2 rounded-full bg-white/80 py-1 pl-1 pr-2 text-xs text-[#332F29]"
-            >
-              {thumb ? (
-                <img src={thumb} alt={g.name} className="h-8 w-8 rounded-full object-cover" />
-              ) : (
-                <span className="h-8 w-8 rounded-full bg-[#F0E9DD]" />
-              )}
-              <span className="max-w-[140px] truncate">{g.name}</span>
-              <span className="text-[#8A7F72]">{formatBaht(productPrice(g))}</span>
-              {colors.length > 1 && (
-                <span className="flex items-center gap-1" role="group" aria-label={`สีของ ${g.name}`}>
-                  {colors.map((c) => {
-                    const active = c.id === colorId;
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        title={c.name}
-                        aria-label={`เลือกสี${c.name}`}
-                        aria-pressed={active}
-                        disabled={generating}
-                        onClick={() => onColorChange(g.id, c.id)}
-                        className={`h-5 w-5 rounded-full border transition disabled:cursor-not-allowed ${
-                          active
-                            ? "border-[#3B2C25] ring-2 ring-[#3B2C25]/30"
-                            : "border-[#D9CFC2] hover:border-[#3B2C25]/50"
-                        }`}
-                        style={{ backgroundColor: c.hex ?? "#EFE3D6" }}
-                      />
-                    );
-                  })}
-                </span>
-              )}
-              {!generating && (
-              <button
-                type="button"
-                onClick={() => onRemove(g.id)}
-                aria-label={`เอา ${g.name} ออก`}
-                className="ml-1 flex h-5 w-5 items-center justify-center rounded-full text-[#8A7F72] hover:bg-[#F0E9DD] hover:text-[#332F29]"
+              <div
+                key={g.id}
+                className="relative w-[112px] shrink-0 overflow-hidden rounded-[18px] border-2 border-white/70 bg-white/85 shadow-[0_3px_0_rgba(59,44,37,0.10)]"
               >
-                ×
-              </button>
-              )}
-            </div>
+                <div className="aspect-square bg-[#F0E9DD]">
+                  {thumb ? (
+                    <img src={thumb} alt={g.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="flex h-full items-center justify-center text-[11px] text-[#8A7F72]">
+                      ไม่มีรูป
+                    </span>
+                  )}
+                </div>
+
+                <span className="absolute left-1.5 top-1.5 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-[#332F29] shadow-sm">
+                  {formatBaht(productPrice(g))}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => onRemove(g.id)}
+                  disabled={generating}
+                  aria-label={`เอา ${g.name} ออก`}
+                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#3B2C25]/85 text-sm leading-none text-white transition hover:bg-[#3B2C25] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  ×
+                </button>
+
+                {colors.length > 1 && (
+                  <div
+                    className="flex flex-wrap items-center justify-center gap-1 pt-1.5"
+                    role="group"
+                    aria-label={`สีของ ${g.name}`}
+                  >
+                    {colors.map((c) => {
+                      const active = c.id === colorId;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          title={c.name}
+                          aria-label={`เลือกสี${c.name}`}
+                          aria-pressed={active}
+                          disabled={generating}
+                          onClick={() => onColorChange(g.id, c.id)}
+                          className={`h-4 w-4 rounded-full border transition disabled:cursor-not-allowed ${
+                            active
+                              ? "border-[#3B2C25] ring-2 ring-[#3B2C25]/30"
+                              : "border-[#D9CFC2] hover:border-[#3B2C25]/50"
+                          }`}
+                          style={{ backgroundColor: c.hex ?? "#EFE3D6" }}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+
+                <p className="truncate px-2 py-1.5 text-[11px] font-medium text-[#332F29]">{g.name}</p>
+              </div>
             );
           })}
         </div>

@@ -3,18 +3,16 @@ import { useMemo, useState } from "react";
 import type { Product } from "../../services/productService";
 import { colorOf, formatBaht, garmentImage, productPrice, slotOf, type ColorSelection } from "./types";
 
-type Tab = "top" | "bottom" | "other";
+type Tab = "top" | "bottom" | "full" | "accessory";
 
 const TABS: { value: Tab; label: string }[] = [
   { value: "top", label: "เสื้อ" },
-  { value: "bottom", label: "กางเกง" },
-  { value: "other", label: "อื่น ๆ" },
+  { value: "bottom", label: "กระโปรง/กางเกง" },
+  { value: "full", label: "ชุด" },
+  { value: "accessory", label: "เครื่องประดับ" },
 ];
 
-const tabOf = (product: Product): Tab => {
-  const slot = slotOf(product.category);
-  return slot === "top" || slot === "bottom" ? slot : "other";
-};
+const tabOf = (product: Product): Tab | null => slotOf(product.category);
 
 const genderLabel = (gender?: string | null) =>
   gender === "MALE" ? "ผู้ชาย" : gender === "FEMALE" ? "ผู้หญิง" : "Unisex";
@@ -37,25 +35,49 @@ export default function GarmentPicker({ products, error, selectedIds, onToggle, 
     [products, tab],
   );
 
+  // จำนวนชิ้นที่เลือกแล้วในแต่ละหมวด (แสดงบนแท็บ)
+  const selectedCount = useMemo(() => {
+    const counts: Record<Tab, number> = { top: 0, bottom: 0, full: 0, accessory: 0 };
+    for (const p of products ?? []) {
+      const t = tabOf(p);
+      if (t && selectedIds.includes(p.id)) counts[t]++;
+    }
+    return counts;
+  }, [products, selectedIds]);
+
   return (
     <section>
       <h2 className="text-xl font-semibold text-[#332F29]">เลือกเสื้อผ้า</h2>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {TABS.map((t) => (
-          <button
-            key={t.value}
-            type="button"
-            onClick={() => setTab(t.value)}
-            className={`rounded-full border px-5 py-2 text-sm font-medium transition ${
-              tab === t.value
-                ? "border-[#3B2C25] bg-[#3B2C25] text-white"
-                : "border-[#D9CFC2] bg-white text-[#332F29] hover:border-[#3B2C25]"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* แถบเลือกหมวด */}
+      <div className="mt-4 flex border-b border-[#E7E0D5]">
+        {TABS.map((t, i) => {
+          const active = tab === t.value;
+          const count = selectedCount[t.value];
+          return (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => setTab(t.value)}
+              aria-pressed={active}
+              className={`relative flex flex-1 flex-col items-center justify-center gap-1 px-1 pb-3 pt-2 text-center text-[11px] font-medium leading-tight transition ${
+                i > 0 ? "border-l border-[#E7E0D5]" : ""
+              } ${active ? "text-[#332F29]" : "text-[#8A7F72] hover:text-[#332F29]"}`}
+            >
+              <span className="flex items-center gap-1">
+                {t.label}
+                {count > 0 && (
+                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[#C8553D] px-1 text-[10px] font-semibold text-white">
+                    {count}
+                  </span>
+                )}
+              </span>
+              {active && (
+                <span className="absolute inset-x-1 bottom-0 h-[3px] rounded-t-full bg-[#3B2C25]" />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3">

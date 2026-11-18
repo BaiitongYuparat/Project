@@ -109,10 +109,12 @@ export default function TryOnPage() {
     setSelectedIds((prev) => {
       if (prev.includes(product.id)) return prev.filter((id) => id !== product.id);
 
-      const blocked = CONFLICTS[slotOf(product.category)];
+      const slot = slotOf(product.category);
+      const blocked = slot ? CONFLICTS[slot] : [];
       const kept = prev.filter((id) => {
         const other = productById.get(id);
-        return !other || !blocked.includes(slotOf(other.category));
+        const otherSlot = other ? slotOf(other.category) : null;
+        return !otherSlot || !blocked.includes(otherSlot);
       });
       return [...kept, product.id];
     });

@@ -24,12 +24,14 @@ export interface TryOnSubject {
 /** ช่องที่สินค้าครอบครองบนตัว — ใช้กันเลือกเสื้อ 2 ตัวพร้อมกัน ฯลฯ */
 export type GarmentSlot = "top" | "bottom" | "full" | "accessory";
 
-export const slotOf = (category?: string): GarmentSlot => {
+/** null = หมวดที่ไม่รองรับในหน้า try-on (ไม่แสดงในตัวเลือก) */
+export const slotOf = (category?: string): GarmentSlot | null => {
   const value = category?.trim().toLowerCase() ?? "";
   if (value === "top") return "top";
   if (value === "bottom" || value === "skirt") return "bottom";
   if (value === "dress" || value === "set") return "full";
-  return "accessory";
+  if (value === "accessories" || value === "accessory") return "accessory";
+  return null;
 };
 
 /** productId → colorId ที่ผู้ใช้เลือก (ไม่มี = ใช้สีแรก) */
