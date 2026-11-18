@@ -111,3 +111,13 @@ export const deleteImage = async (key: string): Promise<void> => {
     })
   );
 };
+
+// รับได้ทั้ง key และ URL เต็มของ S3 (เช่น BodyImage.s3 เก็บเป็น URL) → คืน key
+export const toS3Key = (value: string): string => {
+  if (!/^https?:\/\//i.test(value)) return value;
+  try {
+    return decodeURIComponent(new URL(value).pathname.slice(1));
+  } catch {
+    return value;
+  }
+};
