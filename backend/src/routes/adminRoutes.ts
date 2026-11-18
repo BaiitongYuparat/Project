@@ -15,6 +15,7 @@ import {
   getAdminProductStatsController,
 } from "../controllers/product";
 import { deleteUser , updateUserStatus , getUsers } from "../controllers/user";
+import { getTryOnConfigAdmin, updateTryOnConfigAdmin } from "../controllers/tryon";
 import { getAppeals, decideAppeal } from "../controllers/appeal";
 import { getAiReports, updateAiReportStatus } from "../controllers/aiReport";
 import {
@@ -32,6 +33,10 @@ router.get("/brands/members", getAllBrandMembers);
 router.get("/brands/:id", getBrandById);
 router.put("/brands/:id/status", updateBrandStatus);
 router.delete("/brands/:id", deleteBrand);
+
+// AI config (try-on provider / prompt)
+router.get("/ai-config/tryon", getTryOnConfigAdmin);
+router.put("/ai-config/tryon", updateTryOnConfigAdmin);
 
 // Model Management
 router.get("/models", getModels);

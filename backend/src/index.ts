@@ -19,6 +19,7 @@ import adminRoutes from "./routes/adminRoutes";
 import appealRoutes from "./routes/appealRoutes";
 import aiReportRoutes from "./routes/aiReportRoutes";
 import favoriteRoutes from "./routes/favoriteRoutes";
+import tryonRoutes from "./routes/tryonRoutes";
 
 const app = express();
 app.use(express.json());
@@ -38,6 +39,7 @@ app.use("/favorites", authMiddleware, favoriteRoutes);
 app.use("/images", authMiddleware, imageRoutes);
 app.use("/clothings", authMiddleware, clothingRoutes);
 app.use("/userconsent", authMiddleware, userconsentRoutes);
+app.use("/tryon", authMiddleware, tryonRoutes);
 
 
 app.use("/", publicRoutes);

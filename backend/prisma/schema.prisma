@@ -549,6 +549,16 @@ model TryOnLog {
   cost       Decimal     @default(0) @db.Decimal(10, 4)
   created_at DateTime    @default(now()) @db.Timestamp(6)
 
+  // ข้อมูลการ generate (ใช้เปรียบเทียบคุณภาพ/ต้นทุนต่อ provider)
+  view          ImageView?
+  provider      String? // "fal" | "bfl"
+  model         String? // endpoint ที่ใช้จริง
+  request_id    String? // id ฝั่ง provider
+  prompt        String?
+  items         Json? // [{ product_id, color_id }] — รองรับหลายชิ้นต่อ 1 generation
+  result_s3_key String?
+  duration_ms   Int?
+
   user    User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
   brand   Brand    @relation(fields: [brand_id], references: [id], onDelete: Restrict)
   product Product? @relation(fields: [product_id], references: [id], onDelete: SetNull)
@@ -557,6 +567,16 @@ model TryOnLog {
   @@index([user_id, created_at])
   @@index([status, created_at])
   @@map("try_on_logs")
+}
+
+// ค่า config ของฟีเจอร์ AI ที่ super admin แก้ได้ (provider, prompt template ฯลฯ)
+model AiConfig {
+  key        String   @id // เช่น "tryon"
+  value      Json
+  updated_by String?
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+
+  @@map("ai_configs")
 }
 
 model ProductClick {

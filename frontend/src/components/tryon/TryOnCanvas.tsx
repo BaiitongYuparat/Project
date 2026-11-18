@@ -6,10 +6,20 @@ interface Props {
   angle: Angle;
   garments: Product[];
   onRemove: (productId: string) => void;
+  /** ภาพผลลัพธ์จาก AI (ตรงกับตัวเลือกปัจจุบัน) — ถ้าไม่มีจะแสดงรูปโมเดลเดิม */
+  resultUrl?: string | null;
+  generating?: boolean;
 }
 
-export default function TryOnCanvas({ subject, angle, garments, onRemove }: Props) {
-  const image = subject?.images[angle] ?? null;
+export default function TryOnCanvas({
+  subject,
+  angle,
+  garments,
+  onRemove,
+  resultUrl = null,
+  generating = false,
+}: Props) {
+  const image = resultUrl ?? subject?.images[angle] ?? null;
   const angleLabel = ANGLES.find((a) => a.key === angle)?.label;
 
   return (
@@ -25,11 +35,25 @@ export default function TryOnCanvas({ subject, angle, garments, onRemove }: Prop
             <img
               src={image}
               alt={subject?.name}
-              className="max-h-[560px] w-auto rounded-[20px] object-contain shadow-[0_18px_48px_rgba(51,47,41,0.12)]"
+              className={`max-h-[560px] w-auto rounded-[20px] object-contain shadow-[0_18px_48px_rgba(51,47,41,0.12)] transition ${
+                generating ? "opacity-40" : ""
+              }`}
             />
             <figcaption className="absolute left-3 top-3 rounded-full bg-white/85 px-3 py-1 text-xs text-[#332F29]">
               {subject?.name} · {angleLabel}
+              {resultUrl && !generating ? " · ภาพจาก AI" : ""}
             </figcaption>
+            {generating && (
+              <div
+                role="status"
+                className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-[20px]"
+              >
+                <span className="h-10 w-10 animate-spin rounded-full border-4 border-[#3B2C25] border-t-transparent" />
+                <span className="rounded-full bg-white/90 px-4 py-1 text-sm text-[#332F29]">
+                  AI กำลังสร้างภาพ อาจใช้เวลาราว 10–30 วินาที
+                </span>
+              </div>
+            )}
           </figure>
         ) : (
           <div className="text-center">
