@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { IonIcon } from "@ionic/react";
 import {
+    alertCircleOutline,
     closeOutline,
     gridOutline,
     menuOutline,
@@ -82,6 +83,11 @@ const menuSections: Array<{ label?: string; items: MenuItem[] }> = [
                 icon: chatbubblesOutline
             },
             {
+                name: "AI Reports",
+                path: "/ai-reports",
+                icon: alertCircleOutline
+            },
+            {
                 name: "Owner Transfer Requests",
                 path: "/owner-transfer-requests",
                 icon: swapHorizontalOutline
@@ -121,6 +127,9 @@ export default function SuperAdminSidebar() {
     );
     const pendingTransferCount = useSelector(
         (state: RootState) => state.pendingRequests.pendingTransfers
+    );
+    const pendingReportsCount = useSelector(
+        (state: RootState) => state.pendingRequests.pendingReports
     );
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
@@ -218,9 +227,9 @@ export default function SuperAdminSidebar() {
                                     <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
                                         {section.label}
                                     </p>
-                                    {pendingAppealsCount + pendingTransferCount > 0 && (
+                                    {pendingAppealsCount + pendingTransferCount + pendingReportsCount > 0 && (
                                         <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                                            {pendingAppealsCount + pendingTransferCount}
+                                            {pendingAppealsCount + pendingTransferCount + pendingReportsCount}
                                         </span>
                                     )}
                                 </div>
@@ -232,7 +241,9 @@ export default function SuperAdminSidebar() {
                                         ? pendingAppealsCount
                                         : item.path === "/owner-transfer-requests"
                                           ? pendingTransferCount
-                                          : 0;
+                                          : item.path === "/ai-reports"
+                                            ? pendingReportsCount
+                                            : 0;
 
                                 return (
                                     <NavLink

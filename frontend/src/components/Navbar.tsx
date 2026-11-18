@@ -3,21 +3,25 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { IonIcon } from "@ionic/react";
 import {
+  alertCircleOutline,
   chevronDownOutline,
   closeOutline,
   logOutOutline,
   menuOutline,
   personOutline,
+  flagOutline
 } from "ionicons/icons";
 
 import Button from "./Button";
 import type { RootState } from "../store/store";
-import { openLogin, closeSuspended } from "../store/uiSlice";import { logout as logoutAction } from "../store/userSlice";
+import { openLogin, closeSuspended, openAiReport } from "../store/uiSlice";
+import { logout as logoutAction } from "../store/userSlice";
 import { logout as logoutAPI } from "../services/authService";
 
 
 import SuspendedModal from "./SuspendedModal";
 import SuspendedAppealModal from "./SuspendedAppealModal";
+import AIReportModal from "./AIReportModal";
 
 // ---------- Styles (ใช้ซ้ำทั้ง desktop และ mobile) ----------
 
@@ -197,6 +201,18 @@ export default function NavBar() {
                     Profile
                   </button>
 
+                  {/* Report AI problem */}
+                  <button
+                    onClick={() => {
+                      setIsProfileOpen(false);
+                      dispatch(openAiReport());
+                    }}
+                    className={dropdownItem}
+                  >
+                    <IonIcon icon={flagOutline} className="text-lg" />
+                    แจ้งภาพที่ AI สร้างผิดพลาด
+                  </button>
+
                   {/* Logout */}
                   <div className="border-t border-secondary/10">
                     <button
@@ -269,6 +285,18 @@ export default function NavBar() {
                   Profile
                 </button>
 
+                {/* Report AI problem */}
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    dispatch(openAiReport());
+                  }}
+                  className={mobileItem}
+                >
+                  <IonIcon icon={alertCircleOutline} className="text-lg" />
+                  รายงานปัญหาการใช้ AI
+                </button>
+
                 {/* Logout */}
                 <div className="mt-1 border-t border-secondary/10 pt-1">
                   <button
@@ -293,6 +321,9 @@ export default function NavBar() {
           </div>
         </nav>
       )}
+      {/* รายงานปัญหาการใช้ AI (เปิดจากเมนูโปรไฟล์) */}
+      <AIReportModal />
+
       {suspendedOpen ? (
         // ถูกระงับจากหน้า login → แจ้งเตือน + ยื่นคำร้องขอปลดระงับได้
         <SuspendedAppealModal

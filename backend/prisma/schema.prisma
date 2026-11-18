@@ -113,6 +113,7 @@ model User {
   userConsents UserConsent[]
   bodyType     BodyType?
   appeals      Appeal[]
+  aiReports    AiReport[]
 
   // Brand
   brandCustomers BrandCustomer[]
@@ -149,6 +150,44 @@ model Appeal {
   @@index([user_id])
   @@index([status])
   @@map("appeals")
+}
+
+// หมวดหมู่ปัญหาของ AI ที่ shopper รายงาน
+enum AiReportCategory {
+  BODY_ANALYSIS // วิเคราะห์รูปร่าง
+  AI_STYLIST // AI สไตลิสต์ / แนะนำลุค
+  TRY_ON // ลองชุด / สร้างภาพ
+  IMAGE_CHECK // ตรวจคุณภาพรูป
+  OTHER // อื่น ๆ
+}
+
+// สถานะการจัดการรายงาน — แอดมินตรวจแล้วอนุมัติ (คืนเครดิต 1 เครดิต) หรือปฏิเสธ
+enum AiReportStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// รายงานปัญหาการใช้ AI — shopper ยื่นจากเมนูโปรไฟล์ (Navbar)
+model AiReport {
+  id         String            @id @default(uuid())
+  user_id    String
+  category   AiReportCategory
+  title      String
+  message    String
+  page_url   String? // หน้าที่พบปัญหา (auto จาก frontend)
+  image_url  String? // ภาพหน้าจอประกอบ (S3)
+  status     AiReportStatus    @default(PENDING)
+  admin_note String? // คำตอบ/บันทึกของ Super Admin
+  handled_by String? // id ของ Admin ที่จัดการ
+  handled_at DateTime?         @db.Timestamp(6)
+  created_at DateTime          @default(now()) @db.Timestamp(6)
+  updated_at DateTime          @updatedAt @db.Timestamp(6)
+  user       User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([status])
+  @@map("ai_reports")
 }
 
 model Body {

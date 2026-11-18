@@ -16,6 +16,7 @@ import {
 } from "../controllers/product";
 import { deleteUser , updateUserStatus , getUsers } from "../controllers/user";
 import { getAppeals, decideAppeal } from "../controllers/appeal";
+import { getAiReports, updateAiReportStatus } from "../controllers/aiReport";
 import {
   getOwnerTransferRequests,
   decideOwnerTransferRequest,
@@ -49,6 +50,10 @@ router.put("/users/:id/status", updateUserStatus);
 // Appeals (คำร้องขอปลดระงับบัญชี shopper)
 router.get("/appeals", getAppeals);
 router.post("/appeals/:id/decision", decideAppeal);
+
+// AI Reports (รายงานปัญหาการใช้ AI จาก shopper)
+router.get("/ai-reports", getAiReports);
+router.put("/ai-reports/:id/status", updateAiReportStatus);
 
 // Owner Transfer Requests (คำขอเปลี่ยน OWNER ของร้าน)
 router.get("/owner-transfer-requests", getOwnerTransferRequests);
