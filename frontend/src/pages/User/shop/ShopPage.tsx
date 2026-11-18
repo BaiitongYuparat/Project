@@ -218,8 +218,8 @@ export default function ShopPage() {
   const handleTryOn = (product: Product) => {
     if (!requireAuth()) return;
 
-    // ตอนนี้ยังไม่มี Try-On Flow จริง
-    alert(`คุณเลือกลองใส่: ${product.name}`);
+    // ไปหน้า Try-On Studio พร้อมเลือกสินค้าชิ้นนี้ไว้ให้
+    navigate("/tryon", { state: { productId: product.id } });
   };
 
   const handleToggleFavorite = (productId: string) => {
@@ -230,24 +230,24 @@ export default function ShopPage() {
 
   if (isLoading) {
     return (
-      <main className="min-h-screen bg-[#FAF5EF]">
+      <main className="min-h-screen bg-white">
         <div className="mx-auto max-w-[1400px] px-5 py-7 md:px-10 lg:px-14">
           {/* Skeleton: แบนเนอร์ */}
-          <div className="mb-8 h-[300px] animate-pulse rounded-2xl bg-[#EFE3D6] md:h-[360px]" />
+          <div className="mb-8 h-[300px] animate-pulse rounded-2xl bg-primary md:h-[360px]" />
 
           {/* Skeleton: ช่องค้นหา */}
-          <div className="mb-6 h-12 animate-pulse rounded-full bg-[#EFE3D6]" />
+          <div className="mb-6 h-12 animate-pulse rounded-full bg-primary" />
 
           {/* Skeleton: การ์ดฟิลเตอร์ */}
-          <div className="mb-6 h-36 animate-pulse rounded-2xl bg-[#EFE3D6]" />
+          <div className="mb-6 h-36 animate-pulse rounded-2xl bg-primary" />
 
           {/* Skeleton: การ์ดสินค้า */}
           <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 md:gap-x-6 md:gap-y-10 lg:grid-cols-4">
             {Array.from({ length: 8 }).map((_, index) => (
               <div key={index} className="animate-pulse">
-                <div className="aspect-[4/3] rounded-2xl bg-[#EFE3D6]" />
-                <div className="mt-3 h-4 w-3/4 rounded bg-[#EFE3D6]" />
-                <div className="mt-2 h-4 w-1/2 rounded bg-[#EFE3D6]" />
+                <div className="aspect-[4/3] rounded-2xl bg-primary" />
+                <div className="mt-3 h-4 w-3/4 rounded bg-primary" />
+                <div className="mt-2 h-4 w-1/2 rounded bg-primary" />
               </div>
             ))}
           </div>
@@ -258,25 +258,25 @@ export default function ShopPage() {
 
   if (error) {
     return (
-      <main className="min-h-screen bg-[#FAF5EF]">
+      <main className="min-h-screen bg-white">
         <div className="mx-auto flex min-h-[70vh] max-w-[1400px] items-center justify-center px-5">
-          <div className="w-full max-w-sm rounded-2xl border border-[#E8C7B8] bg-white p-10 text-center shadow-sm">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#FBEAE3] text-2xl">
+          <div className="w-full max-w-sm rounded-2xl border border-secondary/20 bg-white p-10 text-center shadow-sm">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-2xl">
               ⚠️
             </div>
 
-            <h2 className="mb-2 text-lg font-semibold text-[#49352D]">
+            <h2 className="mb-2 text-lg font-semibold text-secondary">
               โหลดข้อมูลไม่สำเร็จ
             </h2>
 
-            <p className="mb-6 text-sm text-[#947D6D]">
+            <p className="mb-6 text-sm text-secondary/60">
               {error} กรุณาลองใหม่อีกครั้ง
             </p>
 
             <button
               type="button"
               onClick={handleRetry}
-              className="rounded-full bg-[#3E2C25] px-6 py-2.5 text-sm font-medium text-white transition hover:bg-[#5A443A]"
+              className="rounded-full bg-secondary px-6 py-2.5 text-sm font-medium text-white transition hover:bg-secondary/90"
             >
               ลองใหม่
             </button>
@@ -287,7 +287,7 @@ export default function ShopPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#FAF5EF]">
+    <main className="min-h-screen bg-white">
       <div className="mx-auto max-w-[1400px] px-5 py-7 md:px-10 lg:px-14">
         <HeroBannerCarousel />
 
@@ -296,7 +296,7 @@ export default function ShopPage() {
           <div className="relative min-w-0 flex-1">
             <IonIcon
               icon={searchOutline}
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg text-[#A58E7F]"
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg text-secondary/50"
             />
 
             <input
@@ -304,7 +304,7 @@ export default function ShopPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="ค้นหาชื่อสินค้า สไตล์ หรือสิ่งที่ชอบ"
-              className="w-full rounded-full border border-[#DCC3B3] bg-white py-3 pl-11 pr-10 text-sm outline-none transition placeholder:text-[#A58E7F] focus:border-[#49352D]"
+              className="w-full rounded-full border border-[#DCC3B3] bg-white py-3 pl-11 pr-10 text-sm outline-none transition placeholder:text-secondary/50 focus:border-secondary"
             />
 
             {search && (
@@ -312,7 +312,7 @@ export default function ShopPage() {
                 type="button"
                 aria-label="ล้างคำค้นหา"
                 onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-[#A58E7F] transition hover:bg-primary hover:text-[#49352D]"
+                className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-secondary/50 transition hover:bg-primary hover:text-secondary"
               >
                 <IonIcon icon={closeCircleOutline} />
               </button>
@@ -322,7 +322,7 @@ export default function ShopPage() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              className="flex flex-1 items-center justify-center gap-2 rounded-full border border-[#DCC3B3] bg-primary px-6 py-3 text-sm font-medium text-[#49352D] transition hover:bg-[#E8CEBD] lg:flex-none"
+              className="flex flex-1 items-center justify-center gap-2 rounded-full border border-[#DCC3B3] bg-primary px-6 py-3 text-sm font-medium text-secondary transition hover:bg-[#E8CEBD] lg:flex-none"
             >
               <IonIcon icon={imageOutline} className="text-base" />
               ค้นหาด้วยรูป
@@ -331,7 +331,7 @@ export default function ShopPage() {
             <button
               type="button"
               onClick={() => navigate("/my-outfit")}
-              className="flex flex-1 items-center justify-center gap-2 rounded-full border border-[#DCC3B3] bg-primary px-6 py-3 text-sm font-medium text-[#49352D] transition hover:bg-[#E8CEBD] lg:flex-none"
+              className="flex flex-1 items-center justify-center gap-2 rounded-full border border-[#DCC3B3] bg-primary px-6 py-3 text-sm font-medium text-secondary transition hover:bg-[#E8CEBD] lg:flex-none"
             >
               <IonIcon icon={heartOutline} className="text-base" />
               รายการโปรด ({favorites.length})
@@ -349,8 +349,8 @@ export default function ShopPage() {
                 type="button"
                 onClick={() => setSelectedCategory(value)}
                 className={`shrink-0 rounded-full border px-4 py-2 text-sm transition ${selectedCategory === value
-                  ? "border-[#3E2C25] bg-[#3E2C25] text-white"
-                  : "border-[#DCC3B3] bg-white text-[#49352D] hover:bg-[#E8CEBD]"
+                  ? "border-secondary bg-secondary text-white"
+                  : "border-[#DCC3B3] bg-white text-secondary hover:bg-primary"
                   }`}
               >
                 {value === "all" ? "ทั้งหมด" : categoryLabel(value)}
@@ -361,7 +361,7 @@ export default function ShopPage() {
           <div className="mt-4 flex flex-col gap-3 border-t border-[#E2CDBB] pt-4 lg:flex-row lg:items-center lg:justify-between">
             {/* Gender chips */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="mr-1 text-xs font-medium text-[#947D6D]">
+              <span className="mr-1 text-xs font-medium text-secondary/60">
                 เพศ
               </span>
 
@@ -371,8 +371,8 @@ export default function ShopPage() {
                   type="button"
                   onClick={() => setSelectedGender(gender.value)}
                   className={`rounded-full border px-4 py-2 text-sm transition ${selectedGender === gender.value
-                    ? "border-[#3E2C25] bg-[#3E2C25] text-white"
-                    : "border-[#DCC3B3] bg-white text-[#49352D] hover:bg-[#E8CEBD]"
+                    ? "border-secondary bg-secondary text-white"
+                    : "border-[#DCC3B3] bg-white text-secondary hover:bg-primary"
                     }`}
                 >
                   {gender.label}
@@ -393,7 +393,7 @@ export default function ShopPage() {
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   aria-label="เรียงสินค้าตาม"
-                  className="w-full appearance-none rounded-full border border-[#DCC3B3] bg-white py-2.5 pl-4 pr-9 text-sm text-[#49352D] outline-none transition focus:border-[#49352D] sm:w-auto"
+                  className="w-full appearance-none rounded-full border border-[#DCC3B3] bg-white py-2.5 pl-4 pr-9 text-sm text-secondary outline-none transition focus:border-secondary sm:w-auto"
                 >
                   <option value="recommended">แนะนำ</option>
                   <option value="price-low">ราคาต่ำไปสูง</option>
@@ -403,7 +403,7 @@ export default function ShopPage() {
 
                 <IonIcon
                   icon={chevronDownOutline}
-                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[#947D6D]"
+                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-secondary/60"
                 />
               </div>
             </div>
@@ -413,11 +413,11 @@ export default function ShopPage() {
         {/* Heading */}
         <section className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
-            <h2 className="text-xl font-bold text-[#49352D] md:text-2xl">
+            <h2 className="text-xl font-bold text-secondary md:text-2xl">
               เลือกชิ้นที่ใช่ แล้วลองเลย
             </h2>
 
-            <p className="mt-1 text-sm text-[#947D6D]">
+            <p className="mt-1 text-sm text-secondary/60">
               พบสินค้า {filteredProducts.length} รายการ
             </p>
           </div>
@@ -426,7 +426,7 @@ export default function ShopPage() {
         {/* Active filter chips */}
         {activeFilterChips.length > 0 && (
           <div className="mb-5 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-[#947D6D]">
+            <span className="text-xs font-medium text-secondary/60">
               ตัวกรองที่เลือก:
             </span>
 
@@ -435,7 +435,7 @@ export default function ShopPage() {
                 key={chip.key}
                 type="button"
                 onClick={chip.onRemove}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[#DCC3B3] bg-white px-3 py-1.5 text-xs text-[#49352D] transition hover:border-[#C2645A] hover:text-[#C2645A]"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[#DCC3B3] bg-white px-3 py-1.5 text-xs text-secondary transition hover:border-[#C2645A] hover:text-[#C2645A]"
               >
                 {chip.label}
                 <IonIcon icon={closeCircleOutline} className="text-sm" />
@@ -466,11 +466,11 @@ export default function ShopPage() {
               🔍
             </div>
 
-            <p className="text-base font-semibold text-[#49352D]">
+            <p className="text-base font-semibold text-secondary">
               ไม่พบสินค้าที่ตรงกับตัวกรอง
             </p>
 
-            <p className="mt-1 text-sm text-[#947D6D]">
+            <p className="mt-1 text-sm text-secondary/60">
               ลองเปลี่ยนคำค้นหา หรือล้างตัวกรองทั้งหมดเพื่อดูสินค้าทุกชิ้น
             </p>
 
@@ -478,7 +478,7 @@ export default function ShopPage() {
               <button
                 type="button"
                 onClick={clearFilters}
-                className="mt-5 rounded-full bg-[#3E2C25] px-6 py-2.5 text-sm font-medium text-white transition hover:bg-[#5A443A]"
+                className="mt-5 rounded-full bg-secondary px-6 py-2.5 text-sm font-medium text-white transition hover:bg-secondary/90"
               >
                 ล้างตัวกรองทั้งหมด
               </button>

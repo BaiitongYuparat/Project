@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import type { Product } from "../../../services/productService";
 import { getProducts } from "../../../services/productService";
@@ -65,11 +66,13 @@ export default function MyOutfitPage() {
   );
 
   // ทุก action ที่ต้องใช้บัญชี — ถ้ายังไม่ login จะเด้ง LoginModal แทน
+  const navigate = useNavigate();
+
   const handleTryOn = (product: Product) => {
     if (!requireAuth()) return;
 
-    // ตอนนี้ยังไม่มี Try-On Flow จริง
-    alert(`คุณเลือกลองใส่: ${product.name}`);
+    // ไปหน้า Try-On Studio พร้อมเลือกสินค้าชิ้นนี้ไว้ให้
+    navigate("/tryon", { state: { productId: product.id } });
   };
 
   const handleToggleFavorite = (productId: string) => {

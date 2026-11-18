@@ -160,9 +160,10 @@ export default function ModelManagement() {
   const stats = useMemo(
     () => ({
       total: models.length,
+      // สถานะที่ UI ควบคุมคือ is_selectable (สวิตช์ "เปิดใช้สำหรับลูกค้า") จึงใช้ค่านี้แสดงผลทั้งหมด
       selectable: models.filter((m) => m.is_selectable).length,
-      active: models.filter((m) => m.is_active).length,
-      inactive: models.filter((m) => !m.is_active).length,
+      active: models.filter((m) => m.is_selectable).length,
+      inactive: models.filter((m) => !m.is_selectable).length,
     }),
     [models]
   );
@@ -174,7 +175,7 @@ export default function ModelManagement() {
         genderFilter === "ALL" || (m.gender ?? "") === genderFilter;
       const matchStatus =
         statusFilter === "ALL" ||
-        (statusFilter === "ACTIVE" ? m.is_active : !m.is_active);
+        (statusFilter === "ACTIVE" ? m.is_selectable : !m.is_selectable);
       const matchQuery = !q || m.name.toLowerCase().includes(q);
       return matchGender && matchStatus && matchQuery;
     });
@@ -407,7 +408,7 @@ export default function ModelManagement() {
                       </div>
                     )}
                     <div className="absolute right-2 top-2">
-                      <ActiveBadge isActive={model.is_active} />
+                      <ActiveBadge isActive={model.is_selectable} />
                     </div>
                   </div>
 
