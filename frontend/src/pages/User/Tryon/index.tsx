@@ -14,6 +14,7 @@ import {
 import { useRequireAuth } from "../../../hooks/useRequireAuth";
 import {
   failedJobMessage,
+  getTryOn,
   startTryOn,
   tryOnErrorMessage,
   waitForTryOn,
@@ -104,8 +105,12 @@ export default function TryOnPage() {
         view: angle,
         source: subject.key === "me" ? { type: "body" } : { type: "model", model_id: subject.key.replace(/^model:/, "") },
         items: selectedIds.map((product_id) => ({ product_id })),
+        // กดซ้ำตอนมีผลของชุดนี้อยู่แล้ว = ขอภาพใหม่ ไม่ใช่ขอภาพเดิม
+        regenerate: !!resultUrl,
       });
-      const done = await waitForTryOn(job.id, controller.signal);
+      // ผลเดิมจาก cache ตอบ SUCCESS ทันที ไม่ต้อง poll
+      const done =
+        job.status === "SUCCESS" ? await getTryOn(job.id) : await waitForTryOn(job.id, controller.signal);
 
       if (done.status === "SUCCESS" && done.image_url) {
         setResult({ url: done.image_url, signature });

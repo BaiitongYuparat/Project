@@ -23,7 +23,8 @@ const parseItems = (raw: unknown): TryOnItem[] | null => {
   return items;
 };
 
-// POST /tryon  { view, items: [{product_id, color_id?}], source?: {type:"body"} | {type:"model", model_id} }
+// POST /tryon  { view, items: [{product_id, color_id?}], source?: {type:"body"} | {type:"model", model_id}, regenerate?: boolean }
+// ชุดเดิมที่เคยสำเร็จแล้วจะได้ผลเดิมทันที (status SUCCESS) — ส่ง regenerate: true เพื่อสร้างใหม่
 export const startTryOn = async (req: Request, res: Response) => {
   try {
     const view = parseView(req.body?.view ?? "front");
@@ -37,7 +38,13 @@ export const startTryOn = async (req: Request, res: Response) => {
         ? { type: "model", model_id: s.model_id }
         : { type: "body" };
 
-    const log = await createTryOn({ userId: req.user!.id, source, view, items });
+    const log = await createTryOn({
+      userId: req.user!.id,
+      source,
+      view,
+      items,
+      regenerate: req.body?.regenerate === true,
+    });
     return res.status(202).json({ id: log.id, status: log.status });
   } catch (err) {
     if (err instanceof TryOnInputError) return res.status(err.status).json({ message: err.message });

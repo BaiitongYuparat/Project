@@ -558,6 +558,7 @@ model TryOnLog {
   items         Json? // [{ product_id, color_id }] — รองรับหลายชิ้นต่อ 1 generation
   result_s3_key String?
   duration_ms   Int?
+  cache_key     String? // hash ของ (รูปคน, รูปเสื้อผ้า, prompt, มุม) — ใช้คืนผลเดิมแทนการเรียก API ซ้ำ
 
   user    User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
   brand   Brand    @relation(fields: [brand_id], references: [id], onDelete: Restrict)
@@ -566,6 +567,7 @@ model TryOnLog {
   @@index([brand_id, created_at])
   @@index([user_id, created_at])
   @@index([status, created_at])
+  @@index([cache_key, created_at])
   @@map("try_on_logs")
 }
 

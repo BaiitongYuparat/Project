@@ -1,10 +1,11 @@
+import { createHash } from "node:crypto";
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import sharp from "sharp";
 import { ImageView, Prisma } from "@prisma/client";
 import { prisma } from "../../../lib/prisma";
 import { s3 } from "../../middlewares/upload";
 import { deleteImage, getImageUrl } from "../../utils/s3Utils";
-import { getProviderOrder, getTryOnConfig } from "./config";
+import { getProviderOrder, getTryOnConfig, type TryOnConfig } from "./config";
 import {
   ProviderName,
   runProvider,
@@ -162,50 +163,100 @@ const preparePerson = (key: string) =>
       .toBuffer()
   );
 
+// ---------- prompt + cache key ----------
+const buildPrompt = (config: TryOnConfig, garments: ResolvedGarment[]) =>
+  config.prompt_template.replace("{garments}", garments.map((g) => g.description).join(", "));
+
+// input ชุดเดียวกัน (รูปคน + รูปเสื้อผ้าตามลำดับ + prompt + มุม) → key เดียวกัน
+// - ใช้ S3 key ของรูปจริง ไม่ใช่ id → ถ้าร้านเปลี่ยนรูปสินค้า หรือผู้ใช้อัปโหลดรูปตัวเองใหม่ จะ miss เอง
+// - โมเดลของระบบ (รูปเดียวกันทุกคน) จึงแชร์ผลข้ามผู้ใช้ได้ ส่วนรูปของผู้ใช้เองเป็น key เฉพาะคน
+const buildCacheKey = (
+  personS3Key: string,
+  garments: ResolvedGarment[],
+  prompt: string,
+  view: ImageView
+) =>
+  createHash("sha256")
+    .update(JSON.stringify([personS3Key, garments.map((g) => g.keys), prompt, view]))
+    .digest("hex");
+
 // ---------- create job ----------
 export type CreateTryOnParams = {
   userId: string;
   source: TryOnSource;
   view: ImageView;
   items: TryOnItem[];
+  /** true = ข้าม cache แล้วสร้างใหม่ (ผู้ใช้กด "สร้างภาพใหม่") */
+  regenerate?: boolean;
 };
 
 export const createTryOn = async (params: CreateTryOnParams) => {
-  const { userId, source, view, items } = params;
+  const { userId, source, view, items, regenerate = false } = params;
   if (items.length < 1 || items.length > MAX_ITEMS) {
     throw new TryOnInputError(`เลือกสินค้าได้ 1–${MAX_ITEMS} ชิ้นต่อครั้ง`);
   }
   const config = await getTryOnConfig();
-  if (getProviderOrder(config).length === 0) {
-    throw new TryOnInputError("ฟีเจอร์ลองเสื้อยังไม่เปิดใช้งาน", 503);
-  }
-
-  // คุมค่าใช้จ่าย: จำกัดงานค้างและจำนวนต่อวันต่อผู้ใช้
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-  const [pending, today] = await Promise.all([
-    prisma.tryOnLog.count({ where: { user_id: userId, status: "PENDING" } }),
-    prisma.tryOnLog.count({ where: { user_id: userId, created_at: { gte: startOfDay } } }),
-  ]);
-  if (pending >= MAX_PENDING_PER_USER) throw new TryOnInputError("มีงานที่กำลังประมวลผลอยู่ กรุณารอสักครู่", 429);
-  if (today >= DAILY_LIMIT) throw new TryOnInputError("ใช้ครบโควตาลองเสื้อวันนี้แล้ว", 429);
 
   const [pKey, garments] = await Promise.all([
     personKey(userId, source, view),
     Promise.all(items.map((i) => resolveGarment(i, view))),
   ]);
 
-  const log = await prisma.tryOnLog.create({
-    data: {
-      user_id: userId,
-      brand_id: garments[0].brandId,
-      product_id: garments[0].productId,
-      model_id: source.type === "model" ? source.model_id : null,
-      status: "PENDING",
-      view,
-      items: items as unknown as Prisma.InputJsonValue,
-    },
-  });
+  const prompt = buildPrompt(config, garments);
+  const cacheKey = buildCacheKey(pKey, garments, prompt, view);
+  const baseData = {
+    user_id: userId,
+    brand_id: garments[0].brandId,
+    product_id: garments[0].productId,
+    model_id: source.type === "model" ? source.model_id : null,
+    view,
+    items: items as unknown as Prisma.InputJsonValue,
+    prompt,
+    cache_key: cacheKey,
+  };
+
+  // cache hit → ไม่เรียก provider ไม่เสียเงิน และไม่นับโควตา (เก็บเป็น log ของผู้ขอเพื่อให้มีประวัติ)
+  if (!regenerate) {
+    const hit = await prisma.tryOnLog.findFirst({
+      where: { cache_key: cacheKey, status: "SUCCESS", result_s3_key: { not: null } },
+      orderBy: { created_at: "desc" },
+    });
+    if (hit) {
+      return prisma.tryOnLog.create({
+        data: {
+          ...baseData,
+          status: "SUCCESS",
+          provider: "cache",
+          model: hit.model,
+          result_s3_key: hit.result_s3_key,
+          cost: 0,
+          duration_ms: 0,
+        },
+      });
+    }
+  }
+
+  if (getProviderOrder(config).length === 0) {
+    throw new TryOnInputError("ฟีเจอร์ลองเสื้อยังไม่เปิดใช้งาน", 503);
+  }
+
+  // คุมค่าใช้จ่าย: จำกัดงานค้างและจำนวนต่อวันต่อผู้ใช้ (ไม่นับผลที่มาจาก cache)
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const [pending, today] = await Promise.all([
+    prisma.tryOnLog.count({ where: { user_id: userId, status: "PENDING" } }),
+    prisma.tryOnLog.count({
+      where: {
+        user_id: userId,
+        created_at: { gte: startOfDay },
+        OR: [{ provider: null }, { provider: { not: "cache" } }],
+      },
+    }),
+  ]);
+  if (pending >= MAX_PENDING_PER_USER) throw new TryOnInputError("มีงานที่กำลังประมวลผลอยู่ กรุณารอสักครู่", 429);
+  if (today >= DAILY_LIMIT) throw new TryOnInputError("ใช้ครบโควตาลองเสื้อวันนี้แล้ว", 429);
+
+  const log = await prisma.tryOnLog.create({ data: { ...baseData, status: "PENDING" } });
 
   // รันเบื้องหลัง (pattern เดียวกับ productImageQuality) — client poll GET /tryon/:id
   void runTryOn(log.id, userId, pKey, garments).catch((err) =>
@@ -225,10 +276,7 @@ const runTryOn = async (
   const tempKeys: string[] = [];
   try {
     const config = await getTryOnConfig();
-    const prompt = config.prompt_template.replace(
-      "{garments}",
-      garments.map((g) => g.description).join(", ")
-    );
+    const prompt = buildPrompt(config, garments);
 
     const [person, canvas] = await Promise.all([
       preparePerson(personS3Key),

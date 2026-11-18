@@ -20,6 +20,8 @@ export interface StartTryOnInput {
   view: Angle;
   source: TryOnSourceInput;
   items: { product_id: string }[];
+  /** true = ข้าม cache สร้างภาพใหม่ (ไม่ส่ง = ถ้าเคยสร้างชุดเดิมแล้วจะได้ผลเดิมทันที) */
+  regenerate?: boolean;
 }
 
 /** สร้างงาน generate (backend ตอบ 202 แล้วทำงานเบื้องหลัง) */
