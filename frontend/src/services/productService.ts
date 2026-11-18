@@ -11,10 +11,15 @@ export interface Product {
   category: string;
   images: {
     id: string;
-    s3_key: string;
+    s3_key?: string;
     sort_order: number;
-    image_url?: string;
+    image_url?: string | null;
+    color_id?: string | null;
+    view?: ImageView;
+    piece?: ProductPiece | null;
   }[];
+  /** สีของสินค้า + รูปต่อสี (ว่าง = สินค้ายังไม่มีระบบสี) */
+  colors?: ProductDetailColor[];
   gender?: "MALE" | "FEMALE" | null;
   color?: string;
   fit?: string;

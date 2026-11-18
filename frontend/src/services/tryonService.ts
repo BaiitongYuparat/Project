@@ -19,7 +19,7 @@ export type TryOnSourceInput = { type: "body" } | { type: "model"; model_id: str
 export interface StartTryOnInput {
   view: Angle;
   source: TryOnSourceInput;
-  items: { product_id: string }[];
+  items: { product_id: string; color_id?: string }[];
 }
 
 /** สร้างงาน generate (backend ตอบ 202 แล้วทำงานเบื้องหลัง) */

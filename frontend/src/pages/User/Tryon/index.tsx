@@ -7,8 +7,10 @@ import GarmentPicker from "../../../components/tryon/GarmentPicker";
 import TryOnCanvas from "../../../components/tryon/TryOnCanvas";
 import {
   ANGLES,
+  colorOf,
   slotOf,
   type Angle,
+  type ColorSelection,
   type GarmentSlot,
   type TryOnSubject,
 } from "../../../components/tryon/types";
@@ -30,7 +32,8 @@ const CONFLICTS: Record<GarmentSlot, GarmentSlot[]> = {
 
 export default function TryOnPage() {
   const location = useLocation();
-  const presetProductId = (location.state as { productId?: string } | null)?.productId;
+  const preset = location.state as { productId?: string; colorId?: string } | null;
+  const presetProductId = preset?.productId;
   const requireAuth = useRequireAuth();
 
   const [subject, setSubject] = useState<TryOnSubject | null>(null);
@@ -40,11 +43,24 @@ export default function TryOnPage() {
   const [productsError, setProductsError] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>(presetProductId ? [presetProductId] : []);
   const [notice, setNotice] = useState("");
+  // สีที่เลือกต่อสินค้า (ไม่มี = สีแรก)
+  const [colorSelection, setColorSelection] = useState<ColorSelection>(
+    presetProductId && preset?.colorId ? { [presetProductId]: preset.colorId } : {},
+  );
 
   const [generating, setGenerating] = useState(false);
   // ผลลัพธ์ล่าสุด — แสดงค้างไว้จนกว่าจะสร้างภาพใหม่ (เปลี่ยนโมเดล/มุม/ชุดไม่ทำให้ภาพหาย)
   const [result, setResult] = useState<{ url: string; signature: string; label: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // สิ่งที่กำลัง gen อยู่ — ให้หน้าจอแสดงตามนี้จนกว่าจะเสร็จ แม้ state ปัจจุบันจะเปลี่ยน
+  const [pending, setPending] = useState<{
+    subject: TryOnSubject;
+    angle: Angle;
+    garments: Product[];
+    colorSelection: ColorSelection;
+  } | null>(null);
+  // ใช้ ref กัน stale closure (effect ใน ModelPicker เรียก onSubjectChange ได้ทุกเมื่อ)
+  const generatingRef = useRef(false);
 
   useEffect(() => {
     getProducts()
@@ -68,7 +84,9 @@ export default function TryOnPage() {
 
   const canGenerate = !!subject && garments.length > 0 && !generating;
 
-  const signature = `${subject?.key ?? ""}|${angle}|${selectedIds.join(",")}`;
+  // สินค้า + สีที่จะส่งไป gen (สีแรกถ้ายังไม่ได้เลือก)
+  const items = garments.map((g) => ({ product_id: g.id, color_id: colorOf(g, colorSelection) }));
+  const signature = `${subject?.key ?? ""}|${angle}|${items.map((i) => `${i.product_id}:${i.color_id ?? ""}`).join(",")}`;
   const resultUrl = result?.url ?? null;
   // ตัวเลือกปัจจุบันไม่ตรงกับภาพที่แสดงอยู่ → บอกให้กดสร้างใหม่
   const resultStale = !!result && result.signature !== signature;
@@ -76,7 +94,16 @@ export default function TryOnPage() {
   // ออกจากหน้า → หยุด poll
   useEffect(() => () => abortRef.current?.abort(), []);
 
+  const handleSubjectChange = (next: TryOnSubject | null) => {
+    if (!generatingRef.current) setSubject(next);
+  };
+
+  const handleAngleChange = (next: Angle) => {
+    if (!generatingRef.current) setAngle(next);
+  };
+
   const toggleGarment = (product: Product) => {
+    if (generatingRef.current) return;
     setNotice("");
     setSelectedIds((prev) => {
       if (prev.includes(product.id)) return prev.filter((id) => id !== product.id);
@@ -90,8 +117,15 @@ export default function TryOnPage() {
     });
   };
 
-  const removeGarment = (productId: string) =>
+  const changeColor = (productId: string, colorId: string) => {
+    if (generatingRef.current) return;
+    setColorSelection((prev) => ({ ...prev, [productId]: colorId }));
+  };
+
+  const removeGarment = (productId: string) => {
+    if (generatingRef.current) return;
     setSelectedIds((prev) => prev.filter((id) => id !== productId));
+  };
 
   const handleGenerate = async () => {
     if (!canGenerate || !subject || !requireAuth()) return;
@@ -101,12 +135,14 @@ export default function TryOnPage() {
     abortRef.current = controller;
 
     setNotice("");
+    generatingRef.current = true;
+    setPending({ subject, angle, garments, colorSelection });
     setGenerating(true);
     try {
       const job = await startTryOn({
         view: angle,
         source: subject.key === "me" ? { type: "body" } : { type: "model", model_id: subject.key.replace(/^model:/, "") },
-        items: selectedIds.map((product_id) => ({ product_id })),
+        items: items.map(({ product_id, color_id }) => (color_id ? { product_id, color_id } : { product_id })),
       });
       const done = await waitForTryOn(job.id, controller.signal);
 
@@ -125,7 +161,11 @@ export default function TryOnPage() {
           : tryOnErrorMessage(err),
       );
     } finally {
-      if (abortRef.current === controller) setGenerating(false);
+      if (abortRef.current === controller) {
+        generatingRef.current = false;
+        setPending(null);
+        setGenerating(false);
+      }
     }
   };
 
@@ -151,8 +191,8 @@ export default function TryOnPage() {
           <ModelPicker
             subject={subject}
             angle={angle}
-            onSubjectChange={setSubject}
-            onAngleChange={setAngle}
+            onSubjectChange={handleSubjectChange}
+            onAngleChange={handleAngleChange}
             disabled={generating}
           />
           <hr className="my-6 border-[#E7E0D5]" />
@@ -161,16 +201,20 @@ export default function TryOnPage() {
             error={productsError}
             selectedIds={selectedIds}
             onToggle={toggleGarment}
+            colorSelection={colorSelection}
+            disabled={generating}
           />
         </aside>
 
         <main className="lg:sticky lg:top-6 lg:self-start">
           <TryOnCanvas
-            subject={subject}
-            angle={angle}
-            garments={garments}
+            subject={pending?.subject ?? subject}
+            angle={pending?.angle ?? angle}
+            garments={pending?.garments ?? garments}
             onRemove={removeGarment}
-            resultUrl={resultUrl}
+            colorSelection={pending?.colorSelection ?? colorSelection}
+            onColorChange={changeColor}
+            resultUrl={pending ? null : resultUrl}
             resultLabel={result?.label}
             generating={generating}
           />

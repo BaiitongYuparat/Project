@@ -133,6 +133,8 @@ export default function ModelPicker({
 
   // เลือกตัวแรกของแท็บให้อัตโนมัติ ถ้าตัวที่เลือกอยู่ไม่อยู่ในแท็บนี้
   useEffect(() => {
+    // ระหว่างสร้างภาพ ห้ามเปลี่ยนโมเดลเอง — รอ gen เสร็จแล้วค่อย sync
+    if (disabled) return;
     if (tab === "me") {
       onSubjectChange(myPhotos ?? null);
       return;
@@ -141,7 +143,7 @@ export default function ModelPicker({
     const stillHere = tabModels.some((m) => `model:${m.id}` === subject?.key);
     if (!stillHere) onSubjectChange(tabModels[0] ? modelToSubject(tabModels[0]) : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, tabModels, myPhotos, models]);
+  }, [tab, tabModels, myPhotos, models, disabled]);
 
   const handleTab = (value: Tab) => {
     if (value === "me" && !requireAuth()) return;

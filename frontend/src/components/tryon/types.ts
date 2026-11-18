@@ -32,6 +32,26 @@ export const slotOf = (category?: string): GarmentSlot => {
   return "accessory";
 };
 
+/** productId → colorId ที่ผู้ใช้เลือก (ไม่มี = ใช้สีแรก) */
+export type ColorSelection = Record<string, string>;
+
+/** สีที่ใช้ลองใส่ของสินค้านี้ — ที่เลือกไว้ หรือสีแรก; null = สินค้าไม่มีระบบสี */
+export const colorOf = (product: Product, selection: ColorSelection): string | null => {
+  const colors = product.colors ?? [];
+  const chosen = selection[product.id];
+  if (chosen && colors.some((c) => c.id === chosen)) return chosen;
+  return colors[0]?.id ?? null;
+};
+
+/** รูปตัวอย่างของสินค้าตามสี — รูปหน้าของสีนั้น > รูปแรกของสีนั้น > รูปแรกของสินค้า */
+export const garmentImage = (product: Product, colorId: string | null): string | null => {
+  const images = colorId
+    ? product.colors?.find((c) => c.id === colorId)?.images ?? []
+    : [];
+  const pick = images.find((i) => i.view === "FRONT") ?? images[0];
+  return pick?.image_url ?? product.images?.[0]?.image_url ?? null;
+};
+
 export const productPrice = (product: Product) => {
   const price = Number(product.price);
   return Number.isFinite(price) ? price : 0;

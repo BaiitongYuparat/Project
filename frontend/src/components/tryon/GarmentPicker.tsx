@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 
 import type { Product } from "../../services/productService";
-import { formatBaht, productPrice, slotOf } from "./types";
+import { colorOf, formatBaht, garmentImage, productPrice, slotOf, type ColorSelection } from "./types";
 
 type Tab = "top" | "bottom" | "other";
 
@@ -24,9 +24,12 @@ interface Props {
   error: string;
   selectedIds: string[];
   onToggle: (product: Product) => void;
+  colorSelection: ColorSelection;
+  /** ระหว่างสร้างภาพ — ดูแท็บได้ แต่เลือก/เอาออกไม่ได้ */
+  disabled?: boolean;
 }
 
-export default function GarmentPicker({ products, error, selectedIds, onToggle }: Props) {
+export default function GarmentPicker({ products, error, selectedIds, onToggle, colorSelection, disabled = false }: Props) {
   const [tab, setTab] = useState<Tab>("top");
 
   const visible = useMemo(
@@ -67,13 +70,15 @@ export default function GarmentPicker({ products, error, selectedIds, onToggle }
         ) : (
           visible.map((product) => {
             const selected = selectedIds.includes(product.id);
-            const image = product.images?.[0]?.image_url;
+            const image = garmentImage(product, colorOf(product, colorSelection));
+            const colorCount = product.colors?.length ?? 0;
             return (
               <button
                 key={product.id}
                 type="button"
                 onClick={() => onToggle(product)}
-                className="group text-left"
+                disabled={disabled}
+                className="group text-left disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <div
                   className={`relative aspect-square overflow-hidden rounded-[20px] border-2 bg-[#F0E9DD] transition ${
@@ -85,6 +90,18 @@ export default function GarmentPicker({ products, error, selectedIds, onToggle }
                   ) : (
                     <span className="flex h-full items-center justify-center text-sm text-[#8A7F72]">
                       ไม่มีรูป
+                    </span>
+                  )}
+                  {colorCount > 1 && (
+                    <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-white/85 px-2 py-0.5 text-[10px] text-[#332F29]">
+                      {product.colors!.slice(0, 4).map((c) => (
+                        <span
+                          key={c.id}
+                          className="h-2.5 w-2.5 rounded-full border border-[#D9CFC2]"
+                          style={{ backgroundColor: c.hex ?? "#EFE3D6" }}
+                        />
+                      ))}
+                      {colorCount} สี
                     </span>
                   )}
                   {selected && (
