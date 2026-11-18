@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { Product } from "../../services/productService";
 import {
   ANGLES,
@@ -9,6 +11,34 @@ import {
   type ColorSelection,
   type TryOnSubject,
 } from "./types";
+
+const iconProps = {
+  width: 28,
+  height: 28,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.6,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  "aria-hidden": true,
+} as const;
+
+const PersonIcon = () => (
+  <svg {...iconProps}>
+    <circle cx="12" cy="8" r="3.5" />
+    <path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7" />
+  </svg>
+);
+
+const UsersIcon = () => (
+  <svg {...iconProps}>
+    <circle cx="9" cy="8" r="3" />
+    <path d="M3 19c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+    <circle cx="17" cy="9" r="2.5" />
+    <path d="M17 14c2.2 0 4 1.8 4 4" />
+  </svg>
+);
 
 interface Props {
   subject: TryOnSubject | null;
@@ -22,6 +52,11 @@ interface Props {
   /** ชื่อโมเดล · มุม ของภาพผลลัพธ์ (อาจไม่ตรงกับที่เลือกอยู่ตอนนี้) */
   resultLabel?: string;
   generating?: boolean;
+  /** แถบเลือกผู้ลอง (ModelPicker) — แสดงใต้หัวข้อเมื่อเลือกโหมดแล้ว */
+  header?: ReactNode;
+  /** true = ยังไม่ได้เลือกโหมด → แสดงหน้าเลือก "รูปของฉัน / โมเดล" */
+  choosing?: boolean;
+  onPickMode?: (mode: "model" | "me") => void;
 }
 
 export default function TryOnCanvas({
@@ -34,6 +69,9 @@ export default function TryOnCanvas({
   resultUrl = null,
   resultLabel,
   generating = false,
+  header,
+  choosing = false,
+  onPickMode,
 }: Props) {
   const image = resultUrl ?? subject?.images[angle] ?? null;
   const angleLabel = ANGLES.find((a) => a.key === angle)?.label;
@@ -45,8 +83,34 @@ export default function TryOnCanvas({
         <span className="text-[#8A7F72]">{garments.length} ชิ้น</span>
       </div>
 
+      {header && <div className="mt-3">{header}</div>}
+
       <div className="flex flex-1 items-center justify-center py-6">
-        {image ? (
+        {choosing ? (
+          <div className="text-center">
+            <p className="text-2xl font-semibold text-[#332F29]">ใครจะเป็นคนลอง?</p>
+            <p className="mt-2 text-sm text-[#8A7F72]">เลือกก่อน แล้วค่อยเลือกเสื้อผ้าจากแถบด้านซ้าย</p>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              {(
+                [
+                  { mode: "me", icon: <PersonIcon />, title: "ใช้รูปภาพของฉัน", desc: "ลองบนรูปร่างจริงของคุณ" },
+                  { mode: "model", icon: <UsersIcon />, title: "เลือกโมเดล", desc: "เลือกโมเดลชาย/หญิง" },
+                ] as const
+              ).map((o) => (
+                <button
+                  key={o.mode}
+                  type="button"
+                  onClick={() => onPickMode?.(o.mode)}
+                  className="flex w-56 flex-col items-center gap-2 rounded-[24px] border-2 border-white/70 bg-white/85 px-6 py-8 shadow-[0_4px_0_rgba(59,44,37,0.10)] transition hover:-translate-y-0.5 hover:border-[#3B2C25]"
+                >
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#F0E9DD] text-[#3B2C25]">{o.icon}</span>
+                  <span className="text-base font-semibold text-[#332F29]">{o.title}</span>
+                  <span className="text-xs text-[#8A7F72]">{o.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : image ? (
           <figure className="relative">
             <img
               src={image}

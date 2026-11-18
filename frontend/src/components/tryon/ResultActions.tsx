@@ -73,10 +73,10 @@ export default function ResultActions({ jobId, url, label }: Props) {
     <div className="mt-4">
       <div className="flex gap-3">
         <button type="button" onClick={download} disabled={busy !== null} className={btn}>
-          {busy === "download" ? "กำลังบันทึก..." : "⬇ ดาวน์โหลด / บันทึกภาพ"}
+          {busy === "download" ? "กำลังบันทึก..." : "ดาวน์โหลด / บันทึกภาพ"}
         </button>
         <button type="button" onClick={share} disabled={busy !== null} className={btn}>
-          {busy === "share" ? "กำลังแชร์..." : "↗ แชร์"}
+          {busy === "share" ? "กำลังแชร์..." : "แชร์"}
         </button>
       </div>
       {message && (

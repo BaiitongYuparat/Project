@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import { getProducts, type Product } from "../../../services/productService";
-import ModelPicker from "../../../components/tryon/ModelPicker";
+import ModelPicker, { type SubjectMode } from "../../../components/tryon/ModelPicker";
 import GarmentPicker from "../../../components/tryon/GarmentPicker";
 import ResultActions from "../../../components/tryon/ResultActions";
 import TryOnCanvas from "../../../components/tryon/TryOnCanvas";
@@ -41,6 +41,8 @@ export default function TryOnPage() {
 
   const [subject, setSubject] = useState<TryOnSubject | null>(null);
   const [angle, setAngle] = useState<Angle>("front");
+  // null = เพิ่งเข้าหน้า ยังไม่ได้เลือก "รูปของฉัน / โมเดล"
+  const [mode, setMode] = useState<SubjectMode>(null);
 
   const [products, setProducts] = useState<Product[] | null>(null);
   const [productsError, setProductsError] = useState("");
@@ -113,6 +115,13 @@ export default function TryOnPage() {
     } else {
       setNotice("");
     }
+  };
+
+  const handleModeChange = (next: Exclude<SubjectMode, null>) => {
+    if (generatingRef.current) return;
+    if (next === "me" && !requireAuth()) return;
+    setMode(next);
+    handleAngleChange("front");
   };
 
   const toggleGarment = (product: Product) => {
@@ -206,15 +215,8 @@ export default function TryOnPage() {
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[400px_1fr]">
         {/* แถบซ้าย — scroll ในตัวเองบนจอใหญ่ */}
-        <aside className="rounded-[28px] border border-[#E0D5C7] bg-white p-6 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto">
-          <ModelPicker
-            subject={subject}
-            angle={angle}
-            onSubjectChange={handleSubjectChange}
-            onAngleChange={handleAngleChange}
-            disabled={generating}
-          />
-          <hr className="my-6 border-[#E7E0D5]" />
+        {/* แถบซ้าย — เลือกเสื้อผ้าอย่างเดียว; หัวแท็บตรึงอยู่ รายการสินค้าเลื่อนในตัวเอง */}
+        <aside className="flex flex-col rounded-[28px] border border-[#E0D5C7] bg-white p-6 lg:sticky lg:top-6 lg:h-[calc(100vh-48px)] lg:self-start">
           <GarmentPicker
             products={products}
             error={productsError}
@@ -237,6 +239,21 @@ export default function TryOnPage() {
             resultUrl={pending ? null : resultUrl}
             resultLabel={result?.label}
             generating={generating}
+            choosing={mode === null}
+            onPickMode={handleModeChange}
+            header={
+              mode !== null && (
+                <ModelPicker
+                  mode={mode}
+                  onModeChange={handleModeChange}
+                  subject={subject}
+                  angle={angle}
+                  onSubjectChange={handleSubjectChange}
+                  onAngleChange={handleAngleChange}
+                  disabled={generating}
+                />
+              )
+            }
           />
 
           <button
