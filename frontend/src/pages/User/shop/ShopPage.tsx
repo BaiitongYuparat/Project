@@ -9,7 +9,7 @@ import { getProducts } from "../../../services/productService";
 import ProductGrid from "../../../components/shop/ProductGrid";
 import ShopFilter from "../../../components/shop/ShopFilter";
 
-import { useFavorites } from "../../../context/FavoritesContext";
+import { useFavorites } from "../../../context/useFavorites";
 import { useRequireAuth } from "../../../hooks/useRequireAuth";
 
 import { useNavigate } from "react-router-dom";

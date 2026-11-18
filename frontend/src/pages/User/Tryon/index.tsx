@@ -6,6 +6,7 @@ import ModelPicker from "../../../components/tryon/ModelPicker";
 import GarmentPicker from "../../../components/tryon/GarmentPicker";
 import TryOnCanvas from "../../../components/tryon/TryOnCanvas";
 import {
+  ANGLES,
   slotOf,
   type Angle,
   type GarmentSlot,
@@ -42,8 +43,8 @@ export default function TryOnPage() {
   const [notice, setNotice] = useState("");
 
   const [generating, setGenerating] = useState(false);
-  // ผลลัพธ์ล่าสุด — แสดงเฉพาะเมื่อตัวเลือกปัจจุบันตรงกับตอนที่สร้าง (signature)
-  const [result, setResult] = useState<{ url: string; signature: string } | null>(null);
+  // ผลลัพธ์ล่าสุด — แสดงค้างไว้จนกว่าจะสร้างภาพใหม่ (เปลี่ยนโมเดล/มุม/ชุดไม่ทำให้ภาพหาย)
+  const [result, setResult] = useState<{ url: string; signature: string; label: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -69,7 +70,9 @@ export default function TryOnPage() {
   const canGenerate = !!subject && garments.length > 0 && !generating;
 
   const signature = `${subject?.key ?? ""}|${angle}|${selectedIds.join(",")}`;
-  const resultUrl = result && result.signature === signature ? result.url : null;
+  const resultUrl = result?.url ?? null;
+  // ตัวเลือกปัจจุบันไม่ตรงกับภาพที่แสดงอยู่ → บอกให้กดสร้างใหม่
+  const resultStale = !!result && result.signature !== signature;
 
   // ออกจากหน้า → หยุด poll
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -113,7 +116,8 @@ export default function TryOnPage() {
         job.status === "SUCCESS" ? await getTryOn(job.id) : await waitForTryOn(job.id, controller.signal);
 
       if (done.status === "SUCCESS" && done.image_url) {
-        setResult({ url: done.image_url, signature });
+        const angleLabel = ANGLES.find((a) => a.key === angle)?.label ?? angle;
+        setResult({ url: done.image_url, signature, label: `${subject.name} · ${angleLabel}` });
       } else {
         setNotice(failedJobMessage(done.error_code));
       }
@@ -136,7 +140,9 @@ export default function TryOnPage() {
     ? "เลือกโมเดลหรือใช้รูปของคุณเพื่อเริ่ม"
     : garments.length === 0
       ? "เลือกสินค้าอย่างน้อย 1 ชิ้นเพื่อเริ่ม"
-      : `พร้อมสร้างภาพ ${garments.length} ชิ้น`;
+      : resultStale
+        ? "ตัวเลือกเปลี่ยนแล้ว กดสร้างภาพใหม่เพื่ออัปเดตภาพ"
+        : `พร้อมสร้างภาพ ${garments.length} ชิ้น`;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-10">
@@ -152,6 +158,7 @@ export default function TryOnPage() {
             angle={angle}
             onSubjectChange={setSubject}
             onAngleChange={setAngle}
+            disabled={generating}
           />
           <hr className="my-6 border-[#E7E0D5]" />
           <GarmentPicker
@@ -169,6 +176,7 @@ export default function TryOnPage() {
             garments={garments}
             onRemove={removeGarment}
             resultUrl={resultUrl}
+            resultLabel={result?.label}
             generating={generating}
           />
 

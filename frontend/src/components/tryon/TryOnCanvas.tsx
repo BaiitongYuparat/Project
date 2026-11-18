@@ -8,6 +8,8 @@ interface Props {
   onRemove: (productId: string) => void;
   /** ภาพผลลัพธ์จาก AI (ตรงกับตัวเลือกปัจจุบัน) — ถ้าไม่มีจะแสดงรูปโมเดลเดิม */
   resultUrl?: string | null;
+  /** ชื่อโมเดล · มุม ของภาพผลลัพธ์ (อาจไม่ตรงกับที่เลือกอยู่ตอนนี้) */
+  resultLabel?: string;
   generating?: boolean;
 }
 
@@ -17,6 +19,7 @@ export default function TryOnCanvas({
   garments,
   onRemove,
   resultUrl = null,
+  resultLabel,
   generating = false,
 }: Props) {
   const image = resultUrl ?? subject?.images[angle] ?? null;
@@ -34,14 +37,13 @@ export default function TryOnCanvas({
           <figure className="relative">
             <img
               src={image}
-              alt={subject?.name}
+              alt={resultUrl ? resultLabel : subject?.name}
               className={`max-h-[560px] w-auto rounded-[20px] object-contain shadow-[0_18px_48px_rgba(51,47,41,0.12)] transition ${
                 generating ? "opacity-40" : ""
               }`}
             />
             <figcaption className="absolute left-3 top-3 rounded-full bg-white/85 px-3 py-1 text-xs text-[#332F29]">
-              {subject?.name} · {angleLabel}
-              {resultUrl && !generating ? " · ภาพจาก AI" : ""}
+              {resultUrl ? `${resultLabel ?? ""} · ภาพจาก AI` : `${subject?.name} · ${angleLabel}`}
             </figcaption>
             {generating && (
               <div

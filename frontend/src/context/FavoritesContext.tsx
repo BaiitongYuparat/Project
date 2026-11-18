@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -15,18 +13,11 @@ import {
   getFavoriteIds,
   removeFavorite,
 } from "../services/favoriteService";
+import { FavoritesContext } from "./favoritesStore";
 
 // รายการโปรดเก็บฝั่ง backend (ใช้ร่วมกับแอป) — localStorage เก็บเฉพาะตอนยังไม่ login
 // เพื่อไม่ให้รายการของ guest หาย และ merge เข้าบัญชีครั้งแรกที่ login
 const STORAGE_KEY = "vto:favorites";
-
-interface FavoritesContextValue {
-  favorites: string[];
-  toggleFavorite: (id: string) => void;
-  isFavorite: (id: string) => boolean;
-}
-
-const FavoritesContext = createContext<FavoritesContextValue | null>(null);
 
 function readStoredFavorites(): string[] {
   try {
@@ -158,15 +149,4 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       {children}
     </FavoritesContext.Provider>
   );
-}
-
-/* eslint-disable react-refresh/only-export-components -- hook และ Provider อยู่ไฟล์เดียวกันตาม convention ของ context */
-export function useFavorites(): FavoritesContextValue {
-  const context = useContext(FavoritesContext);
-
-  if (!context) {
-    throw new Error("useFavorites ต้องถูกเรียกภายใต้ FavoritesProvider เท่านั้น");
-  }
-
-  return context;
 }

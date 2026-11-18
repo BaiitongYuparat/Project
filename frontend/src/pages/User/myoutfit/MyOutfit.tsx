@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import type { Product } from "../../../services/productService";
 import { getProducts } from "../../../services/productService";
-import { useFavorites } from "../../../context/FavoritesContext";
+import { useFavorites } from "../../../context/useFavorites";
 import { useRequireAuth } from "../../../hooks/useRequireAuth";
 
 import OutfitSkeleton from "../../../components/myoutfit/OutfitSkeleton";

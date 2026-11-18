@@ -4,7 +4,7 @@ import sharp from "sharp";
 import { ImageView, Prisma } from "@prisma/client";
 import { prisma } from "../../../lib/prisma";
 import { s3 } from "../../middlewares/upload";
-import { deleteImage, getImageUrl } from "../../utils/s3Utils";
+import { deleteImage, getImageUrl, toS3Key } from "../../utils/s3Utils";
 import { getProviderOrder, getTryOnConfig, type TryOnConfig } from "./config";
 import {
   ProviderName,
@@ -41,7 +41,7 @@ export const parseView = (v: unknown): ImageView | null =>
 
 // ---------- S3 helpers ----------
 const getObjectBuffer = async (key: string): Promise<Buffer> => {
-  const obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
+  const obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: toS3Key(key) }));
   return Buffer.from(await obj.Body!.transformToByteArray());
 };
 

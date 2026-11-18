@@ -45,19 +45,32 @@ interface Props {
   angle: Angle;
   onSubjectChange: (subject: TryOnSubject | null) => void;
   onAngleChange: (angle: Angle) => void;
+  /** ล็อกการเลือกระหว่าง AI กำลังสร้างภาพ */
+  disabled?: boolean;
 }
 
-export default function ModelPicker({ subject, angle, onSubjectChange, onAngleChange }: Props) {
+export default function ModelPicker({
+  subject,
+  angle,
+  onSubjectChange,
+  onAngleChange,
+  disabled = false,
+}: Props) {
   const user = useSelector((state: RootState) => state.user.user);
   const requireAuth = useRequireAuth();
 
-  const [tab, setTab] = useState<Tab>(user?.gender === "MALE" ? "MALE" : "FEMALE");
+  const genderTab: Tab = user?.gender === "MALE" ? "MALE" : "FEMALE";
+  // null = ผู้ใช้ยังไม่ได้กดเลือกแท็บเอง
+  const [chosenTab, setTab] = useState<Tab | null>(null);
   const [models, setModels] = useState<TryOnModel[] | null>(null);
   const [modelsError, setModelsError] = useState("");
   // undefined = ยังไม่ได้โหลด, null = โหลดแล้วแต่ไม่มีรูป
   // ผูกกับ user id — เปลี่ยนบัญชี/ออกจากระบบแล้วข้อมูลเก่าจะไม่ถูกใช้
   const [myPhotosState, setMyPhotosState] = useState<{ userId: string; subject: TryOnSubject | null }>();
   const myPhotos = user && myPhotosState?.userId === user.id ? myPhotosState.subject : undefined;
+  // ค่าเริ่มต้น: login แล้ว → "รูปของฉัน" ก่อน; ไม่มีรูป/ยังไม่ login → แท็บโมเดลตามเพศ
+  // ถ้ากดแท็บ "รูปของฉัน" เอง จะอยู่แท็บนั้นต่อแม้ไม่มีรูป (เห็นปุ่มอัปโหลด)
+  const tab: Tab = chosenTab ?? (user && myPhotos !== null ? "me" : genderTab);
 
   useEffect(() => {
     getModels()
@@ -139,7 +152,7 @@ export default function ModelPicker({ subject, angle, onSubjectChange, onAngleCh
   const loadingMe = tab === "me" && !!user && myPhotos === undefined;
 
   return (
-    <section>
+    <fieldset disabled={disabled} className={`min-w-0 ${disabled ? "opacity-60" : ""}`}>
       <h2 className="text-xl font-semibold text-[#332F29]">เลือกโมเดล</h2>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -243,6 +256,6 @@ export default function ModelPicker({ subject, angle, onSubjectChange, onAngleCh
           อัปโหลดรูปใหม่
         </Link>
       )}
-    </section>
+    </fieldset>
   );
 }
