@@ -1,14 +1,14 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { BrandMembership } from "../types/user";
+import { createSlice } from "@reduxjs/toolkit";
+import type { AppealSummary } from "../types/appeal";
 
 const uiSlice = createSlice({
   name: "ui",
   initialState: {
     isLoginOpen: false,
     isBodyOpen: false,
-    isEntryChoiceOpen: false,
-    entryChoiceBrand: null as BrandMembership | null,
     isSuspendedOpen: false,
+    // คำร้องล่าสุดของบัญชีที่ถูกระงับ (จาก response ตอน login) — ใช้แสดงแจ้งเตือนบน SuspendedAppealModal
+    latestAppeal: null as AppealSummary | null,
   },
   reducers: {
     openLogin: (state) => {
@@ -23,37 +23,30 @@ const uiSlice = createSlice({
     closeBody: (state) => {
       state.isBodyOpen = false;
     },
-    openEntryChoice: (
-      state,
-      action: PayloadAction<BrandMembership | null>
-    ) => {
-      state.isEntryChoiceOpen = true;
-      state.entryChoiceBrand = action.payload;
-    },
-
-    closeEntryChoice: (state) => {
-      state.isEntryChoiceOpen = false;
-      state.entryChoiceBrand = null;
-    },
-    openSuspended: (state) => {     
+    openSuspended: (state) => {
       state.isSuspendedOpen = true;
     },
-    closeSuspended: (state) => {     
+    closeSuspended: (state) => {
       state.isSuspendedOpen = false;
     },
-      },
-    });
+    setSuspendedAppeal: (state, action) => {
+      state.latestAppeal = action.payload;
+    },
+    clearSuspendedAppeal: (state) => {
+      state.latestAppeal = null;
+    },
+  },
+});
 
 export const {
   openLogin,
   closeLogin,
   openBody,
   closeBody,
-  openEntryChoice,
-  closeEntryChoice,
-  openSuspended,  
-  closeSuspended,  
-
+  openSuspended,
+  closeSuspended,
+  setSuspendedAppeal,
+  clearSuspendedAppeal,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

@@ -2,6 +2,7 @@ import { prisma } from "../../lib/prisma";
 import { Prisma } from "@prisma/client";
 import { getImageUrl } from "../utils/s3Utils";
 import { deleteImage } from "../utils/s3Utils";
+import { isQualitySystemError } from "./productImageQuality";
 import { ProductImageQualityStatus } from "@prisma/client";
 
 const publicProductImageSelect = {
@@ -12,6 +13,7 @@ const publicProductImageSelect = {
     id: true,
     s3_key: true,
     sort_order: true,
+    piece: true,
     view:true,
   },
   orderBy: [{ sort_order: "asc" }, { id: "asc" }],
@@ -21,8 +23,10 @@ const publicProductImageSelect = {
 const shopProductImageSelect = {
   select: {
     id: true,
+    color_id: true,
     s3_key: true,
     sort_order: true,
+    piece: true,
     view: true,
     quality_status: true,
     quality_reason: true,
@@ -32,6 +36,17 @@ const shopProductImageSelect = {
     { id: "asc" },
   ],
 } satisfies Prisma.ProductImageFindManyArgs;
+
+// สี + รูปต่อสี สำหรับฝั่ง shop admin
+const shopProductColorSelect = {
+  orderBy: { created_at: "asc" as const },
+  select: {
+    id: true,
+    name: true,
+    hex: true,
+    images: shopProductImageSelect,
+  },
+};
 
 type PublicImage = { id: string; sort_order: number; image_url: string | null };
 
@@ -50,7 +65,6 @@ const withImageUrls = async (
   );
 };
 
-type WithImageUrl<I> = Omit<I, "s3_key"> & { image_url: string | null };
 const withProductImageUrls = async <
   T extends { images: { id: string; s3_key: string; sort_order: number }[] }
 >(
@@ -64,32 +78,39 @@ const withProductImageUrls = async <
   );
 };
 
-const withShopImageUrls = async <I extends { id: string; s3_key: string }>(
-  images: I[]
-): Promise<WithImageUrl<I>[]> => {
-  return Promise.all(
-    images.map(async ({ s3_key, ...rest }) => {
-      try {
-        return { ...rest, image_url: await getImageUrl(s3_key) };
-      } catch (error) {
-        console.error("Failed to build image url:", rest.id, error);
-        return { ...rest, image_url: null };
-      }
-    })
-  );
+// presign ครั้งเดียวต่อ s3_key ต่อ response — รูปเดียวกันถูกอ้างทั้งใน images และ colors[].images
+const createImageUrlResolver = () => {
+  const urlByKey = new Map<string, string | null>();
+
+  return async (s3_key: string): Promise<string | null> => {
+    const cached = urlByKey.get(s3_key);
+    if (cached !== undefined) return cached;
+
+    try {
+      const url = await getImageUrl(s3_key);
+      urlByKey.set(s3_key, url);
+      return url;
+    } catch (error) {
+      console.error("Failed to build image url:", s3_key, error);
+      urlByKey.set(s3_key, null);
+      return null;
+    }
+  };
 };
 
-const withShopProductImageUrls = async <
-  T extends { images: { id: string; s3_key: string }[] }
+// แปลงรูป shop product เป็น image_url + คำนวณ quality_error
+const withShopImageUrls = async <
+  I extends { id: string; s3_key: string; quality_reason?: string | null }
 >(
-  products: T[]
-): Promise<
-  (Omit<T, "images"> & { images: WithImageUrl<T["images"][number]>[] })[]
-> => {
+  images: I[],
+  resolveUrl: (s3_key: string) => Promise<string | null>
+): Promise<(Omit<I, "s3_key"> & { image_url: string | null; quality_error: boolean })[]> => {
   return Promise.all(
-    products.map(async (product) => ({
-      ...product,
-      images: await withShopImageUrls(product.images),
+    images.map(async ({ s3_key, ...rest }) => ({
+      ...rest,
+      image_url: await resolveUrl(s3_key),
+      // FAILED เพราะระบบตรวจล้มเหลว (ไม่ใช่รูปไม่ผ่านจริง) — frontend ใช้แยกปุ่ม recheck
+      quality_error: isQualitySystemError(rest.quality_reason),
     }))
   );
 };
@@ -143,7 +164,7 @@ export const getPublicProducts = async () => {
   return withProductImageUrls(products);
 };
 
-// ดึงรายละเอียดสินค้า 1 รายการ
+// ดึงรายละเอียดสินค้า 1 รายการ (สำหรับหน้า ProductDetail ฝั่งลูกค้า)
 export const getPublicProduct = async (productId: string) => {
   const product = await prisma.product.findFirst({
     where: {
@@ -164,14 +185,74 @@ export const getPublicProduct = async (productId: string) => {
       category: true,
       price: true,
       description: true,
+      gender: true,
+      fabric: true,
+      seasons: true,
+      occasions: true,
+      sku: true,
       created_at: true,
       updated_at: true,
-      images: publicProductImageSelect,
-      size_charts: true,
+      // รูปทุกด้าน (หน้า/หลัง/ซ้าย/ขวา) + ท่อน (set/top/bottom) + สีที่ผูกไว้
+      images: {
+        where: {
+          quality_status: "PASSED",
+        },
+        select: {
+          id: true,
+          color_id: true,
+          s3_key: true,
+          sort_order: true,
+          piece: true,
+          view: true,
+        },
+        orderBy: [{ sort_order: "asc" }, { id: "asc" }],
+        take: 30,
+      },
+      // สีของสินค้า + รูปเฉพาะของแต่ละสี
+      colors: {
+        orderBy: { created_at: "asc" as const },
+        select: {
+          id: true,
+          name: true,
+          hex: true,
+          images: {
+            where: {
+              quality_status: "PASSED",
+            },
+            select: {
+              id: true,
+              color_id: true,
+              s3_key: true,
+              sort_order: true,
+              piece: true,
+              view: true,
+            },
+            orderBy: [{ sort_order: "asc" }, { id: "asc" }],
+            take: 10,
+          },
+        },
+      },
+      // ตารางไซส์เฉพาะตัวของสินค้า (null ได้ — หน้าเว็บซ่อนตารางถ้าไม่มีข้อมูล)
+      size_charts: {
+        orderBy: [{ size: "asc" }],
+        select: {
+          id: true,
+          size: true,
+          chest: true,
+          waist: true,
+          hips: true,
+          length: true,
+        },
+      },
       brand: {
         select: {
           brand_name: true,
           slug: true,
+          logo_key: true,
+          store_url: true,
+          facebook_url: true,
+          instagram_url: true,
+          line_id: true,
         },
       },
     },
@@ -181,15 +262,47 @@ export const getPublicProduct = async (productId: string) => {
     return null;
   }
 
+  // presign ครั้งเดียวต่อ s3_key ต่อ response — รูปเดียวกันใน images/colors/logo ใช้ URL เดียวกัน
+  const resolveUrl = createImageUrlResolver();
+
+  const toPublicImage = async <
+    I extends { id: string; s3_key: string; sort_order: number }
+  >(
+    images: I[]
+  ): Promise<(Omit<I, "s3_key"> & { image_url: string | null })[]> => {
+    return Promise.all(
+      images.map(async ({ s3_key, ...rest }) => ({
+        ...rest,
+        image_url: await resolveUrl(s3_key),
+      }))
+    );
+  };
+
+  const [images, colors, logo_url] = await Promise.all([
+    toPublicImage(product.images),
+    Promise.all(
+      product.colors.map(async (color) => ({
+        ...color,
+        images: await toPublicImage(color.images),
+      }))
+    ),
+    product.brand.logo_key ? resolveUrl(product.brand.logo_key) : null,
+  ]);
+
   return {
     ...product,
-    images: await withImageUrls(product.images),
+    images,
+    colors,
+    brand: {
+      ...product.brand,
+      logo_url,
+    },
   };
 };
 
 //------------------------------------------- Shop Admin
 
-// ดึงสินค้าทั้งหมดของ Brand
+// ดึงสินค้าทั้งหมดของ Brand (list ใช้ select แบบย่อ — ข้อมูลเต็มใช้ getProductById)
 export const getProducts = async (brandId: string) => {
   const products = await prisma.product.findMany({
     where: {
@@ -200,19 +313,39 @@ export const getProducts = async (brandId: string) => {
       brand_id: true,
       name: true,
       category: true,
-      sku: true, 
+      sku: true,
+      gender: true,
+      fabric: true,
+      seasons: true,
+      occasions: true,
       price: true,
       description: true,
       is_active: true,
       created_at: true,
       updated_at: true,
       images: shopProductImageSelect,
+      // list ใช้แค่ metadata ของสี (จัดกลุ่มรูปด้วย images[].color_id)
+      colors: {
+        orderBy: { created_at: "asc" as const },
+        select: {
+          id: true,
+          name: true,
+          hex: true,
+        },
+      },
     },
-    orderBy: {
-      created_at: "desc",
-    },
+    orderBy: [{ created_at: "desc" }, { id: "desc" }],
   });
-  return withShopProductImageUrls(products);
+
+  const resolveUrl = createImageUrlResolver();
+
+  return Promise.all(
+    products.map(async ({ images, colors, ...rest }) => ({
+      ...rest,
+      images: await withShopImageUrls(images, resolveUrl),
+      colors,
+    }))
+  );
 };
 
 // ดึงรายละเอียดสินค้าของ Brand พร้อม URL รูปภาพ
@@ -231,6 +364,10 @@ export const getProductById = async (
       brand_id: true,
       name: true,
       category: true,
+      gender: true,
+      fabric: true,
+      seasons: true,
+      occasions: true,
       price: true,
       description: true,
       sku: true,
@@ -239,7 +376,26 @@ export const getProductById = async (
       updated_at: true,
 
       images: shopProductImageSelect,
-      size_charts: true,
+      colors: shopProductColorSelect,
+      size_chart_id: true,
+      size_chart: {
+        select: {
+          id: true,
+          name: true,
+          gender: true,
+          entries: {
+            orderBy: { category: "asc" },
+            include: {
+              rows: {
+                orderBy: { sort_order: "asc" },
+              },
+            },
+          },
+        },
+      },
+      size_charts: {
+        orderBy: { size: "asc" },
+      },
     },
   });
 
@@ -247,80 +403,202 @@ export const getProductById = async (
     return null;
   }
 
+  // presign ครั้งเดียวต่อ key — รูปชุดเดียวกันถูกอ้างทั้งใน images และ colors[].images
+  const resolveUrl = createImageUrlResolver();
+
   return {
     ...product,
-    images: await withShopImageUrls(product.images),
+    images: await withShopImageUrls(product.images, resolveUrl),
+    colors: await Promise.all(
+      product.colors.map(async (color) => ({
+        ...color,
+        images: await withShopImageUrls(color.images, resolveUrl),
+      }))
+    ),
     };
 };
 
 
-type CreateProductInput = {
-  name: string;
-  category: string;
-  price?: number | null;
-  description?: string | null;
-  sku?: string | null;
-  images: {
-    s3_key: string;
-    sort_order: number;
-    view: "FRONT" | "BACK" | "LEFT" | "RIGHT";
-  }[];
-};
-
-// เพิ่มสินค้า
-export const createProduct = async (
-  brandId: string,
-  data: CreateProductInput
-) => {
-  assertOwnKeys(brandId, data.images);
-  return await prisma.product.create({
-    data: {
-      brand_id: brandId,
-      name: data.name,
-      category: data.category,
-      price: data.price ?? null,
-      description: data.description ?? null,
-      sku: data.sku ?? null,
-     images: {
-        create: data.images.map((image) => ({
-          s3_key: image.s3_key,
-          sort_order: image.sort_order,
-          view: image.view,
-        })),
-      },
-    },
-    include: {
-      images: true,
-    },
-  });
-};
-
-// แก้ไขสินค้า
 type ProductImageInput = {
   s3_key: string;
   sort_order: number;
   view: "FRONT" | "BACK" | "LEFT" | "RIGHT";
+  // ชนิดรูปของสินค้าแบบชุด (เช่น set): SET = รูปรวมทั้งชุด (รูปหลัก)
+  piece?: "SET" | "TOP" | "BOTTOM" | null;
 };
 
+type SizeChartRowInput = {
+  size: string;
+  chest?: number | string | null;
+  waist?: number | string | null;
+  hips?: number | string | null;
+  length?: number | string | null;
+};
+
+type ProductColorInput = {
+  name: string;
+  hex?: string | null;
+  images: ProductImageInput[];
+};
+
+type CreateProductInput = {
+  name: string;
+  category: string;
+  gender?: "UNISEX" | "MALE" | "FEMALE";
+  fabric?: string | null;
+  seasons?: string[];
+  occasions?: string[];
+  price?: number | null;
+  description?: string | null;
+  sku?: string | null;
+  // อ้างอิงตารางไซส์กลางของร้าน (สำคัญกว่า size_chart ถ้าส่งมาพร้อมกัน)
+  size_chart_id?: string | null;
+  size_chart?: SizeChartRowInput[];
+  colors: ProductColorInput[];
+};
+
+// แปลงค่าจาก body เป็น Decimal ที่ Prisma ยอมรับ
+const toDecimal = (value: unknown): Prisma.Decimal | null => {
+  if (value === undefined || value === null || value === "") return null;
+
+  const num = Number(value);
+
+  return Number.isFinite(num) ? new Prisma.Decimal(num) : null;
+};
+
+const sizeChartRowsData = (rows: SizeChartRowInput[]) =>
+  rows
+    .filter((row) => typeof row.size === "string" && row.size.trim())
+    .map((row) => ({
+      size: row.size.trim(),
+      chest: toDecimal(row.chest),
+      waist: toDecimal(row.waist),
+      hips: toDecimal(row.hips),
+      length: toDecimal(row.length),
+    }));
+
+// เพิ่มสินค้า (สร้างสี + รูปต่อสี + ตารางไซส์ ใน transaction เดียว)
+export const createProduct = async (
+  brandId: string,
+  data: CreateProductInput
+) => {
+  const allImages = data.colors.flatMap((color) => color.images);
+  assertOwnKeys(brandId, allImages);
+
+  const productWithDetails = await prisma.$transaction(async (tx) => {
+    const product = await tx.product.create({
+      data: {
+        brand_id: brandId,
+        name: data.name,
+        category: data.category,
+        gender: data.gender,
+        fabric: data.fabric ?? null,
+        seasons: data.seasons ?? [],
+        occasions: data.occasions ?? [],
+        price: data.price ?? null,
+        description: data.description ?? null,
+        sku: data.sku ?? null,
+        // อ้างอิงตารางกลาง (ถ้าไม่มี → ใช้ตารางเฉพาะตัวด้านล่าง)
+        ...(data.size_chart_id && { size_chart_id: data.size_chart_id }),
+        ...(!data.size_chart_id &&
+          data.size_chart &&
+          data.size_chart.length > 0 && {
+            size_charts: {
+              create: sizeChartRowsData(data.size_chart),
+            },
+          }),
+      },
+    });
+
+    for (const color of data.colors) {
+      const createdColor = await tx.productColor.create({
+        data: {
+          product_id: product.id,
+          name: color.name,
+          hex: color.hex ?? null,
+        },
+      });
+
+      for (const image of color.images) {
+        await tx.productImage.create({
+          data: {
+            product_id: product.id,
+            color_id: createdColor.id,
+            s3_key: image.s3_key,
+            sort_order: image.sort_order,
+            view: image.view,
+            piece: image.piece ?? null,
+          },
+        });
+      }
+    }
+
+    return tx.product.findUniqueOrThrow({
+      where: { id: product.id },
+      include: {
+        images: true,
+        colors: {
+          include: {
+            images: true,
+          },
+        },
+        size_chart: {
+          include: {
+            entries: {
+              include: {
+                rows: true,
+              },
+            },
+          },
+        },
+        size_charts: true,
+      },
+    });
+  }, { timeout: 20000, maxWait: 5000 });
+
+  return productWithDetails;
+};
+
+// แก้ไขสินค้า
+export type UpdateProductInput = {
+  name?: string;
+  category?: string;
+  gender?: "UNISEX" | "MALE" | "FEMALE";
+  fabric?: string | null;
+  seasons?: string[];
+  occasions?: string[];
+  price?: number | null;
+  description?: string | null;
+  sku?: string | null;
+  is_active?: boolean;
+  // อ้างอิงตารางกลาง (สำคัญกว่า size_chart ถ้าส่งมาพร้อมกัน)
+  size_chart_id?: string | null;
+};
+
+type UpdateProductPayload = {
+  data: UpdateProductInput;
+  newImages: (ProductImageInput & { color_index: number })[];
+  colors: { id?: string; name: string; hex?: string | null }[];
+  removeImageIds: string[];
+  removeColorIds: string[];
+  size_chart?: SizeChartRowInput[];
+};
 
 export const updateProductWithImages = async (
   brandId: string,
   productId: string,
-  data: {
-    name?: string;
-    category?: string;
-    price?: number | null;
-    description?: string | null;
-    sku?: string | null;
-    is_active?: boolean;
-  },
-  newImages: ProductImageInput[],
-  removeImageIds: string[]
+  payload: UpdateProductPayload
 ) => {
-  const result = await prisma.$transaction(async (tx) => {
+  const { data, newImages, colors, removeImageIds, removeColorIds, size_chart } =
+    payload;
 
-    assertOwnKeys(brandId, newImages);
-     // Lock สินค้าไว้ ป้องกันการแก้ไขพร้อมกัน
+  const result = await prisma.$transaction(
+    async (tx) => {
+    assertOwnKeys(
+      brandId,
+      newImages.map(({ color_index, piece, ...image }) => image)
+    );
+    // Lock สินค้าไว้ ป้องกันการแก้ไขพร้อมกัน
     const locked = await tx.$queryRaw<{ id: string }[]>`
     SELECT id
     FROM products
@@ -332,6 +610,31 @@ export const updateProductWithImages = async (
   if (locked.length === 0) {
     return null;
   }
+
+    // สีที่จะลบ — ตรวจว่าเป็นสีของสินค้านี้จริง (รูปถูก cascade ลบตาม)
+    const colorsToRemove = removeColorIds.length
+      ? await tx.productColor.findMany({
+          where: {
+            id: { in: removeColorIds },
+            product_id: productId,
+          },
+          select: { id: true },
+        })
+      : [];
+
+    if (colorsToRemove.length !== removeColorIds.length) {
+      throw new Error("INVALID_COLOR_IDS");
+    }
+
+    // ลบสี (รูปในสีถูกลบตามด้วย onDelete: Cascade)
+    if (colorsToRemove.length > 0) {
+      await tx.productColor.deleteMany({
+        where: {
+          id: { in: removeColorIds },
+          product_id: productId,
+        },
+      });
+    }
 
     // ค้นหารูปที่ต้องการลบ โดยตรวจสอบว่าเป็นรูปของสินค้านี้จริง
     const imagesToRemove = removeImageIds.length
@@ -369,6 +672,10 @@ export const updateProductWithImages = async (
       data: {
         ...(data.name !== undefined && { name: data.name }),
         ...(data.category !== undefined && { category: data.category }),
+        ...(data.gender !== undefined && { gender: data.gender }),
+        ...(data.fabric !== undefined && { fabric: data.fabric }),
+        ...(data.seasons !== undefined && { seasons: data.seasons }),
+        ...(data.occasions !== undefined && { occasions: data.occasions }),
         ...(data.price !== undefined && { price: data.price }),
         ...(data.description !== undefined && {
           description: data.description,
@@ -377,8 +684,67 @@ export const updateProductWithImages = async (
         ...(data.is_active !== undefined && {
           is_active: data.is_active,
         }),
+        // อ้างอิงตารางกลาง → เคลียร์ตารางเฉพาะตัวเดิมด้วย
+        ...(data.size_chart_id !== undefined && {
+          size_chart_id: data.size_chart_id || null,
+          ...(data.size_chart_id && {
+            size_charts: {
+              deleteMany: {},
+            },
+          }),
+        }),
+        // โหมดตารางเฉพาะตัว: แทนที่ rows ทั้งชุด และเลิกอ้างอิงตารางกลาง
+        ...(size_chart !== undefined && {
+          size_chart_id: null,
+          size_charts: {
+            deleteMany: {},
+            ...(size_chart.length > 0 && {
+              create: sizeChartRowsData(size_chart),
+            }),
+          },
+        }),
       },
     });
+
+    // สร้างสีใหม่ (ไม่มี id) และจำ mapping ตำแหน่ง -> color_id
+    const colorIdByIndex = new Map<number, string>();
+
+    for (const [index, color] of colors.entries()) {
+      if (color.id) {
+        // สีเดิม — ตรวจว่าเป็นสีของสินค้านี้จริง แล้วอัปเดตชื่อ/โค้ดสี
+        const existing = await tx.productColor.findFirst({
+          where: {
+            id: color.id,
+            product_id: productId,
+          },
+          select: { id: true },
+        });
+
+        if (!existing) {
+          throw new Error("INVALID_COLOR_IDS");
+        }
+
+        await tx.productColor.update({
+          where: { id: color.id },
+          data: {
+            name: color.name,
+            ...(color.hex !== undefined ? { hex: color.hex ?? null } : {}),
+          },
+        });
+
+        colorIdByIndex.set(index, color.id);
+      } else {
+        const created = await tx.productColor.create({
+          data: {
+            product_id: productId,
+            name: color.name,
+            hex: color.hex ?? null,
+          },
+        });
+
+        colorIdByIndex.set(index, created.id);
+      }
+    }
 
     // หาลำดับรูปภาพล่าสุด เพื่อเพิ่มรูปใหม่ต่อท้าย
     const lastImage = await tx.productImage.findFirst({
@@ -393,29 +759,38 @@ export const updateProductWithImages = async (
       },
     });
 
-    const startOrder = (lastImage?.sort_order ?? -1) + 1;
+    let startOrder = (lastImage?.sort_order ?? -1) + 1;
 
-    // เพิ่มรูปใหม่
+    // เพิ่มรูปใหม่ (ผูกกับสีตาม color_index)
     const createdImages = [];
 
     for (const [index, image] of newImages.entries()) {
+      const colorId = colorIdByIndex.get(image.color_index);
+
+      if (!colorId) {
+        throw new Error("INVALID_COLOR_INDEX");
+      }
+
       const created = await tx.productImage.create({
         data: {
           product_id: productId,
+          color_id: colorId,
           s3_key: image.s3_key,
           sort_order: startOrder + index,
-          view:image.view,
+          view: image.view,
+          piece: image.piece ?? null,
         },
       });
 
       createdImages.push(created);
+      startOrder += 1;
     }
 
     return {
       deletedKeys: imagesToRemove.map((image) => image.s3_key),
       newImages: createdImages,
     };
-  });
+  }, { timeout: 20000, maxWait: 5000 });
 
   if (!result) {
     return null;
@@ -516,3 +891,50 @@ export const getAdminProductStats = async () => {
   return stats;
 };
 
+//------------------------------------------- ตารางไซส์ standard + ตัวเลือกฤดู/โอกาส
+
+// ตารางไซส์ standard — filter ตาม gender/category ที่ส่งมาได้
+export const getSizeChartTemplates = async (params?: {
+  gender?: "UNISEX" | "MALE" | "FEMALE";
+  category?: string;
+}) => {
+  const templates = await prisma.sizeChartTemplate.findMany({
+    where: {
+      // gender: template ของเพศนั้น + unisex ใช้ได้เสมอ
+      ...(params?.gender && {
+        gender: {
+          in: [params.gender, "UNISEX"],
+        },
+      }),
+      // category: template ของหมวดนั้น + template ที่ไม่ได้ระบุหมวด (ใช้ได้ทุกหมวด)
+      ...(params?.category && {
+        OR: [{ category: params.category }, { category: null }],
+      }),
+    },
+    orderBy: [{ gender: "asc" }, { name: "asc" }],
+    include: {
+      rows: {
+        orderBy: { sort_order: "asc" },
+      },
+    },
+  });
+
+  return templates;
+};
+
+// ชุดตัวเลือกฤดู/โอกาส ที่ใช้งานอยู่
+export const getProductOptions = async () => {
+  const options = await prisma.productOption.findMany({
+    where: { is_active: true },
+    orderBy: [{ type: "asc" }, { sort_order: "asc" }],
+  });
+
+  return {
+    seasons: options
+      .filter((option) => option.type === "SEASON")
+      .map((option) => option.label),
+    occasions: options
+      .filter((option) => option.type === "OCCASION")
+      .map((option) => option.label),
+  };
+};

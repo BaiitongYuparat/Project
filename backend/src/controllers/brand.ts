@@ -5,11 +5,14 @@ import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { s3 } from "../middlewares/upload";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { getImageUrl } from "../utils/s3Utils";
 import {
   assertCanManageMember,
   BrandAccessError,
   getBrandAccess,
 } from "../services/brandAccessService";
+import { sendBrandApprovedEmail } from "../services/emailService";
+import { invalidateBrandAccess } from "../utils/accessCache";
 //สร้าง slug ไว้เป็น url ที่ไม่ซ้ำกัน
 const generateSlug = (brandName: string) => {
   return brandName
@@ -17,6 +20,12 @@ const generateSlug = (brandName: string) => {
     .toLowerCase()
     .replace(/\s+/g, "-")
     .replace(/[^\wก-๙-]/g, "");
+};
+
+// อ่าน slug จาก path param (กัน type string | string[] ของ express 5)
+const slugParam = (req: Request): string | undefined => {
+  const value = req.params.slug;
+  return typeof value === "string" ? value : undefined;
 };
 
 //ตรวจสอบว่าเป็น URL ที่ถูกต้องหรือไม่
@@ -144,7 +153,7 @@ export const deleteBrand = async (req: Request, res: Response) => {
   try {
     const brand = await prisma.brand.findUnique({
       where: { id },
-      select: { id: true, ebiz_registration: true },
+      select: { id: true, ebiz_registration: true, slug: true },
     });
 
     if (!brand) {
@@ -154,6 +163,9 @@ export const deleteBrand = async (req: Request, res: Response) => {
     await prisma.brand.delete({ where: { id } });
     //ลบไฟล์ใน S3
     deleteS3File(brand.ebiz_registration);
+
+    // สิทธิ์เข้าร้านหมดไปพร้อมร้าน — ล้าง cache ทันที
+    invalidateBrandAccess({ slug: brand.slug });
 
     res.status(200).json({ message: "Deleted brand successfully" });
   } catch (error) {
@@ -214,7 +226,7 @@ export const updateBrandStatus = async (req: Request, res: Response) => {
     const result = await prisma.$transaction(async (tx) => {
       const brand = await tx.brand.findUnique({
         where: { id },
-        select: { id: true, email: true, status: true },
+        select: { id: true, email: true, owner_name: true, status: true },
       });
       if (!brand) return null;
 
@@ -230,6 +242,7 @@ export const updateBrandStatus = async (req: Request, res: Response) => {
           store_url: true,
           ebiz_reg_no: true,
           status: true,
+          slug: true,
           created_at: true,
         },
       });
@@ -237,28 +250,47 @@ export const updateBrandStatus = async (req: Request, res: Response) => {
       let ownerLinked = false;
 
       if (status === "APPROVED" && brand.email) {
-        // หา user จากอีเมลที่ใช้สมัครร้าน
-        const user = await tx.user.findUnique({
+        // สร้าง/หาบัญชี Admin จากอีเมลที่ใช้สมัครร้าน (เจ้าของร้านจะ login ฝั่งผู้ดูแลด้วยอีเมลนี้)
+        const admin = await tx.admin.upsert({
           where: { email: brand.email },
-          select: { id: true },
+          update: {},
+          create: {
+            email: brand.email,
+            name: brand.owner_name,
+            role: "SHOP_ADMIN",
+          },
         });
 
-        if (user) {
-          await tx.brandMember.upsert({
-            where: {
-              brand_id_user_id: { brand_id: brand.id, user_id: user.id },
-            },
-            update: { role: "OWNER" },
-            create: { brand_id: brand.id, user_id: user.id, role: "OWNER" },
-          });
-          ownerLinked = true;
-        }
+        // ผูกเป็น OWNER ของร้าน
+        await tx.brandMember.upsert({
+          where: {
+            brand_id_admin_id: { brand_id: brand.id, admin_id: admin.id },
+          },
+          update: { role: "OWNER" },
+          create: { brand_id: brand.id, admin_id: admin.id, role: "OWNER" },
+        });
+        ownerLinked = true;
       }
 
       return { updatedBrand, ownerLinked };
     });
 
     if (!result) return res.status(404).json({ error: "Brand not found" });
+
+    // สถานะร้านเปลี่ยน (อนุมัติ/ปฏิเสธ) → ล้าง cache สิทธิ์ของร้านนี้ทันที
+    if (result.updatedBrand.slug) {
+      invalidateBrandAccess({ slug: result.updatedBrand.slug });
+    }
+
+    // อนุมัติร้าน → ส่งอีเมลตอบกลับถึงร้าน (best-effort — ล้มเหลวไม่กระทบการอนุมัติ)
+    if (status === "APPROVED" && result.updatedBrand.email) {
+      await sendBrandApprovedEmail({
+        to: result.updatedBrand.email,
+        brandName: result.updatedBrand.brand_name,
+        ownerName: result.updatedBrand.owner_name,
+        loginUrl: `${process.env.ADMIN_APP_URL ?? "http://localhost:5174"}/login`,
+      });
+    }
 
     res.status(200).json({
       ...result.updatedBrand,
@@ -273,12 +305,12 @@ export const updateBrandStatus = async (req: Request, res: Response) => {
 
 export const checkBrandAccess = async (req: Request, res: Response) => {
   const slugParam = req.params.slug;
-  const userId = req.user?.id;
-  const userRole = req.user?.role;
+  const adminId = req.admin?.id;
+  const adminRole = req.admin?.role;
 
   try {
-    // ตรวจการ login
-    if (!userId || !userRole) {
+    // ตรวจการ login (ฝั่งผู้ดูแล)
+    if (!adminId || !adminRole) {
       return res.status(401).json({
         error: "Unauthorized",
       });
@@ -294,7 +326,7 @@ export const checkBrandAccess = async (req: Request, res: Response) => {
     // เรียกใช้ Service
     const result = await getBrandAccess(
       slugParam,
-      userId,
+      adminId,
     );
 
     return res.status(200).json({
@@ -325,7 +357,7 @@ export const getAllBrandMembers = async (req: Request, res: Response) => {
         id: true,
         role: true,
         created_at: true,
-        user: { select: { id: true, name: true, email: true } },
+        admin: { select: { id: true, name: true, email: true } },
         brand: { select: { id: true, brand_name: true, status: true } },
       },
       orderBy: [{ brand: { brand_name: "asc" } }, { role: "asc" }, { created_at: "asc" }],
@@ -336,8 +368,8 @@ export const getAllBrandMembers = async (req: Request, res: Response) => {
         id: m.id,
         role: m.role,
         created_at: m.created_at,
-        name: m.user.name,
-        email: m.user.email,
+        name: m.admin.name,
+        email: m.admin.email,
         brand_id: m.brand.id,
         brand_name: m.brand.brand_name,
         brand_status: m.brand.status
@@ -374,7 +406,7 @@ export const getBrandMembers = async (
         id: true,
         role: true,
         created_at: true,
-        user: {
+        admin: {
           select: {
             id: true,
             name: true,
@@ -392,9 +424,9 @@ export const getBrandMembers = async (
       currentRole: req.brand?.role,
       members: members.map((m) => ({
         id: m.id,
-        user_id: m.user.id,
-        name: m.user.name,
-        email: m.user.email,
+        admin_id: m.admin.id,
+        name: m.admin.name,
+        email: m.admin.email,
         role: m.role,
         created_at: m.created_at,
       })),
@@ -447,30 +479,24 @@ export const addBrandMember = async (
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // ค้นหา User จาก Email
-    const user = await prisma.user.findUnique({
+    // สร้าง/หาบัญชี Admin จากอีเมล (เลียนแบบการยอมรับ invite: ผู้ถูกเชิญจะ login ฝั่งผู้ดูแลด้วยอีเมลนี้ได้เลย)
+    const admin = await prisma.admin.upsert({
       where: {
         email: normalizedEmail,
       },
-      select: {
-        id: true,
-        name: true,
-        email: true,
+      update: {},
+      create: {
+        email: normalizedEmail,
+        role: "SHOP_ADMIN",
       },
     });
-
-    if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
-    }
 
     // ตรวจสอบสมาชิกซ้ำ
     const existingMember = await prisma.brandMember.findUnique({
       where: {
-        brand_id_user_id: {
+        brand_id_admin_id: {
           brand_id: brandId,
-          user_id: user.id,
+          admin_id: admin.id,
         },
       },
     });
@@ -485,14 +511,14 @@ export const addBrandMember = async (
     const member = await prisma.brandMember.create({
       data: {
         brand_id: brandId,
-        user_id: user.id,
+        admin_id: admin.id,
         role: BrandMemberRole.ADMIN,
       },
       select: {
         id: true,
         role: true,
         created_at: true,
-        user: {
+        admin: {
           select: {
             id: true,
             name: true,
@@ -502,13 +528,16 @@ export const addBrandMember = async (
       },
     });
 
+    // สิทธิ์ของสมาชิกใหม่เปลี่ยน — ล้าง cache ของเขาสำหรับร้านนี้ทันที
+    invalidateBrandAccess({ slug: slugParam(req), adminId: admin.id });
+
     return res.status(201).json({
       message: "Member added successfully",
       member: {
         id: member.id,
-        user_id: member.user.id,
-        name: member.user.name,
-        email: member.user.email,
+        admin_id: member.admin.id,
+        name: member.admin.name,
+        email: member.admin.email,
         role: member.role,
         created_at: member.created_at,
       },
@@ -555,6 +584,7 @@ export const removeBrandMember = async (
       select: {
         id: true,
         role: true,
+        admin_id: true,
       },
     });
 
@@ -590,6 +620,9 @@ export const removeBrandMember = async (
         id: targetMember.id,
       },
     });
+
+    // สิทธิ์ของสมาชิกที่ถอนเปลี่ยนแล้ว — ล้าง cache ของเขาสำหรับร้านนี้ทันที
+    invalidateBrandAccess({ slug: slugParam(req), adminId: targetMember.admin_id });
 
     return res.status(200).json({
       message: "Member removed successfully",
@@ -637,6 +670,15 @@ export const updateBrandMemberRole = async (
       });
     }
 
+    // [REQ] ห้ามเปลี่ยน role เป็น OWNER ไม่ว่าผู้เรียกจะมี role ใดก็ตาม
+    // การเปลี่ยน OWNER ต้องยื่นคำขอไปยัง Super Admin เท่านั้น (owner-transfer)
+    if (newRole === BrandMemberRole.OWNER) {
+      return res.status(403).json({
+        message:
+          "Cannot change role to OWNER. Ownership transfer must be requested via Super Admin",
+      });
+    }
+
     // ค้นหาเฉพาะสมาชิกในร้านนี้
     const targetMember = await prisma.brandMember.findFirst({
       where: {
@@ -646,6 +688,7 @@ export const updateBrandMemberRole = async (
       select: {
         id: true,
         role: true,
+        admin_id: true,
       },
     });
 
@@ -701,7 +744,7 @@ export const updateBrandMemberRole = async (
         id: true,
         role: true,
         created_at: true,
-        user: {
+        admin: {
           select: {
             id: true,
             name: true,
@@ -711,13 +754,16 @@ export const updateBrandMemberRole = async (
       },
     });
 
+    // role ของสมาชิกเปลี่ยน — ล้าง cache สิทธิ์ของเขาสำหรับร้านนี้ทันที
+    invalidateBrandAccess({ slug: slugParam(req), adminId: targetMember.admin_id });
+
     return res.status(200).json({
       message: "Member role updated successfully",
       member: {
         id: member.id,
-        user_id: member.user.id,
-        name: member.user.name,
-        email: member.user.email,
+        admin_id: member.admin.id,
+        name: member.admin.name,
+        email: member.admin.email,
         role: member.role,
         created_at: member.created_at,
       },
@@ -728,6 +774,190 @@ export const updateBrandMemberRole = async (
 
     return res.status(500).json({
       message: "Failed to update member role",
+    });
+  }
+};
+
+
+//---------------------Store Settings (ข้อมูลร้าน)-------------------------
+
+// ดึงข้อมูลร้านสำหรับ Store Settings (logo_key → signed URL ชื่อ logo_url)
+const getBrandSettingsData = async (brandId: string) => {
+  const brand = await prisma.brand.findUnique({
+    where: { id: brandId },
+    select: {
+      id: true,
+      brand_name: true,
+      slug: true,
+      email: true,
+      phone_number: true,
+      store_url: true,
+      status: true,
+      description: true,
+      address: true,
+      facebook_url: true,
+      instagram_url: true,
+      line_id: true,
+      logo_key: true,
+      created_at: true,
+    },
+  });
+
+  if (!brand) return null;
+
+  const { logo_key, ...rest } = brand;
+  const logo_url = logo_key ? await getImageUrl(logo_key) : null;
+
+  return { ...rest, logo_url };
+};
+
+// GET: ข้อมูลร้านสำหรับหน้า Store Settings
+export const getBrandSettings = async (req: Request, res: Response) => {
+  const brandId = req.brand?.id;
+
+  if (!brandId) {
+    return res.status(403).json({
+      message: "Brand access required",
+    });
+  }
+
+  try {
+    const brand = await getBrandSettingsData(brandId);
+
+    if (!brand) {
+      return res.status(404).json({ message: "Brand not found" });
+    }
+
+    return res.status(200).json(brand);
+  } catch (error) {
+    console.error("getBrandSettings error:", error);
+
+    return res.status(500).json({
+      message: "Failed to fetch brand settings",
+    });
+  }
+};
+
+// PATCH: แก้ข้อมูลร้าน (ชื่อ, เบอร์, ที่อยู่, รายละเอียด, social links, โลโก้)
+// ล็อกไว้: store_url, slug, email และข้อมูลทะเบียน — ห้ามแก้ผ่าน endpoint นี้
+export const updateBrandSettings = async (req: Request, res: Response) => {
+  const brandId = req.brand?.id;
+
+  if (!brandId) {
+    deleteS3File((req.file as Express.MulterS3.File | undefined)?.key ?? null);
+    return res.status(403).json({
+      message: "Brand access required",
+    });
+  }
+
+  const file = req.file as Express.MulterS3.File | undefined;
+  const newLogoKey = file?.key ?? null;
+  const body = req.body ?? {};
+
+  // อ่าน field เป็น string แล้ว trim (ค่าว่าง → null เพื่อเคลียร์ค่า)
+  const readTextField = (value: unknown): string | null | undefined => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  };
+
+  const cleanupAndRespond = (status: number, payload: object) => {
+    deleteS3File(newLogoKey);
+    return res.status(status).json(payload);
+  };
+
+  try {
+    const data: Prisma.BrandUpdateInput = {};
+
+    const brand_name = readTextField(body.brand_name);
+    if (brand_name !== undefined) {
+      if (!brand_name) {
+        return cleanupAndRespond(400, { message: "กรุณากรอกชื่อร้าน", field: "brand_name" });
+      }
+      data.brand_name = brand_name;
+    }
+
+    // field ข้อความทั่วไป (ค่าว่างเคลียร์ได้)
+    for (const field of ["phone_number", "address", "description", "line_id"] as const) {
+      const value = readTextField(body[field]);
+      if (value !== undefined) {
+        data[field] = value;
+      }
+    }
+
+    // facebook / instagram ต้องเป็น http(s) URL เท่านั้น (ถ้ากรอก)
+    for (const field of ["facebook_url", "instagram_url"] as const) {
+      const value = readTextField(body[field]);
+      if (value !== undefined) {
+        if (value && !isValidUrl(value)) {
+          return cleanupAndRespond(400, {
+            message: `${field === "facebook_url" ? "ลิงก์ Facebook" : "ลิงก์ Instagram"} ต้องขึ้นต้นด้วย http:// หรือ https://`,
+            field,
+          });
+        }
+        data[field] = value;
+      }
+    }
+
+    if (!newLogoKey && Object.keys(data).length === 0) {
+      return cleanupAndRespond(400, { message: "ไม่มีข้อมูลที่ต้องการแก้ไข" });
+    }
+
+    // ตรวจชื่อร้านซ้ำ (ยกเว้นร้านตัวเอง)
+    if (brand_name) {
+      const duplicate = await prisma.brand.findFirst({
+        where: { brand_name, NOT: { id: brandId } },
+        select: { id: true },
+      });
+
+      if (duplicate) {
+        return cleanupAndRespond(409, {
+          message: "ชื่อร้านนี้ถูกใช้งานแล้ว กรุณาใช้ชื่ออื่น",
+          field: "brand_name",
+        });
+      }
+    }
+
+    const current = await prisma.brand.findUnique({
+      where: { id: brandId },
+      select: { logo_key: true },
+    });
+
+    if (!current) {
+      return cleanupAndRespond(404, { message: "Brand not found" });
+    }
+
+    if (newLogoKey) {
+      data.logo_key = newLogoKey;
+    }
+
+    await prisma.brand.update({ where: { id: brandId }, data });
+
+    // อัปโหลดโลโก้ใหม่สำเร็จ → ลบโลโก้เก่าใน S3 (กันไฟล์ค้าง)
+    if (newLogoKey && current.logo_key && current.logo_key !== newLogoKey) {
+      deleteS3File(current.logo_key);
+    }
+
+    const brand = await getBrandSettingsData(brandId);
+
+    return res.status(200).json({
+      message: "Store settings updated successfully",
+      brand,
+    });
+  } catch (error) {
+    deleteS3File(newLogoKey);
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return res.status(409).json({
+        message: "ข้อมูลนี้ถูกใช้งานแล้ว",
+        fields: (error.meta?.target as string[]) ?? [],
+      });
+    }
+
+    console.error("updateBrandSettings error:", error);
+
+    return res.status(500).json({
+      message: "Failed to update store settings",
     });
   }
 };

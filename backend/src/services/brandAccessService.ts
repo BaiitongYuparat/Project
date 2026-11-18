@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma";
-import { BrandMemberRole, BrandStatus, UserRole } from "@prisma/client";
+import { BrandMemberRole, BrandStatus } from "@prisma/client";
 
 // กำหนด Error สำหรับส่งสถานะกลับไปให้ Controller
 export class BrandAccessError extends Error {
@@ -21,7 +21,7 @@ export class BrandAccessError extends Error {
  * - ADMIN ห้ามจัดการสมาชิกที่เป็น OWNER ในทุกกรณี
  */
 export const assertCanManageMember = (
-  currentRole: BrandMemberRole | UserRole | undefined,
+  currentRole: BrandMemberRole | undefined,
   targetRole: BrandMemberRole
 ): void => {
   if (
@@ -47,7 +47,7 @@ export const assertCanManageMember = (
 
 export const getBrandAccess = async (
   slug: string,
-  userId: string
+  adminId: string
 ) => {
   const brand = await prisma.brand.findUnique({
     where: { slug },
@@ -58,7 +58,7 @@ export const getBrandAccess = async (
       status: true,
       members: {
         where: {
-          user_id: userId,
+          admin_id: adminId,
           role: {
             in: [BrandMemberRole.OWNER, BrandMemberRole.ADMIN],
           },

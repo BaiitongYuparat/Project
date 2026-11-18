@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { IonIcon } from "@ionic/react";
 import { personOutline, bodyOutline } from "ionicons/icons";
 
 import type { RootState } from "../../../store/store";
-import { analyzeBodyType } from "../../../services/bodyTypeService";
+import { analyzeBodyType, getBodyType } from "../../../services/bodyTypeService";
+import { getBody } from "../../../services/bodyService";
+import { setBody } from "../../../store/bodySlice";
 import { setBodyType } from "../../../store/bodyTypeSlice";
 import Button from "../../../components/Button";
+import { useRequireAuth } from "../../../hooks/useRequireAuth";
 
 const BODY_TYPE_LABELS: Record<string, string> = {
   hourglass: "หุ่นนาฬิกาทราย · Hourglass",
@@ -24,11 +27,50 @@ export default function AIStylistPage() {
   const bodyType = useSelector((state: RootState) => state.bodyType.bodyType);
   const user = useSelector((state: RootState) => state.user.user);
 
+  const requireAuth = useRequireAuth();
+
   const [selectedOccasion, setSelectedOccasion] = useState("ทํางาน");
+  const [pageLoading, setPageLoading] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
   const [analyzeLoading, setAnalyzeLoading] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
 
+  // โหลดข้อมูลสัดส่วนและผลวิเคราะห์ล่าสุดตอนเข้าหน้า — แสดงหน้าจริงเมื่อพร้อม
+  // ยังไม่ login: ข้ามการโหลด แสดงหน้าเริ่มต้นได้เลย (กดใช้งานค่อยเด้งให้ login)
+  const loadPageData = async () => {
+    if (user === null) {
+      setPageLoading(false);
+      return;
+    }
+
+    setPageLoading(true);
+    setPageError(null);
+    try {
+      const body = await getBody();
+      dispatch(setBody(body));
+      try {
+        const bodyType = await getBodyType();
+        dispatch(setBodyType(bodyType));
+      } catch {
+        // ยังไม่มีผลวิเคราะห์ที่บันทึกไว้ — แสดงหน้าเริ่มต้นแทน
+        dispatch(setBodyType(null));
+      }
+    } catch (err: any) {
+      setPageError(
+        err.response?.data?.message ?? "โหลดข้อมูลไม่สําเร็จ กรุณาลองใหม่",
+      );
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPageData();
+  }, []);
+
   const handleAnalyze = async () => {
+    if (!requireAuth()) return;
+
     setAnalyzeLoading(true);
     setAnalyzeError(null);
     try {
@@ -47,6 +89,31 @@ export default function AIStylistPage() {
     <main className="min-h-screen bg-white">
       <div className="mx-auto max-w-[1400px] px-5 py-7 md:px-10 lg:px-14 flex flex-col gap-6">
         {/* Body Type Card */}
+        {pageLoading || pageError ? (
+          <section className="relative overflow-hidden rounded-2xl border border-[#DCC3B3] bg-primary p-6 md:px-8 md:py-7 min-h-[240px] flex flex-col justify-center">
+            {pageLoading ? (
+              <div className="relative z-10 flex flex-col gap-4 animate-pulse">
+                <div className="h-7 w-52 rounded-full bg-white/50" />
+                <div className="h-10 w-72 rounded-lg bg-white/50" />
+                <div className="h-4 w-64 rounded bg-white/50" />
+                <div className="h-4 w-56 rounded bg-white/50" />
+                <div className="h-4 w-80 rounded bg-white/50" />
+                <div className="h-9 w-36 rounded-full bg-white/50" />
+              </div>
+            ) : (
+              <div className="relative z-10 flex flex-col gap-3">
+                <p className="text-sm font-semibold text-[#49352D]">
+                  {pageError}
+                </p>
+                <div className="w-fit">
+                  <Button variant="secondary" size="sm" onClick={loadPageData}>
+                    ลองใหม่
+                  </Button>
+                </div>
+              </div>
+            )}
+          </section>
+        ) : (
         <section className="relative overflow-hidden rounded-2xl border border-[#DCC3B3] bg-primary p-6 md:px-8 md:py-7">
           <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/30 blur-2xl" />
           <div className="absolute -bottom-24 right-1/3 h-56 w-56 rounded-full bg-[#DDBBA6]/30 blur-2xl" />
@@ -124,19 +191,18 @@ export default function AIStylistPage() {
                     : "กรุณากรอกข้อมูลสัดส่วนร่างกายก่อน เพื่อให้ AI วิเคราะห์ Body Type"}
                 </p>
 
-                {body && (
-                  <div className="flex justify-center w-full">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleAnalyze}
-                      disabled={analyzeLoading}
-                      className="rounded-full shadow-lg shadow-[#806B5E]/20 transition-all duration-300 hover:-translate-y-1"
-                    >
-                      {analyzeLoading ? "กําลังวิเคราะห์..." : "วิเคราะห์ใหม่"}
-                    </Button>
-                  </div>
-                )}
+                {/* กดวิเคราะห์ตอนยังไม่ login จะเด้งให้ login ก่อน */}
+                <div className="flex justify-center w-full">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleAnalyze}
+                    disabled={analyzeLoading}
+                    className="rounded-full shadow-lg shadow-[#806B5E]/20 transition-all duration-300 hover:-translate-y-1"
+                  >
+                    {analyzeLoading ? "กําลังวิเคราะห์..." : "วิเคราะห์"}
+                  </Button>
+                </div>
               </div>
             </div>
           )}
@@ -147,6 +213,7 @@ export default function AIStylistPage() {
             </p>
           )}
         </section>
+        )}
 
         {bodyType && (
           <section className="flex gap-2 flex-wrap">

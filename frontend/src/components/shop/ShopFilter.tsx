@@ -12,15 +12,12 @@ export default function ShopFilter({
   onChange,
 }: ShopFilterProps) {
   return (
-    <div className="flex flex-col gap-2">
-      <label className="text-sm text-left font-medium text-gray-700">
-        เลือกร้านค้า
-      </label>
-
+    <div className="relative w-full sm:w-auto">
       <select
         value={selectedShop}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none focus:border-black"
+        aria-label="เลือกร้านค้า"
+        className="w-full appearance-none rounded-full border border-[#DCC3B3] bg-white py-2.5 pl-4 pr-9 text-sm text-[#49352D] outline-none transition focus:border-[#49352D]"
       >
         <option value="all">ทุกร้านค้า</option>
 
@@ -30,6 +27,11 @@ export default function ShopFilter({
           </option>
         ))}
       </select>
+
+      {/* ลูกศรเลือก (เพราะซ่อน arrow เดิมด้วย appearance-none) */}
+      <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-[#947D6D]">
+        ▾
+      </span>
     </div>
   );
 }

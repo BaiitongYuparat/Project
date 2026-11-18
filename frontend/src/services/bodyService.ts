@@ -20,8 +20,8 @@ export async function getBody(): Promise<BodyData> {
 }
 
 export async function createBody(data: BodyData): Promise<BodyData> {
-  const response = await api.post<{ body: BodyData }>("/body", data);
-  return response.data.body;
+  const response = await api.post<BodyData>("/body", data);
+  return response.data;
 }
 
 export async function updateBody(data: BodyData): Promise<BodyData> {

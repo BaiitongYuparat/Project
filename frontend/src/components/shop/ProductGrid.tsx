@@ -14,16 +14,13 @@ export default function ProductGrid({
   onToggleFavorite,
   onTryOn,
 }: ProductGridProps) {
+  // หน้าที่เรียกใช้ (เช่น ShopPage) จัดการ empty state เอง — ไม่มีสินค้าจึงไม่ต้องแสดงอะไร
   if (products.length === 0) {
-    return (
-      <div className="py-20 text-center text-[#947D6D]">
-        ไม่พบสินค้าที่ตรงกับเงื่อนไข
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-7 md:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 md:gap-x-6 md:gap-y-10 lg:grid-cols-4">
       {products.map((product) => (
         <ProductCard
           key={product.id}

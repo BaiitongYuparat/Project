@@ -8,22 +8,18 @@ import {
   logOutOutline,
   menuOutline,
   personOutline,
-  shieldCheckmarkOutline,
-  storefrontOutline,
 } from "ionicons/icons";
 
 import Button from "./Button";
 import type { RootState } from "../store/store";
-import { openLogin, closeSuspended } from "../store/uiSlice";
-import { logout as logoutAction } from "../store/userSlice";
+import { openLogin, closeSuspended } from "../store/uiSlice";import { logout as logoutAction } from "../store/userSlice";
 import { logout as logoutAPI } from "../services/authService";
 
 
 import SuspendedModal from "./SuspendedModal";
+import SuspendedAppealModal from "./SuspendedAppealModal";
 
 // ---------- Styles (ใช้ซ้ำทั้ง desktop และ mobile) ----------
-const sectionLabel =
-  "px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-secondary/50";
 
 const dropdownItem =
   "flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-secondary transition-colors hover:bg-secondary/10 focus:outline-none focus-visible:bg-secondary/10";
@@ -54,32 +50,16 @@ export default function NavBar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  const [suspendedBrand, setSuspendedBrand] = useState<string | null>(null);
-
   const [userSuspendedOpen, setUserSuspendedOpen] = useState(false);
   const suspendedOpen = useSelector((state: RootState) => state.ui.isSuspendedOpen);
 
+  // ทุกหน้าเข้าดูได้โดยไม่ต้อง login — การใช้งานฟีเจอร์ภายในหน้าค่อยเด้งให้ login (useRequireAuth)
   const navLinks = [
-    { name: "Home", path: "/", requireAuth: false },
-    { name: "Try-On", path: "/tryon", requireAuth: false },
-    { name: "AI Stylist", path: "/ai", requireAuth: false },
-    { name: "My Outfit", path: "/my-outfit", requireAuth: true },
+    { name: "Home", path: "/" },
+    { name: "Try-On", path: "/tryon" },
+    { name: "AI Stylist", path: "/ai" },
+    { name: "My Outfit", path: "/my-outfit" },
   ];
-
-  const filteredNavLinks = navLinks.filter(
-    (link) => !link.requireAuth || user !== null
-  );
-
-  // ตรวจสอบสิทธิ์ Dashboard
-  const isSuperAdmin = user?.role === "SUPER_ADMIN";
-
-  const brandMemberships = !isSuperAdmin
-    ? user?.brandMemberships?.filter(
-      (brand) => brand.role === "OWNER" || brand.role === "ADMIN"
-    ) ?? []
-    : [];
-
-  const hasDashboardAccess = isSuperAdmin || brandMemberships.length > 0;
 
   const displayName = user?.name ?? user?.email ?? "User";
 
@@ -139,22 +119,6 @@ export default function NavBar() {
     navigate("/pages/profile");
   };
 
-  // ไปหน้า Dashboard
-  const handleAdminDashboard = () => {
-    closeMenus();
-    navigate("/superadmin");
-  };
-
-
-  const handleShopDashboard = (slug: string, status: string, brandName: string) => {
-    closeMenus();
-    if (status !== "APPROVED") {
-      setSuspendedBrand(brandName);
-      return;
-    }
-    navigate(`/shopadmin/${slug}`);
-  };
-
   useEffect(() => {
     if (user?.status === "suspended") setUserSuspendedOpen(true);
   }, [user]);
@@ -175,7 +139,7 @@ export default function NavBar() {
           className="hidden items-center gap-1 md:flex lg:gap-2"
         >
           {authChecked &&
-            filteredNavLinks.map((link) => (
+            navLinks.map((link) => (
               <NavLink
                 key={link.path}
                 to={link.path}
@@ -233,42 +197,6 @@ export default function NavBar() {
                     Profile
                   </button>
 
-                  {/* Dashboard */}
-                  {hasDashboardAccess && (
-                    <div className="border-t border-secondary/10 pb-1">
-                      <p className={sectionLabel}>Dashboard</p>
-
-                      {isSuperAdmin ? (
-                        <button
-                          onClick={handleAdminDashboard}
-                          className={dropdownItem}
-                        >
-                          <IonIcon
-                            icon={shieldCheckmarkOutline}
-                            className="text-lg"
-                          />
-                          Admin Dashboard
-                        </button>
-                      ) : (
-                        brandMemberships.map((brand) => (
-                          <button
-                            key={brand.slug}
-                            onClick={() => handleShopDashboard(brand.slug, brand.brandStatus, brand.brandName)}
-                            className={dropdownItem}
-                          >
-                            <IonIcon
-                              icon={storefrontOutline}
-                              className="text-lg"
-                            />
-                            <span className="truncate">
-                              {brand.brandName} Dashboard
-                            </span>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
-
                   {/* Logout */}
                   <div className="border-t border-secondary/10">
                     <button
@@ -308,7 +236,7 @@ export default function NavBar() {
           <div className="flex flex-col gap-1">
             {/* Navigation Links */}
             {authChecked &&
-              filteredNavLinks.map((link) => (
+              navLinks.map((link) => (
                 <NavLink
                   key={link.path}
                   to={link.path}
@@ -341,37 +269,6 @@ export default function NavBar() {
                   Profile
                 </button>
 
-                {/* Dashboard */}
-                {hasDashboardAccess && (
-                  <div className="mt-1 border-t border-secondary/10 pt-1">
-                    <p className={sectionLabel}>Dashboard</p>
-
-                    {isSuperAdmin ? (
-                      <button
-                        onClick={handleAdminDashboard}
-                        className={mobileItem}
-                      >
-                        <IonIcon
-                          icon={shieldCheckmarkOutline}
-                          className="text-lg"
-                        />
-                        Admin Dashboard
-                      </button>
-                    ) : (
-                      brandMemberships.map((brand) => (
-                        <button
-                          key={brand.slug}
-                          onClick={() => handleShopDashboard(brand.slug, brand.brandStatus, brand.brandName)}
-                          className={mobileItem}
-                        >
-                          <IonIcon icon={storefrontOutline} className="text-lg" />
-                          <span className="truncate">{brand.brandName} Dashboard</span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-
                 {/* Logout */}
                 <div className="mt-1 border-t border-secondary/10 pt-1">
                   <button
@@ -396,13 +293,15 @@ export default function NavBar() {
           </div>
         </nav>
       )}
-      {suspendedBrand && (
-        <SuspendedModal
-          brandName={suspendedBrand}
-          onClose={() => setSuspendedBrand(null)}
+      {suspendedOpen ? (
+        // ถูกระงับจากหน้า login → แจ้งเตือน + ยื่นคำร้องขอปลดระงับได้
+        <SuspendedAppealModal
+          onClose={() => {
+            dispatch(closeSuspended());
+          }}
         />
-      )}
-      {(userSuspendedOpen || suspendedOpen) && (
+      ) : userSuspendedOpen ? (
+        // ถูกระงับระหว่างใช้งาน (ไม่มี appeal_token) → แจ้งเตือนแบบเดิม
         <SuspendedModal
           title="บัญชีของคุณถูกระงับ"
           onClose={() => {
@@ -411,7 +310,7 @@ export default function NavBar() {
             if (user) handleLogout();
           }}
         />
-      )}
+      ) : null}
     </header>
   );
 }

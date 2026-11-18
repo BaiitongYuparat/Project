@@ -80,6 +80,43 @@ export const uploadClothing = multer({
     },
 });
 
+// Upload รูปโมเดล Try-On (Model Management — ระดับแพลตฟอร์ม ไม่ผูก user/brand)
+export const uploadModelImage = multer({
+  storage: multerS3({
+    s3: s3,
+    bucket: process.env.AWS_S3_BUCKET_NAME!,
+    contentType: multerS3.AUTO_CONTENT_TYPE,
+    // key ไม่มีการเขียนทับเดิม → ให้ browser cache รูปได้ยาว
+    cacheControl: "public, max-age=31536000, immutable",
+    metadata: (req, file, cb) => {
+      cb(null, { fieldName: file.fieldname });
+    },
+    key: (req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(
+        null,
+        `model-images/${Date.now()}_${Math.round(Math.random() * 1e9)}${ext}`
+      );
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png"];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Only JPG or PNG files are allowed"));
+  },
+});
+
+export const uploadModelImageSingle = uploadModelImage.single("image");
+
+// รับรูปโมเดล 4 มุม (หน้า/หลัง/ซ้าย/ขวา) — แต่ละฟิลด์สูงสุด 1 ไฟล์
+export const uploadModelImages = uploadModelImage.fields([
+  { name: "image_front", maxCount: 1 },
+  { name: "image_back", maxCount: 1 },
+  { name: "image_left", maxCount: 1 },
+  { name: "image_right", maxCount: 1 },
+]);
+
 // 4. จัดการ error จาก multer ให้ตอบเป็น JSON
 export const handleUploadError = (
     err: any,
@@ -126,12 +163,54 @@ export const uploadBrandDoc = multer({
 
 export const uploadEbizRegistration = uploadBrandDoc.single("ebiz_registration");
 
+// Upload โลโก้ร้าน (Store Settings) — ต้องผ่าน requireBrandAccess ก่อน จึงมี req.brand
+export const uploadBrandLogo = multer({
+  storage: multerS3({
+    s3: s3,
+    bucket: process.env.AWS_S3_BUCKET_NAME!,
+    contentType: multerS3.AUTO_CONTENT_TYPE,
+    metadata: (req, file, cb) => {
+      cb(null, { fieldName: file.fieldname });
+    },
+    key: (req: any, file, cb) => {
+      const brandId = req.brand?.id;
+
+      if (!brandId) {
+        return cb(new Error("Brand access required"));
+      }
+
+      const sanitizedBrandId = String(brandId)
+        .trim()
+        .replace(/[^a-zA-Z0-9_-]/g, "");
+
+      const ext = path.extname(file.originalname).toLowerCase();
+
+      cb(
+        null,
+        `brand-logos/${sanitizedBrandId}/${Date.now()}_${Math.round(
+          Math.random() * 1e9
+        )}${ext}`
+      );
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Only JPG, PNG or WEBP files are allowed"));
+  },
+});
+
+export const uploadBrandLogoSingle = uploadBrandLogo.single("logo");
+
 // Upload สำหรับ Product Images
 export const uploadProduct = multer({
   storage: multerS3({
     s3: s3,
     bucket: process.env.AWS_S3_BUCKET_NAME!,
     contentType: multerS3.AUTO_CONTENT_TYPE,
+    // key ของรูปสินค้าไม่มีการเขียนทับเดิม → ให้ browser cache รูปได้ยาว
+    cacheControl: "public, max-age=31536000, immutable",
 
     metadata: (req, file, cb) => {
       cb(null, { fieldName: file.fieldname });

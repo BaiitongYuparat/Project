@@ -4,7 +4,11 @@ import {
   getBrandAccess,
   BrandAccessError,
 } from "../services/brandAccessService";
-import { UserRole } from "@prisma/client";
+import {
+  getCachedBrandAccess,
+  setCachedBrandAccess,
+} from "../utils/accessCache";
+import { AdminRole } from "@prisma/client";
 
 export const requireBrandAccess = async (
   req: Request,
@@ -12,18 +16,18 @@ export const requireBrandAccess = async (
   next: NextFunction
 ) => {
   try {
-    const userId = req.user?.id;
-    const userRole = req.user?.role;
+    const adminId = req.admin?.id;
+    const adminRole = req.admin?.role;
     const { slug } = req.params;
 
-    if (!userId || !userRole) {
+    if (!adminId || !adminRole) {
       return res.status(401).json({
         message: "Unauthorized",
       });
     }
 
     // ไม่อนุญาตให้ Super Admin เข้า Shop Dashboard
-    if (userRole === UserRole.SUPER_ADMIN) {
+    if (adminRole === AdminRole.SUPER_ADMIN) {
       return res.status(403).json({
         message: "Super Admin cannot access Brand Dashboard",
       });
@@ -35,10 +39,24 @@ export const requireBrandAccess = async (
       });
     }
 
-    const result = await getBrandAccess(
-      slug,
-      userId,
-    );
+    // ตรวจสิทธิ์เข้าร้าน — ใช้ cache ได้เฉพาะ GET เท่านั้น
+    // mutation ต้อง query สดเสมอ เพราะ req.brand.role ถูกใช้ตัดสินสิทธิ์ใน controller
+    let result =
+      req.method === "GET"
+        ? getCachedBrandAccess(adminId, slug)
+        : undefined;
+
+    if (!result) {
+      result = await getBrandAccess(
+        slug,
+        adminId,
+      );
+
+      // เก็บผลลัพธ์ที่ผ่านแล้ว (getBrandAccess throw ถ้าไม่ผ่าน — ไม่ cache กรณีถูกปฏิเสธ)
+      if (req.method === "GET") {
+        setCachedBrandAccess(adminId, slug, result);
+      }
+    }
 
     // แนบข้อมูล Brand และ Role ให้ Controller ใช้ต่อ
     req.brand = {

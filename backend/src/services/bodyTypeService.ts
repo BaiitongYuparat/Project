@@ -7,7 +7,7 @@ interface BodyMeasurements {
     chest: number;
     waist: number;
     hips: number;
-    gender?: string;
+    gender: "MALE" | "FEMALE";
 }
 
 export const analyzeBodyType = async (
@@ -26,10 +26,9 @@ export const analyzeBodyType = async (
                     `- Chest: ${chest} inches\n` +
                     `- Waist: ${waist} inches\n` +
                     `- Hips: ${hips} inches\n` +
-                    `- Gender: ${gender ?? "unspecified"}\n\n` +
+                    `- Gender: ${gender}\n\n` +
                     `For FEMALE: classify as hourglass, pear, apple, rectangle, or inverted_triangle.\n` +
                     `For MALE: classify as rectangle, inverted_triangle, oval, or trapezoid.\n` +
-                    `For UNSPECIFIED: use universal classification.\n` +
                     `Focus mainly on chest/waist/hips ratio to determine body type.\n` +
                     `Provide a short description in Thai explaining the body type characteristics and clothing recommendations.`,
             },

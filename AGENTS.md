@@ -9,7 +9,8 @@ Open-platform virtual try-on (VTO) product: brands register via the web app, sho
 | Path | App | Notes |
 | --- | --- | --- |
 | `backend/` | Express + Prisma (PostgreSQL) REST API | Gemini AI, AWS S3, JWT + Google OAuth |
-| `frontend/` | Web app (React 19 + Vite + Ionic) | shopper, shop admin, super admin surfaces |
+| `frontend/` | Web app ฝั่งลูกค้า (React 19 + Vite + Ionic) | shopper เท่านั้น — port 5173 |
+| `admin-frontend/` | Web app ฝั่งผู้ดูแลแยก (React 19 + Vite) | shop admin + super admin, login ที่ `/login` — port 5174 |
 | `myapp/` | Expo / React Native app | see `myapp/AGENTS.md` for Expo rules |
 
 ## Per-area rules

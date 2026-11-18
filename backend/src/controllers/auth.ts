@@ -1,7 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import { Request, Response } from "express";
 import { OAuth2Client } from "google-auth-library";
-import { signToken } from "../../lib/jwt";
+import { signToken, signAppealToken, APPEAL_TOKEN_TTL_MS } from "../../lib/jwt";
 
 const googleClient = new OAuth2Client();
 
@@ -19,50 +19,38 @@ const cookieOptions = {
 
 const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
-const getUserWithBrands = async (userId: string) => {
+// ข้อมูลคำร้องล่าสุดของ user (ใช้แสดงแจ้งเตือนบนหน้า login เมื่อบัญชีถูกระงับ)
+const getLatestAppeal = async (userId: string) => {
+  const appeal = await prisma.appeal.findFirst({
+    where: { user_id: userId },
+    orderBy: { created_at: "desc" },
+    select: {
+      id: true,
+      status: true,
+      admin_note: true,
+      created_at: true,
+      decided_at: true,
+    },
+  });
+  return appeal;
+};
+
+// ข้อมูล shopper (ไม่รวมบทบาทผู้ดูแล — admin ถูกแยกไปตาราง Admin และ login ที่ /admin-auth แล้ว)
+const getSafeUser = async (userId: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
       id: true,
       email: true,
       name: true,
-      role: true,
       status: true,
-      
-
-      brandMembers: {
-        select: {
-          role: true,
-          brand: {
-            select: {
-              id: true,
-              brand_name: true,
-              status: true,
-              slug: true,
-            },
-          },
-        },
-      },
+      gender: true,
     },
   });
 
   if (!user) return null;
 
-  return {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role,
-     status: user.status,
-
-    brandMemberships: user.brandMembers.map((member) => ({
-      brandId: member.brand.id,
-      brandName: member.brand.brand_name,
-      brandStatus: member.brand.status,
-      role: member.role,
-      slug: member.brand.slug,
-    })),
-  };
+  return user;
 };
 
 export const logingoogle = async (req: Request, res: Response) => {
@@ -107,9 +95,21 @@ export const logingoogle = async (req: Request, res: Response) => {
       }
 
       if (user.status === "suspended") {
+        // ออก appeal_token อายุสั้น (ใช้ยื่น/ดูคำร้องได้เท่านั้น) พร้อมสถานะคำร้องล่าสุด
+        const latestAppeal = await getLatestAppeal(user.id);
+        const appealToken = signAppealToken(user.id);
+
+        res.cookie("appeal_token", appealToken, {
+          ...cookieOptions,
+          maxAge: APPEAL_TOKEN_TTL_MS,
+        });
+
         return res.status(403).json({
           message: "Account suspended",
           code: "USER_SUSPENDED",
+          appeal: latestAppeal,
+          // สำหรับแอปมือถือที่เก็บ cookie ไม่ได้
+          ...(req.body.platform === "mobile" ? { appealToken } : {}),
         });
       }
       if (user.status !== "active") {
@@ -117,7 +117,7 @@ export const logingoogle = async (req: Request, res: Response) => {
       }
 
       const token = signToken(user.id);
-      const safeUser = await getUserWithBrands(user.id);
+      const safeUser = await getSafeUser(user.id);
       if (!safeUser) {
         return res.status(404).json({
           message: "User not found",
@@ -156,7 +156,7 @@ export const getCurrentUser = async (
       });
     }
 
-    const user = await getUserWithBrands(req.user.id);
+    const user = await getSafeUser(req.user.id);
 
     if (!user) {
       return res.status(404).json({

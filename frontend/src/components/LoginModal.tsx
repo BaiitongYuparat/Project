@@ -3,7 +3,12 @@ import { loginWithGoogle } from "../services/authService";
 import { useState } from "react";
 import { useDispatch } from 'react-redux'
 import { login } from "../store/userSlice";
-import { closeLogin, openSuspended } from "../store/uiSlice";
+import {
+  closeLogin,
+  openSuspended,
+  setSuspendedAppeal,
+} from "../store/uiSlice";
+import type { AppealSummary } from "../types/appeal";
 import type { User } from "../types/user";
 
 type LoginModalProps = {
@@ -25,6 +30,9 @@ export default function LoginModal({ onLoginSuccess }: LoginModalProps) {
     } catch (error: any) {
       console.log("Login Failed", error);
       if (error?.response?.data?.code === "USER_SUSPENDED") {
+        // เก็บสถานะคำร้องล่าสุดจาก backend (null ถ้ายังไม่เคยยื่น) เพื่อแสดงแจ้งเตือนใน modal
+        const appeal = (error.response.data.appeal ?? null) as AppealSummary | null;
+        dispatch(setSuspendedAppeal(appeal));
         dispatch(closeLogin());
         dispatch(openSuspended());
       }

@@ -19,9 +19,9 @@ enum BrandStatus {
   REJECTED
 }
 
-enum UserRole {
-  SUPER_ADMIN
-  USER
+enum AdminRole {
+  SUPER_ADMIN // ผู้ดูแลระบบแพลตฟอร์ม
+  SHOP_ADMIN // ผู้ดูแลร้าน (OWNER/ADMIN ของร้าน)
 }
 
 enum TryOnStatus {
@@ -33,6 +33,13 @@ enum TryOnStatus {
 enum BrandMemberRole {
   OWNER //เจ้าของร้าน
   ADMIN //แอดมินลูกน้องเจ้าของร้าน
+}
+
+// สถานะคำขอเปลี่ยน OWNER ของร้าน — OWNER ยื่นแจ้ง Super Admin แล้วรอตัดสิน
+enum OwnerTransferRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum InviteStatus {
@@ -48,6 +55,26 @@ enum ProductImageQualityStatus {
   FAILED
 }
 
+// เพศของสินค้า (แยกจาก enum Gender ของ User/Model)
+enum ProductGender {
+  UNISEX
+  MALE
+  FEMALE
+}
+
+// ชนิดรูปของสินค้าแบบชุด (เช่น set): SET = รูปรวมทั้งชุด (รูปหลัก), TOP/BOTTOM = รูปแยกท่อน
+enum ProductPiece {
+  SET
+  TOP
+  BOTTOM
+}
+
+// ประเภทตัวเลือกของสินค้าที่ super admin จัดการค่าได้
+enum ProductOptionType {
+  SEASON
+  OCCASION
+}
+
 enum ImageView {
   FRONT
   BACK
@@ -55,29 +82,73 @@ enum ImageView {
   RIGHT
 }
 
+// บัญชีฝั่งผู้ดูแล (Super Admin + เจ้าของ/แอดมินร้าน) — แยกตารางออกจาก User เพื่อแยกระบบ login
+model Admin {
+  id         String    @id @default(uuid())
+  googleId   String?   @unique
+  name       String?
+  email      String    @unique
+  status     String    @default("active")
+  role       AdminRole @default(SHOP_ADMIN)
+  created_at DateTime  @default(now()) @db.Timestamp(6)
+
+  // Brand
+  brandMembers     BrandMember[]
+  sentBrandInvites BrandInvite[] @relation("BrandInviteInviter")
+  sentOwnerTransferRequests       OwnerTransferRequest[] @relation("OwnerTransferRequestedBy")
+  decidedOwnerTransferRequests    OwnerTransferRequest[] @relation("OwnerTransferDecidedBy")
+
+  @@map("Admin")
+}
+
 model User {
-  id           String        @id @default(uuid())
-  googleId     String?       @unique
+  id           String   @id @default(uuid())
+  googleId     String?  @unique
   name         String?
-  email        String        @unique
-  status       String        @default("active")
-  role         UserRole      @default(USER)
-  created_at   DateTime      @default(now()) @db.Timestamp(6)
+  email        String   @unique
+  status       String   @default("active")
+  created_at   DateTime @default(now()) @db.Timestamp(6)
   gender       Gender?
   body         Body[]
   userConsents UserConsent[]
   bodyType     BodyType?
+  appeals      Appeal[]
 
   // Brand
-  brandMembers     BrandMember[]
-  brandCustomers   BrandCustomer[]
-  sentBrandInvites BrandInvite[]   @relation("BrandInviteInviter")
+  brandCustomers BrandCustomer[]
 
   // Analytics
   tryOnLogs     TryOnLog[]
   productClicks ProductClick[]
 
   @@map("User")
+}
+
+// สถานะคำร้องขอปลดระงับบัญชี
+enum AppealStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// คำร้องขอปลดระงับ — shopper ยื่นผ่านหน้า login หลังบัญชีถูกระงับ
+// (อนุมัติโดย Super Admin แล้วบัญชีจะถูกปลดระงับอัตโนมัติ)
+model Appeal {
+  id         String       @id @default(uuid())
+  user_id    String
+  title      String
+  message    String // เหตุผลที่ขอปลดระงับ
+  status     AppealStatus @default(PENDING)
+  admin_note String? // คำตอบของ Super Admin
+  decided_by String? // id ของ Admin ที่ตัดสิน
+  decided_at DateTime?    @db.Timestamp(6)
+  created_at DateTime     @default(now()) @db.Timestamp(6)
+  updated_at DateTime     @updatedAt @db.Timestamp(6)
+  user       User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([status])
+  @@map("appeals")
 }
 
 model Body {
@@ -150,6 +221,15 @@ model Brand {
   slug              String?     @unique
   ebiz_reg_no       String? // เลขทะเบียนพาณิชย์อิเล็กทรอนิกส์
   ebiz_registration String? // ไฟล์ทะเบียนพาณิชย์ (URL ใน S3)
+
+  // ข้อมูลร้านสำหรับหน้า Store Settings (แก้ได้โดย OWNER/ADMIN ของร้าน)
+  logo_key          String? // โลโก้ร้าน (S3 key — ส่งออกเป็น signed URL ชื่อ logo_url)
+  description       String? // รายละเอียดร้าน
+  address           String? // ที่อยู่ร้าน
+  facebook_url      String?
+  instagram_url     String?
+  line_id           String?
+
   status            BrandStatus @default(PENDING)
   created_at        DateTime    @default(now()) @db.Timestamp(6)
   updated_at        DateTime    @updatedAt @db.Timestamp(6)
@@ -160,9 +240,100 @@ model Brand {
   customers     BrandCustomer[]
   tryOnLogs     TryOnLog[]
   productClicks ProductClick[]
+  sizeCharts    BrandSizeChart[]
+  ownerTransferRequests OwnerTransferRequest[]
 
   @@index([status])
   @@map("brands")
+}
+
+// ตารางไซส์ standard ของแพลตฟอร์ม (ให้ร้านเลือกมาแก้ต่อได้)
+model SizeChartTemplate {
+  id       String                 @id @default(uuid())
+  name     String
+  gender   ProductGender          @default(UNISEX)
+  category String? // top / bottom / dress (null = ใช้ได้ทุกหมวด)
+  rows     SizeChartTemplateRow[]
+
+  @@index([gender, category])
+  @@map("size_chart_templates")
+}
+
+// แถวของตารางไซส์ standard
+model SizeChartTemplateRow {
+  id          String            @id @default(uuid())
+  template_id String
+  size        String // XS, S, M, L, XL
+  chest       Decimal?          @db.Decimal(5, 2)
+  waist       Decimal?          @db.Decimal(5, 2)
+  hips        Decimal?          @db.Decimal(5, 2)
+  length      Decimal?          @db.Decimal(5, 2)
+  sort_order  Int               @default(0)
+  template    SizeChartTemplate @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  @@unique([template_id, size])
+  @@index([template_id, sort_order])
+  @@map("size_chart_template_rows")
+}
+
+// ตารางไซส์กลางของร้าน (collection) — สินค้าอ้างอิงแบบสด
+model BrandSizeChart {
+  id         String                @id @default(uuid())
+  brand_id   String
+  name       String
+  gender     ProductGender         @default(UNISEX)
+  // ตารางไซส์เดียว (Free Size) — ยอมให้แต่ละ entry มี 0–1 แถว (size = FREESIZE, ตัววัดใส่ได้)
+  is_freesize Boolean              @default(false)
+  created_at DateTime              @default(now()) @db.Timestamp(6)
+  updated_at DateTime              @updatedAt @db.Timestamp(6)
+  brand      Brand                 @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  entries    BrandSizeChartEntry[]
+  products   Product[]
+
+  @@unique([brand_id, name])
+  @@index([brand_id])
+  @@map("brand_size_charts")
+}
+
+// ตารางของ 1 category ภายใน collection
+model BrandSizeChartEntry {
+  id       String                    @id @default(uuid())
+  chart_id String
+  category String // top / bottom / dress
+  chart    BrandSizeChart            @relation(fields: [chart_id], references: [id], onDelete: Cascade)
+  rows     BrandSizeChartEntryRow[]
+
+  @@unique([chart_id, category])
+  @@map("brand_size_chart_entries")
+}
+
+// แถวไซส์ของ 1 category ใน collection
+model BrandSizeChartEntryRow {
+  id         String              @id @default(uuid())
+  entry_id   String
+  size       String
+  chest      Decimal?            @db.Decimal(5, 2)
+  waist      Decimal?            @db.Decimal(5, 2)
+  hips       Decimal?            @db.Decimal(5, 2)
+  length     Decimal?            @db.Decimal(5, 2)
+  sort_order Int                 @default(0)
+  entry      BrandSizeChartEntry @relation(fields: [entry_id], references: [id], onDelete: Cascade)
+
+  @@unique([entry_id, size])
+  @@index([entry_id, sort_order])
+  @@map("brand_size_chart_entry_rows")
+}
+
+// ชุดตัวเลือกฤดู/โอกาส ที่ super admin แก้ได้ (ไม่ hardcode ใน frontend)
+model ProductOption {
+  id         String            @id @default(uuid())
+  type       ProductOptionType
+  label      String
+  is_active  Boolean           @default(true)
+  sort_order Int               @default(0)
+
+  @@unique([type, label])
+  @@map("product_options")
 }
 
 //สินค้าในร้านค้า
@@ -171,6 +342,10 @@ model Product {
   brand_id    String
   name        String
   category    String
+  gender      ProductGender      @default(UNISEX)
+  fabric      String? // เนื้อผ้า (ร้านกรอกเอง)
+  seasons     String[]           @default([]) // ฤดู (multi-select)
+  occasions   String[]           @default([]) // โอกาส (multi-select)
   price       Decimal?           @db.Decimal(10, 2)
   description String?
   sku String?
@@ -178,13 +353,17 @@ model Product {
   created_at  DateTime           @default(now()) @db.Timestamp(6)
   updated_at  DateTime           @updatedAt @db.Timestamp(6)
   brand       Brand              @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  size_chart_id String? // อ้างอิงตารางไซส์กลางของร้าน (null = ใช้ตารางเฉพาะตัว)
+  size_chart  BrandSizeChart?    @relation(fields: [size_chart_id], references: [id], onDelete: SetNull)
   size_charts ProductSizeChart[]
+  colors      ProductColor[]
   images      ProductImage[]
 
   tryOnLogs TryOnLog[]
   clicks    ProductClick[]
 
-  @@index([brand_id])
+  // (brand_id) เดิมถูกแทนที่ด้วย composite (brand_id, created_at) — sort ตอน list ใช้ index เดียวกัน
+  @@index([brand_id, created_at])
   @@index([category])
   @@unique([brand_id, sku])
   @@map("products")
@@ -205,34 +384,53 @@ model ProductSizeChart {
   @@map("product_size_charts")
 }
 
-// รูปภาพของสินค้า
+// สีของสินค้า (1 product มีได้หลายสี, แต่ละสีมีรูปของตัวเอง)
+model ProductColor {
+  id         String   @id @default(uuid())
+  product_id String
+  name       String // เช่น Black, Beige
+  hex        String? // โค้ดสี เช่น #000000
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  product    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  images     ProductImage[]
+
+  @@index([product_id])
+  @@map("product_colors")
+}
+
+// รูปภาพของสินค้า (ผูกกับสี — color_id = null คือรูปเดิมก่อนมีระบบสี)
 model ProductImage {
   id             String                    @id @default(uuid())
   product_id     String
+  color_id       String?
   quality_status ProductImageQualityStatus @default(PENDING)
   quality_reason String?
   view            ImageView
+  piece           ProductPiece?
   s3_key         String
   sort_order     Int                       @default(0)
   uploaded_at    DateTime                  @default(now()) @db.Timestamp(6)
+  last_checked_at DateTime?                 @db.Timestamp(6)
   product        Product                   @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  color          ProductColor?             @relation(fields: [color_id], references: [id], onDelete: Cascade)
 
   @@index([product_id, quality_status])
+  @@index([color_id])
   @@map("product_images")
 }
 
 model BrandMember {
   id         String          @id @default(uuid())
   brand_id   String
-  user_id    String
+  admin_id   String
   role       BrandMemberRole @default(ADMIN)
   created_at DateTime        @default(now()) @db.Timestamp(6)
 
   brand Brand @relation(fields: [brand_id], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  admin Admin @relation(fields: [admin_id], references: [id], onDelete: Cascade)
 
-  @@unique([brand_id, user_id])
-  @@index([user_id])
+  @@unique([brand_id, admin_id])
+  @@index([admin_id])
 @@map("brand_members")
 }
 
@@ -248,7 +446,7 @@ model BrandInvite {
   created_at DateTime        @default(now()) @db.Timestamp(6)
 
   brand   Brand @relation(fields: [brand_id], references: [id], onDelete: Cascade)
-  inviter User  @relation("BrandInviteInviter", fields: [invited_by], references: [id], onDelete: Restrict)
+  inviter Admin @relation("BrandInviteInviter", fields: [invited_by], references: [id], onDelete: Restrict)
 
   @@index([brand_id, status])
   @@index([email])
@@ -271,6 +469,30 @@ model BrandCustomer {
   @@index([brand_id, last_seen_at])
   @@index([brand_id, first_seen_at])
   @@map("brand_customers")
+}
+
+// คำขอเปลี่ยน OWNER ของร้าน — OWNER ปัจจุบันยื่นระบุอีเมลใหม่ → Super Admin อนุมัติ
+// (อนุมัติแล้วระบบเปลี่ยนอีเมลใหม่เป็น OWNER และ owner เดิมเป็น ADMIN ใน transaction เดียว)
+// ร้านมีคำขอสถานะ PENDING ได้ครั้งละ 1 (enforce ใน controller)
+model OwnerTransferRequest {
+  id                      String                     @id @default(uuid())
+  brand_id                String
+  current_owner_member_id String // BrandMember id ของ owner ผู้ยื่น (ตอนอนุมัติจะถูก demote เป็น ADMIN)
+  current_owner_email     String
+  new_owner_email         String
+  status                  OwnerTransferRequestStatus @default(PENDING)
+  requested_by            String // Admin id ผู้ยื่น
+  decided_by              String? // Admin id ผู้ตัดสิน (Super Admin)
+  decided_at              DateTime?                  @db.Timestamp(6)
+  created_at              DateTime                   @default(now()) @db.Timestamp(6)
+
+  brand     Brand  @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  requester Admin  @relation("OwnerTransferRequestedBy", fields: [requested_by], references: [id], onDelete: Restrict)
+  decider   Admin? @relation("OwnerTransferDecidedBy", fields: [decided_by], references: [id], onDelete: SetNull)
+
+  @@index([brand_id, status])
+  @@index([status])
+  @@map("owner_transfer_requests")
 }
 
 model TryOnLog {
@@ -314,9 +536,14 @@ model Model {
   id              String   @id @default(uuid())
   name            String
   gender          Gender?
-  body_type       String
+  bust            Decimal? @db.Decimal(5, 2) // รอบอก (ซม.)
+  waist           Decimal? @db.Decimal(5, 2) // รอบเอว (ซม.)
+  hips            Decimal? @db.Decimal(5, 2) // รอบสะโพก (ซม.)
   height          Decimal  @db.Decimal(5, 2)
-  image_url       String
+  image_front     String   // รูปด้านหน้า (บังคับ)
+  image_back      String?  // รูปด้านหลัง
+  image_left      String?  // รูปด้านซ้าย
+  image_right     String?  // รูปด้านขวา
   supported_sizes String[] @default([])
   is_active       Boolean  @default(true)
   is_selectable   Boolean  @default(true)
@@ -325,7 +552,6 @@ model Model {
   updated_at DateTime @updatedAt @db.Timestamp(6)
 
   @@index([gender])
-  @@index([body_type])
   @@index([is_active, is_selectable])
   @@map("try_on_models")
 }
@@ -340,4 +566,3 @@ model BodyType {
 
   @@map("body_type")
 }
-

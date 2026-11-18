@@ -6,18 +6,24 @@ import {
   updateBrandStatus,
    getAllBrandMembers
 } from "../controllers/brand";
-import { authMiddleware } from "../middlewares/auth";
+import { adminAuthMiddleware } from "../middlewares/adminAuth";
 import { requireSuperAdmin } from "../middlewares/requireSuperAdmin";
-import { getModels } from "../controllers/model";
+import { getModels, createModel, updateModel, updateModelStatus, deleteModel } from "../controllers/model";
+import { uploadModelImages, handleUploadError } from "../middlewares/upload";
 import {
   getAdminProductsController,
   getAdminProductStatsController,
 } from "../controllers/product";
-import { deleteUser , updateUserStatus  } from "../controllers/user";
+import { deleteUser , updateUserStatus , getUsers } from "../controllers/user";
+import { getAppeals, decideAppeal } from "../controllers/appeal";
+import {
+  getOwnerTransferRequests,
+  decideOwnerTransferRequest,
+} from "../controllers/ownerTransfer";
 const router = Router();
 
-// ทุก Route ต้องเป็น Super Admin
-router.use(authMiddleware, requireSuperAdmin);
+// ทุก Route ต้องเป็น Super Admin (session ฝั่ง Admin — cookie admin_token)
+router.use(adminAuthMiddleware, requireSuperAdmin);
 
 // Brand Management
 router.get("/brands", getBrands);
@@ -28,11 +34,25 @@ router.delete("/brands/:id", deleteBrand);
 
 // Model Management
 router.get("/models", getModels);
+router.post("/models", uploadModelImages, handleUploadError, createModel);
+router.put("/models/:id", uploadModelImages, handleUploadError, updateModel);
+router.put("/models/:id/status", updateModelStatus);
+router.delete("/models/:id", deleteModel);
 router.get("/products/stats", getAdminProductStatsController); // ต้องมาก่อน /products/:id ถ้าเพิ่มทีหลัง
 router.get("/products", getAdminProductsController);
 
+// User Management (shopper)
+router.get("/users", getUsers);
 router.delete("/users/:id", deleteUser);
 router.put("/users/:id/status", updateUserStatus);
+
+// Appeals (คำร้องขอปลดระงับบัญชี shopper)
+router.get("/appeals", getAppeals);
+router.post("/appeals/:id/decision", decideAppeal);
+
+// Owner Transfer Requests (คำขอเปลี่ยน OWNER ของร้าน)
+router.get("/owner-transfer-requests", getOwnerTransferRequests);
+router.post("/owner-transfer-requests/:id/decision", decideOwnerTransferRequest);
 
 
 

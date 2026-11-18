@@ -29,7 +29,8 @@ export const updateUser = async (id: string, data: Partial<Pick<User, "email" | 
 }
 
 export const getUsers = async (): Promise<User[]> => {
-  const res = await api.get("/user");
+  // Super Admin ดึงรายชื่อ shopper ผ่าน API ฝั่งผู้ดูแล (session admin_token)
+  const res = await api.get("/admin/users");
   return res.data;
 };
 
