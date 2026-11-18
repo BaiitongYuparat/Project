@@ -20,6 +20,8 @@ import { login, logout as logoutAction, setAuthChecked } from "../../store/userS
 import type { RootState } from "../../store/store";
 import { useDispatch, useSelector } from "react-redux";
 import { getMe } from "../../service/userservice"
+import { openSuspended } from "../../store/uiSlice";
+import SuspendedAppealModal from "./SuspendedAppealModal";
 
 
 type AuthContextType = {
@@ -117,7 +119,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         pendingAction?.() //ทำงานต่อจากที่ผู้ใช้ ใช้ค้างไว้
       }
       setPendingAction(null)
-    } catch (error) {
+    } catch (error: any) {
+      const data = error?.response?.data;
+      if (data?.code === "USER_SUSPENDED") {
+        // บัญชีถูกระงับ → ปิด popup login แล้วเปิด popup แจ้งเตือน + ยื่นคำร้อง (เหมือนเว็บ)
+        setVisible(false);
+        setPendingAction(null);
+        dispatch(openSuspended({ appealToken: data.appealToken ?? null, appeal: data.appeal ?? null }));
+        return;
+      }
       console.error("LOGIN ERROR:", error);
       Alert.alert("เกิดข้อผิดพลาด", "ไม่สามารถเข้าสู่ระบบได้");
     } finally {
@@ -130,6 +140,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{ isLoggedIn, requireAuth, authChecked, logout }}>
       {children}
+      {/* บัญชีถูกระงับ — เปิดจาก login (USER_SUSPENDED) หรือ api interceptor (403 ระหว่างใช้งาน) */}
+      <SuspendedAppealModal onLoginAgain={() => setVisible(true)} />
       <Modal
         visible={visible}
         transparent

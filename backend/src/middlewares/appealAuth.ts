@@ -12,7 +12,8 @@ export const appealAuthMiddleware = async (
     next: NextFunction
 ) => {
     try {
-        const token = req.cookies?.appeal_token;
+        // เว็บใช้ cookie / แอปมือถือเก็บ cookie ไม่ได้ → ส่งมาทาง header x-appeal-token แทน
+        const token = req.cookies?.appeal_token ?? req.header("x-appeal-token");
 
         if (!token || typeof token !== "string") {
             return res.status(401).json({

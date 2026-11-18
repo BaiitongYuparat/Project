@@ -44,7 +44,15 @@
           }
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "แอปต้องการเข้าถึงคลังรูปภาพเพื่ออัปโหลดรูปร่างกายสำหรับการลองชุดด้วย AI",
+          "cameraPermission": "แอปต้องการใช้กล้องเพื่อถ่ายรูปร่างกายสำหรับการลองชุดด้วย AI",
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

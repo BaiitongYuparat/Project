@@ -126,35 +126,41 @@ const assertOwnKeys = (brandId: string, images: { s3_key: string}[]) => {
 
 
 //------------------------------------------- Public (สำหรับลูกค้า)
+
+// เงื่อนไขสินค้าที่ลูกค้ามองเห็นได้ — ใช้ร่วมกันระหว่าง list ปกติกับรายการโปรด
+const PUBLIC_PRODUCT_WHERE = {
+  is_active: true,
+  brand: {
+    status: "APPROVED",
+  },
+  // สินค้าจะถูกแสดงหากมีอย่างน้อย 1 รูปผ่าน QC (แสดงเฉพาะรูปที่ PASSED)
+  images: {
+    some: { quality_status: "PASSED" },
+  },
+} satisfies Prisma.ProductWhereInput;
+
+const publicProductSelect = {
+  id: true,
+  brand_id: true,
+  name: true,
+  category: true,
+  price: true,
+  description: true,
+  created_at: true,
+  images: publicProductImageSelect,
+  brand: {
+    select: {
+      brand_name: true,
+      slug: true,
+    },
+  },
+} satisfies Prisma.ProductSelect;
+
 // ดึงสินค้าทั้งหมดที่ลูกค้าสามารถมองเห็นได้
 export const getPublicProducts = async () => {
   const products = await prisma.product.findMany({
-    where: {
-      is_active: true,
-      brand: {
-        status: "APPROVED",
-      },
-      // สินค้าจะถูกแสดงหากมีอย่างน้อย 1 รูปผ่าน QC (แสดงเฉพาะรูปที่ PASSED)
-      images: {
-        some: { quality_status: "PASSED" },
-      }
-    },
-    select: {
-      id: true,
-      brand_id: true,
-      name: true,
-      category: true,
-      price: true,
-      description: true,
-      created_at: true,
-      images: publicProductImageSelect,
-      brand: {
-        select: {
-          brand_name: true,
-          slug: true,
-        },
-      },
-    },
+    where: PUBLIC_PRODUCT_WHERE,
+    select: publicProductSelect,
     orderBy: [
       { created_at: "desc" },
       { id: "desc" },
@@ -162,6 +168,30 @@ export const getPublicProducts = async () => {
   });
 
   return withProductImageUrls(products);
+};
+
+// ตรวจว่าสินค้ายังมองเห็นได้จากฝั่งลูกค้าหรือไม่ (ใช้ตอนกดรายการโปรด)
+export const isPublicProductVisible = async (productId: string) => {
+  const product = await prisma.product.findFirst({
+    where: { id: productId, ...PUBLIC_PRODUCT_WHERE },
+    select: { id: true },
+  });
+
+  return !!product;
+};
+
+// ดึงรายการโปรดของผู้ใช้ (เรียงตามเวลาที่กดล่าสุด) — เฉพาะสินค้าที่ยังมองเห็นได้
+export const getFavoriteProducts = async (userId: string) => {
+  const favorites = await prisma.favorite.findMany({
+    where: {
+      user_id: userId,
+      product: PUBLIC_PRODUCT_WHERE,
+    },
+    orderBy: { created_at: "desc" },
+    select: { product: { select: publicProductSelect } },
+  });
+
+  return withProductImageUrls(favorites.map((favorite) => favorite.product));
 };
 
 // ดึงรายละเอียดสินค้า 1 รายการ (สำหรับหน้า ProductDetail ฝั่งลูกค้า)

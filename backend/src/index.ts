@@ -18,6 +18,7 @@ import publicRoutes from "./routes/publicRoutes";
 import adminRoutes from "./routes/adminRoutes";
 import appealRoutes from "./routes/appealRoutes";
 import aiReportRoutes from "./routes/aiReportRoutes";
+import favoriteRoutes from "./routes/favoriteRoutes";
 
 const app = express();
 app.use(express.json());
@@ -32,6 +33,8 @@ app.use("/user", authMiddleware, userRoutes);
 app.use("/auth", authRoutes);
 app.use("/admin-auth", adminAuthRoutes);
 app.use("/body", authMiddleware, bodyRoutes);
+// รายการโปรด (แทน localStorage เดิมของเว็บ — ใช้ร่วมกับแอป)
+app.use("/favorites", authMiddleware, favoriteRoutes);
 app.use("/images", authMiddleware, imageRoutes);
 app.use("/clothings", authMiddleware, clothingRoutes);
 app.use("/userconsent", authMiddleware, userconsentRoutes);

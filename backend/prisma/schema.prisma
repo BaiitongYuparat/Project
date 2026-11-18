@@ -93,21 +93,21 @@ model Admin {
   created_at DateTime  @default(now()) @db.Timestamp(6)
 
   // Brand
-  brandMembers     BrandMember[]
-  sentBrandInvites BrandInvite[] @relation("BrandInviteInviter")
-  sentOwnerTransferRequests       OwnerTransferRequest[] @relation("OwnerTransferRequestedBy")
-  decidedOwnerTransferRequests    OwnerTransferRequest[] @relation("OwnerTransferDecidedBy")
+  brandMembers                 BrandMember[]
+  sentBrandInvites             BrandInvite[]          @relation("BrandInviteInviter")
+  sentOwnerTransferRequests    OwnerTransferRequest[] @relation("OwnerTransferRequestedBy")
+  decidedOwnerTransferRequests OwnerTransferRequest[] @relation("OwnerTransferDecidedBy")
 
   @@map("Admin")
 }
 
 model User {
-  id           String   @id @default(uuid())
-  googleId     String?  @unique
+  id           String        @id @default(uuid())
+  googleId     String?       @unique
   name         String?
-  email        String   @unique
-  status       String   @default("active")
-  created_at   DateTime @default(now()) @db.Timestamp(6)
+  email        String        @unique
+  status       String        @default("active")
+  created_at   DateTime      @default(now()) @db.Timestamp(6)
   gender       Gender?
   body         Body[]
   userConsents UserConsent[]
@@ -121,6 +121,9 @@ model User {
   // Analytics
   tryOnLogs     TryOnLog[]
   productClicks ProductClick[]
+
+  // รายการโปรด (ใช้ร่วมกันทั้งเว็บและแอป)
+  favorites Favorite[]
 
   @@map("User")
 }
@@ -170,20 +173,20 @@ enum AiReportStatus {
 
 // รายงานปัญหาการใช้ AI — shopper ยื่นจากเมนูโปรไฟล์ (Navbar)
 model AiReport {
-  id         String            @id @default(uuid())
+  id         String           @id @default(uuid())
   user_id    String
   category   AiReportCategory
   title      String
   message    String
   page_url   String? // หน้าที่พบปัญหา (auto จาก frontend)
   image_url  String? // ภาพหน้าจอประกอบ (S3)
-  status     AiReportStatus    @default(PENDING)
+  status     AiReportStatus   @default(PENDING)
   admin_note String? // คำตอบ/บันทึกของ Super Admin
   handled_by String? // id ของ Admin ที่จัดการ
-  handled_at DateTime?         @db.Timestamp(6)
-  created_at DateTime          @default(now()) @db.Timestamp(6)
-  updated_at DateTime          @updatedAt @db.Timestamp(6)
-  user       User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  handled_at DateTime?        @db.Timestamp(6)
+  created_at DateTime         @default(now()) @db.Timestamp(6)
+  updated_at DateTime         @updatedAt @db.Timestamp(6)
+  user       User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([status])
@@ -251,35 +254,35 @@ model Clothing {
 
 // ร้านค้า
 model Brand {
-  id                String      @id @default(uuid())
-  brand_name        String      @unique
+  id                String  @id @default(uuid())
+  brand_name        String  @unique
   owner_name        String
-  email             String?     @unique
+  email             String? @unique
   phone_number      String?
-  store_url         String?     @unique
-  slug              String?     @unique
+  store_url         String? @unique
+  slug              String? @unique
   ebiz_reg_no       String? // เลขทะเบียนพาณิชย์อิเล็กทรอนิกส์
   ebiz_registration String? // ไฟล์ทะเบียนพาณิชย์ (URL ใน S3)
 
   // ข้อมูลร้านสำหรับหน้า Store Settings (แก้ได้โดย OWNER/ADMIN ของร้าน)
-  logo_key          String? // โลโก้ร้าน (S3 key — ส่งออกเป็น signed URL ชื่อ logo_url)
-  description       String? // รายละเอียดร้าน
-  address           String? // ที่อยู่ร้าน
-  facebook_url      String?
-  instagram_url     String?
-  line_id           String?
+  logo_key      String? // โลโก้ร้าน (S3 key — ส่งออกเป็น signed URL ชื่อ logo_url)
+  description   String? // รายละเอียดร้าน
+  address       String? // ที่อยู่ร้าน
+  facebook_url  String?
+  instagram_url String?
+  line_id       String?
 
-  status            BrandStatus @default(PENDING)
-  created_at        DateTime    @default(now()) @db.Timestamp(6)
-  updated_at        DateTime    @updatedAt @db.Timestamp(6)
-  products          Product[]
+  status     BrandStatus @default(PENDING)
+  created_at DateTime    @default(now()) @db.Timestamp(6)
+  updated_at DateTime    @updatedAt @db.Timestamp(6)
+  products   Product[]
 
-  members       BrandMember[]
-  invites       BrandInvite[]
-  customers     BrandCustomer[]
-  tryOnLogs     TryOnLog[]
-  productClicks ProductClick[]
-  sizeCharts    BrandSizeChart[]
+  members               BrandMember[]
+  invites               BrandInvite[]
+  customers             BrandCustomer[]
+  tryOnLogs             TryOnLog[]
+  productClicks         ProductClick[]
+  sizeCharts            BrandSizeChart[]
   ownerTransferRequests OwnerTransferRequest[]
 
   @@index([status])
@@ -317,17 +320,17 @@ model SizeChartTemplateRow {
 
 // ตารางไซส์กลางของร้าน (collection) — สินค้าอ้างอิงแบบสด
 model BrandSizeChart {
-  id         String                @id @default(uuid())
-  brand_id   String
-  name       String
-  gender     ProductGender         @default(UNISEX)
+  id          String                @id @default(uuid())
+  brand_id    String
+  name        String
+  gender      ProductGender         @default(UNISEX)
   // ตารางไซส์เดียว (Free Size) — ยอมให้แต่ละ entry มี 0–1 แถว (size = FREESIZE, ตัววัดใส่ได้)
-  is_freesize Boolean              @default(false)
-  created_at DateTime              @default(now()) @db.Timestamp(6)
-  updated_at DateTime              @updatedAt @db.Timestamp(6)
-  brand      Brand                 @relation(fields: [brand_id], references: [id], onDelete: Cascade)
-  entries    BrandSizeChartEntry[]
-  products   Product[]
+  is_freesize Boolean               @default(false)
+  created_at  DateTime              @default(now()) @db.Timestamp(6)
+  updated_at  DateTime              @updatedAt @db.Timestamp(6)
+  brand       Brand                 @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  entries     BrandSizeChartEntry[]
+  products    Product[]
 
   @@unique([brand_id, name])
   @@index([brand_id])
@@ -336,10 +339,10 @@ model BrandSizeChart {
 
 // ตารางของ 1 category ภายใน collection
 model BrandSizeChartEntry {
-  id       String                    @id @default(uuid())
+  id       String                   @id @default(uuid())
   chart_id String
   category String // top / bottom / dress
-  chart    BrandSizeChart            @relation(fields: [chart_id], references: [id], onDelete: Cascade)
+  chart    BrandSizeChart           @relation(fields: [chart_id], references: [id], onDelete: Cascade)
   rows     BrandSizeChartEntryRow[]
 
   @@unique([chart_id, category])
@@ -377,34 +380,35 @@ model ProductOption {
 
 //สินค้าในร้านค้า
 model Product {
-  id          String             @id @default(uuid())
-  brand_id    String
-  name        String
-  category    String
-  gender      ProductGender      @default(UNISEX)
-  fabric      String? // เนื้อผ้า (ร้านกรอกเอง)
-  seasons     String[]           @default([]) // ฤดู (multi-select)
-  occasions   String[]           @default([]) // โอกาส (multi-select)
-  price       Decimal?           @db.Decimal(10, 2)
-  description String?
-  sku String?
-  is_active   Boolean            @default(true)
-  created_at  DateTime           @default(now()) @db.Timestamp(6)
-  updated_at  DateTime           @updatedAt @db.Timestamp(6)
-  brand       Brand              @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  id            String             @id @default(uuid())
+  brand_id      String
+  name          String
+  category      String
+  gender        ProductGender      @default(UNISEX)
+  fabric        String? // เนื้อผ้า (ร้านกรอกเอง)
+  seasons       String[]           @default([]) // ฤดู (multi-select)
+  occasions     String[]           @default([]) // โอกาส (multi-select)
+  price         Decimal?           @db.Decimal(10, 2)
+  description   String?
+  sku           String?
+  is_active     Boolean            @default(true)
+  created_at    DateTime           @default(now()) @db.Timestamp(6)
+  updated_at    DateTime           @updatedAt @db.Timestamp(6)
+  brand         Brand              @relation(fields: [brand_id], references: [id], onDelete: Cascade)
   size_chart_id String? // อ้างอิงตารางไซส์กลางของร้าน (null = ใช้ตารางเฉพาะตัว)
-  size_chart  BrandSizeChart?    @relation(fields: [size_chart_id], references: [id], onDelete: SetNull)
-  size_charts ProductSizeChart[]
-  colors      ProductColor[]
-  images      ProductImage[]
+  size_chart    BrandSizeChart?    @relation(fields: [size_chart_id], references: [id], onDelete: SetNull)
+  size_charts   ProductSizeChart[]
+  colors        ProductColor[]
+  images        ProductImage[]
 
   tryOnLogs TryOnLog[]
   clicks    ProductClick[]
+  favorites Favorite[]
 
+  @@unique([brand_id, sku])
   // (brand_id) เดิมถูกแทนที่ด้วย composite (brand_id, created_at) — sort ตอน list ใช้ index เดียวกัน
   @@index([brand_id, created_at])
   @@index([category])
-  @@unique([brand_id, sku])
   @@map("products")
 }
 
@@ -425,12 +429,12 @@ model ProductSizeChart {
 
 // สีของสินค้า (1 product มีได้หลายสี, แต่ละสีมีรูปของตัวเอง)
 model ProductColor {
-  id         String   @id @default(uuid())
+  id         String         @id @default(uuid())
   product_id String
   name       String // เช่น Black, Beige
   hex        String? // โค้ดสี เช่น #000000
-  created_at DateTime @default(now()) @db.Timestamp(6)
-  product    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  created_at DateTime       @default(now()) @db.Timestamp(6)
+  product    Product        @relation(fields: [product_id], references: [id], onDelete: Cascade)
   images     ProductImage[]
 
   @@index([product_id])
@@ -439,19 +443,19 @@ model ProductColor {
 
 // รูปภาพของสินค้า (ผูกกับสี — color_id = null คือรูปเดิมก่อนมีระบบสี)
 model ProductImage {
-  id             String                    @id @default(uuid())
-  product_id     String
-  color_id       String?
-  quality_status ProductImageQualityStatus @default(PENDING)
-  quality_reason String?
+  id              String                    @id @default(uuid())
+  product_id      String
+  color_id        String?
+  quality_status  ProductImageQualityStatus @default(PENDING)
+  quality_reason  String?
   view            ImageView
   piece           ProductPiece?
-  s3_key         String
-  sort_order     Int                       @default(0)
-  uploaded_at    DateTime                  @default(now()) @db.Timestamp(6)
+  s3_key          String
+  sort_order      Int                       @default(0)
+  uploaded_at     DateTime                  @default(now()) @db.Timestamp(6)
   last_checked_at DateTime?                 @db.Timestamp(6)
-  product        Product                   @relation(fields: [product_id], references: [id], onDelete: Cascade)
-  color          ProductColor?             @relation(fields: [color_id], references: [id], onDelete: Cascade)
+  product         Product                   @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  color           ProductColor?             @relation(fields: [color_id], references: [id], onDelete: Cascade)
 
   @@index([product_id, quality_status])
   @@index([color_id])
@@ -470,7 +474,7 @@ model BrandMember {
 
   @@unique([brand_id, admin_id])
   @@index([admin_id])
-@@map("brand_members")
+  @@map("brand_members")
 }
 
 model BrandInvite {
@@ -571,6 +575,21 @@ model ProductClick {
   @@map("product_clicks")
 }
 
+// รายการโปรดของ shopper — ใช้ร่วมกันทั้งเว็บและแอป (แทน localStorage เดิมของเว็บ)
+model Favorite {
+  id         String   @id @default(uuid())
+  user_id    String
+  product_id String
+  created_at DateTime @default(now()) @db.Timestamp(6)
+
+  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, product_id])
+  @@index([user_id, created_at])
+  @@map("favorites")
+}
+
 model Model {
   id              String   @id @default(uuid())
   name            String
@@ -579,10 +598,10 @@ model Model {
   waist           Decimal? @db.Decimal(5, 2) // รอบเอว (ซม.)
   hips            Decimal? @db.Decimal(5, 2) // รอบสะโพก (ซม.)
   height          Decimal  @db.Decimal(5, 2)
-  image_front     String   // รูปด้านหน้า (บังคับ)
-  image_back      String?  // รูปด้านหลัง
-  image_left      String?  // รูปด้านซ้าย
-  image_right     String?  // รูปด้านขวา
+  image_front     String // รูปด้านหน้า (บังคับ)
+  image_back      String? // รูปด้านหลัง
+  image_left      String? // รูปด้านซ้าย
+  image_right     String? // รูปด้านขวา
   supported_sizes String[] @default([])
   is_active       Boolean  @default(true)
   is_selectable   Boolean  @default(true)
@@ -597,11 +616,11 @@ model Model {
 
 model BodyType {
   id          String   @id @default(uuid())
-  user_id     String   @unique  
-  body_type   String    
-  description String?  
+  user_id     String   @unique
+  body_type   String
+  description String?
   analyzed_at DateTime @default(now()) @db.Timestamp(6)
-  user        User     @relation(fields: [user_id], references: [id] ,onDelete: Cascade)
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("body_type")
 }

@@ -167,6 +167,9 @@ export default function Appeals() {
                 prev.map((a) => (a.id === updated.id ? updated : a))
             );
             setSelected(null);
+            // เด้งไปแท็บตามผลการตัดสิน (อนุมัติแล้ว / ปฏิเสธแล้ว) ให้เห็นรายการที่เพิ่งตัดสิน
+            setTab(decision);
+            setQuery("");
             // ตัดสินแล้ว → ให้ badge ใน sidebar อัปเดตทันที
             dispatch(fetchPendingCounts());
             showToast(

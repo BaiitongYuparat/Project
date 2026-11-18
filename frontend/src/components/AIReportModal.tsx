@@ -135,33 +135,32 @@ function AIReportDialog() {
         className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 border-b border-secondary/10 px-6 py-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-xl text-secondary">
-              <IonIcon icon={alertCircleOutline} />
-            </span>
-            <div className="min-w-0">
-              <h2
-                id="ai-report-title"
-                className="truncate text-lg font-semibold text-secondary"
-              >
-                แจ้งภาพที่ AI สร้างผิดพลาด
-              </h2>
-              <p className="mt-0.5 text-sm text-secondary/60">
-                แอดมินจะตรวจสอบ หากอนุมัติจะคืน 1 เครดิตให้คุณ
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={close}
-            disabled={submitting}
-            aria-label="ปิดหน้าต่าง"
-            className="rounded-lg p-1.5 text-2xl text-secondary/60 transition-colors hover:bg-secondary/10 hover:text-secondary disabled:opacity-40"
-          >
-            <IonIcon icon={closeOutline} />
-          </button>
-        </div>
+       <div className="relative border-b border-secondary/10 px-6 pb-4 pt-6">
+  <button
+    type="button"
+    onClick={close}
+    disabled={submitting}
+    aria-label="ปิดหน้าต่าง"
+    className="absolute right-4 top-4 rounded-lg p-1.5 text-2xl text-secondary/60 transition-colors hover:bg-secondary/10 hover:text-secondary disabled:opacity-40"
+  >
+    <IonIcon icon={closeOutline} />
+  </button>
+
+  <div className="flex flex-col items-center text-center">
+    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl text-secondary">
+      <IonIcon icon={alertCircleOutline} />
+    </span>
+    <h2
+      id="ai-report-title"
+      className="mt-3 text-lg font-semibold text-secondary"
+    >
+      แจ้งภาพที่ AI สร้างผิดพลาด
+    </h2>
+    <p className="mt-1 text-sm text-secondary/60">
+      แอดมินจะตรวจสอบ หากอนุมัติจะคืน 1 เครดิตให้คุณ
+    </p>
+  </div>
+</div>
 
         {/* Body */}
         {submitted ? (

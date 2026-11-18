@@ -20,6 +20,7 @@ import {
   heartOutline,
   imageOutline,
   searchOutline,
+  alertCircleOutline
 } from "ionicons/icons";
 import HeroBannerCarousel from "../../../components/shop/HeroBannerCarousel";
 
@@ -261,8 +262,11 @@ export default function ShopPage() {
       <main className="min-h-screen bg-white">
         <div className="mx-auto flex min-h-[70vh] max-w-[1400px] items-center justify-center px-5">
           <div className="w-full max-w-sm rounded-2xl border border-secondary/20 bg-white p-10 text-center shadow-sm">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-2xl">
-              ⚠️
+            <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-primary text-secondary">
+              <IonIcon
+                icon={alertCircleOutline}
+                className="block h-7 w-7 leading-none"
+              />
             </div>
 
             <h2 className="mb-2 text-lg font-semibold text-secondary">
@@ -462,8 +466,8 @@ export default function ShopPage() {
 
         {filteredProducts.length === 0 && (
           <div className="rounded-2xl border border-dashed border-[#DCC3B3] bg-white py-16 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary text-3xl">
-              🔍
+            <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-primary text-secondary">
+              <IonIcon icon={searchOutline} className="block h-8 w-8 leading-none" />
             </div>
 
             <p className="text-base font-semibold text-secondary">
