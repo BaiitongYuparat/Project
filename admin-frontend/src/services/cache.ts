@@ -117,6 +117,10 @@ export const cachedQuery = async <T>(
 export const peekCache = <T>(key: string): CacheEntry<T> | undefined =>
   store.get(key) as CacheEntry<T> | undefined;
 
+// request ที่กำลังยิงอยู่ของ key (ถ้ามี) — ใช้รอผล refetch เบื้องหลังหลังได้ข้อมูลเก่าไปแสดงแล้ว
+export const pendingQuery = (key: string): Promise<unknown> | undefined =>
+  inFlight.get(key);
+
 // invalidate ทุก key ที่ขึ้นต้นด้วย prefix
 // keepStale = เก็บข้อมูลเก่าไว้แสดงระหว่าง refetch (ใช้หลัง mutation กัน skeleton กลับมาหน้า list)
 // ไม่ keepStale = ลบทิ้ง (ใช้ตอน logout / เปลี่ยนบัญชี)

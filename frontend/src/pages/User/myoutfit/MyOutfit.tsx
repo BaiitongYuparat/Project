@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
 import type { Product } from "../../../services/productService";
 import { getProducts } from "../../../services/productService";
 import { useFavorites } from "../../../context/useFavorites";
 import { useRequireAuth } from "../../../hooks/useRequireAuth";
+import type { RootState } from "../../../store/store";
+import { removeLook, type SavedLook } from "../../../store/tryonSlice";
 
+import SavedLooks from "../../../components/tryon/SavedLooks";
 import OutfitSkeleton from "../../../components/myoutfit/OutfitSkeleton";
 import SavedOutfits from "../../../components/myoutfit/SavedOutfits";
 import TryOnHistory from "../../../components/myoutfit/TryOnHistory";
@@ -17,8 +21,12 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["key"];
 
+const NO_LOOKS: SavedLook[] = [];
+
 export default function MyOutfitPage() {
   const [tab, setTab] = useState<TabKey>("saved");
+  // แท็บย่อยใน "ที่บันทึกไว้"
+  const [savedView, setSavedView] = useState<"products" | "looks">("products");
   const [products, setProducts] = useState<Product[]>([]);
   // แท็บล่าสุดที่โหลดข้อมูลเสร็จแล้ว (null = ยังไม่เคยโหลด)
   const [loadedTab, setLoadedTab] = useState<TabKey | null>(null);
@@ -26,6 +34,10 @@ export default function MyOutfitPage() {
   const { favorites, toggleFavorite } = useFavorites();
 
   const requireAuth = useRequireAuth();
+  const dispatch = useDispatch();
+  const user = useSelector((state: RootState) => state.user.user);
+  const looks =
+    useSelector((state: RootState) => (user ? state.tryon.looksByUser[user.id] : undefined)) ?? NO_LOOKS;
 
   // โหลดข้อมูลของแท็บปัจจุบัน (กัน race condition ด้วย cancelled flag)
   useEffect(() => {
@@ -73,6 +85,12 @@ export default function MyOutfitPage() {
 
     // ไปหน้า Try-On Studio พร้อมเลือกสินค้าชิ้นนี้ไว้ให้
     navigate("/tryon", { state: { productId: product.id } });
+  };
+
+  // ใช้ลุคที่บันทึกไว้ → ไปหน้า Try-On แล้วโหลดลุคนั้นให้
+  const handleApplyLook = (look: SavedLook) => {
+    if (!requireAuth()) return;
+    navigate("/tryon", { state: { lookId: look.id } });
   };
 
   const handleToggleFavorite = (productId: string) => {
@@ -130,12 +148,52 @@ export default function MyOutfitPage() {
           {isLoading ? (
             <OutfitSkeleton />
           ) : tab === "saved" ? (
-            <SavedOutfits
-              products={favoriteProducts}
-              favorites={favorites}
-              onToggleFavorite={handleToggleFavorite}
-              onTryOn={handleTryOn}
-            />
+            <div className="flex flex-col gap-6">
+              <div role="tablist" aria-label="ประเภทที่บันทึกไว้" className="inline-flex w-fit gap-1 rounded-full bg-secondary/5 p-1">
+                {(
+                  [
+                    { key: "products", label: "สินค้า" },
+                    { key: "looks", label: "ลุค" },
+                  ] as const
+                ).map((v) => {
+                  const active = savedView === v.key;
+                  return (
+                    <button
+                      key={v.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setSavedView(v.key)}
+                      className={`rounded-full px-5 py-1.5 text-sm font-semibold transition ${
+                        active ? "bg-white text-secondary shadow-sm" : "text-secondary/60 hover:text-secondary"
+                      }`}
+                    >
+                      {v.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {savedView === "products" ? (
+                <SavedOutfits
+                  products={favoriteProducts}
+                  favorites={favorites}
+                  onToggleFavorite={handleToggleFavorite}
+                  onTryOn={handleTryOn}
+                />
+              ) : user ? (
+                <SavedLooks
+                  bare
+                  looks={looks}
+                  products={products}
+                  onApply={handleApplyLook}
+                  onRemove={(look) => dispatch(removeLook({ userId: user.id, lookId: look.id }))}
+                  emptyMessage="ยังไม่มีลุคที่บันทึกไว้ สร้างภาพในหน้า Try-On แล้วกด “บันทึกเป็นลุค/ชุด”"
+                />
+              ) : (
+                <div className="py-20 text-center text-secondary/60">เข้าสู่ระบบเพื่อดูลุคที่บันทึกไว้</div>
+              )}
+            </div>
           ) : (
             <TryOnHistory />
           )}

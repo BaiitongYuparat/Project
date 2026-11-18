@@ -4,14 +4,15 @@ import { useFavorites } from "../../context/useFavorites";
 import type { Product } from "../../services/productService";
 import { colorOf, formatBaht, garmentImage, hasView, productPrice, slotOf, type Angle, type ColorSelection } from "./types";
 
-type Tab = "top" | "bottom" | "full" | "accessory" | "favorite";
+type Tab = "top" | "bottom" | "dress" | "set" | "accessory" | "favorite";
 type GenderFilter = "ALL" | "MALE" | "FEMALE" | "UNISEX";
 type Sort = "default" | "price-asc" | "price-desc";
 
 const TABS: { value: Tab; label: string }[] = [
   { value: "top", label: "เสื้อ" },
   { value: "bottom", label: "กระโปรง/กางเกง" },
-  { value: "full", label: "ชุด" },
+  { value: "dress", label: "เดรส" },
+  { value: "set", label: "ชุดเซ็ต" },
   { value: "accessory", label: "เครื่องประดับ" },
   { value: "favorite", label: "ถูกใจ" },
 ];
@@ -28,6 +29,15 @@ const SORTS: { value: Sort; label: string }[] = [
   { value: "price-asc", label: "ราคาต่ำ → สูง" },
   { value: "price-desc", label: "ราคาสูง → ต่ำ" },
 ];
+
+/** แท็บของสินค้า — เดรสกับชุดเซ็ต (set) แยกแท็บกัน แต่ใช้ช่องบนตัวร่วมกัน (slot "full") */
+const tabOf = (product: Product): Exclude<Tab, "favorite"> | null => {
+  const category = product.category?.trim().toLowerCase();
+  if (category === "dress") return "dress";
+  if (category === "set") return "set";
+  const slot = slotOf(product.category);
+  return slot === "full" ? null : slot;
+};
 
 const genderOf = (product: Product): Exclude<GenderFilter, "ALL"> =>
   product.gender === "MALE" || product.gender === "FEMALE" ? product.gender : "UNISEX";
@@ -77,7 +87,7 @@ export default function GarmentPicker({ products, error, selectedIds, onToggle, 
     [usable],
   );
 
-  const inTab = (p: Product, t: Tab) => (t === "favorite" ? favorites.includes(p.id) : slotOf(p.category) === t);
+  const inTab = (p: Product, t: Tab) => (t === "favorite" ? favorites.includes(p.id) : tabOf(p) === t);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -96,10 +106,10 @@ export default function GarmentPicker({ products, error, selectedIds, onToggle, 
 
   // จำนวนชิ้นที่เลือกแล้วในแต่ละหมวด (แสดงบนแท็บ)
   const selectedCount = useMemo(() => {
-    const counts: Record<Tab, number> = { top: 0, bottom: 0, full: 0, accessory: 0, favorite: 0 };
+    const counts: Record<Tab, number> = { top: 0, bottom: 0, dress: 0, set: 0, accessory: 0, favorite: 0 };
     for (const p of usable) {
       if (!selectedIds.includes(p.id)) continue;
-      const t = slotOf(p.category);
+      const t = tabOf(p);
       if (t) counts[t]++;
       if (favorites.includes(p.id)) counts.favorite++;
     }

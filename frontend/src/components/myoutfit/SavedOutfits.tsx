@@ -17,7 +17,7 @@ export default function SavedOutfits({
   if (products.length === 0) {
     return (
       <div className="py-20 text-center text-secondary/60">
-        ยังไม่มีชุดที่บันทึกไว้
+        ยังไม่มีสินค้าที่บันทึกไว้
       </div>
     );
   }

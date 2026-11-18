@@ -12,13 +12,17 @@ interface Props {
   disabled?: boolean;
   onApply: (look: SavedLook) => void;
   onRemove: (look: SavedLook) => void;
+  /** ซ่อนหัวข้อ/ระยะห่างด้านบน — ใช้เมื่อมีหัวข้อหรือแท็บอยู่แล้ว */
+  bare?: boolean;
+  /** ข้อความเมื่อไม่มีลุค (ไม่ส่ง = ไม่แสดงอะไรเลย) */
+  emptyMessage?: string;
 }
 
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("th-TH", { dateStyle: "medium" });
 
 /** รายการลุค/ชุดที่บันทึกไว้ — ภาพขอ URL ใหม่จาก backend ทุกครั้ง (URL เก่าหมดอายุ) */
-export default function SavedLooks({ looks, products, disabled = false, onApply, onRemove }: Props) {
+export default function SavedLooks({ looks, products, disabled = false, onApply, onRemove, bare = false, emptyMessage }: Props) {
   // resultId → URL ภาพ; null = โหลดไม่ได้/ภาพไม่อยู่แล้ว
   const [images, setImages] = useState<Record<string, string | null>>({});
 
@@ -36,14 +40,16 @@ export default function SavedLooks({ looks, products, disabled = false, onApply,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [looks]);
 
-  if (looks.length === 0) return null;
+  if (looks.length === 0) {
+    return emptyMessage ? <div className="py-20 text-center text-secondary/60">{emptyMessage}</div> : null;
+  }
 
   const nameOf = (id: string) => products?.find((p) => p.id === id)?.name;
 
   return (
-    <section className="mt-8">
-      <h2 className="text-xl font-semibold text-[#332F29]">ลุคที่บันทึกไว้</h2>
-      <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+    <section className={bare ? "" : "mt-8"}>
+      {!bare && <h2 className="text-xl font-semibold text-[#332F29]">ลุคที่บันทึกไว้</h2>}
+      <div className={`${bare ? "" : "mt-4 "}grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4`}>
         {looks.map((look) => {
           const image = images[look.resultId];
           const angle = ANGLES.find((a) => a.key === look.angle)?.label ?? "";

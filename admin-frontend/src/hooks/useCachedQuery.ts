@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   peekCache,
+  pendingQuery,
   type CacheEntry,
   type QueryOptions,
 } from "../services/cache";
@@ -62,6 +63,13 @@ export function useCachedQuery<T>(
     try {
       const result = await fetcherRef.current(opts);
       applyResult(currentKey);
+
+      // ได้ข้อมูลเก่าไปแสดงก่อน (refetch เบื้องหลังยังไม่เสร็จ) → รอแล้วอัปเดตเมื่อได้ข้อมูลใหม่
+      const refetch = pendingQuery(currentKey);
+      if (refetch) {
+        await refetch.catch(() => undefined);
+        applyResult(currentKey);
+      }
       return result;
     } catch (err) {
       if (!aliveRef.current || stateRef.current.key !== currentKey) return;
@@ -101,6 +109,16 @@ export function useCachedQuery<T>(
           setEntry({ data, fetchedAt: Date.now(), stale: false });
         }
         setRefreshing(false);
+
+        // ได้ข้อมูลเก่า (stale หลัง mutation) ไปแสดงก่อน → รอ refetch เบื้องหลังแล้วอัปเดตรายการ
+        // ไม่งั้นหน้า list ค้างข้อมูลเก่า (เช่น ไม่เห็นรูปที่เพิ่งเพิ่ม) จนกว่าจะ refresh เอง
+        const refetch = pendingQuery(key);
+        if (refetch) {
+          await refetch.catch(() => undefined);
+          if (cancelled) return;
+          const fresh = peekCache<T>(key);
+          if (fresh) setEntry(fresh);
+        }
       } catch (err) {
         if (cancelled) return;
 

@@ -24,11 +24,8 @@ interface ProductColorsEditorProps {
     colorIndex: number,
     view: ImageView,
     file: File | undefined,
-  ) => void;
-  onImagePieceChange?: (
-    colorIndex: number,
-    view: ImageView,
-    piece: ProductPiece,
+    // ชนิดรูป (เฉพาะสินค้าแบบชุด) — แต่ละชนิดมีรูปของตัวเองในแต่ละมุม
+    piece?: ProductPiece | null,
   ) => void;
   onRemoveExistingImage: (colorIndex: number, imageId: string) => void;
   onRemoveNewImage: (colorIndex: number, imageIndex: number) => void;
@@ -54,9 +51,9 @@ const hasFrontImage = (color: ProductColorForm) => {
   return hasNewFront || hasExistingFront;
 };
 
-// สินค้า set ต้องมีรูปหน้าของ SET / TOP / BOTTOM ครบต่อสี
+// สินค้า set ต้องมีรูปหน้าของ SET (รูปเต็มชุด) ต่อสี — TOP / BOTTOM เป็นรูปเสริม ไม่บังคับ
 // รูปที่ยังไม่ระบุชนิด (piece = null) นับเป็นตัวรองทุกชนิด (เช่นรูปเดิมก่อนมีฟีเจอร์นี้)
-const REQUIRED_SET_PIECES: ProductPiece[] = ["SET", "TOP", "BOTTOM"];
+const REQUIRED_SET_PIECES: ProductPiece[] = ["SET"];
 
 const missingSetFrontPieces = (color: ProductColorForm): ProductPiece[] => {
   const hasFrontPiece = (piece: ProductPiece) =>
@@ -83,7 +80,6 @@ export default function ProductColorsEditor({
   onUpdateColor,
   onRemoveColor,
   onImageChange,
-  onImagePieceChange,
   onRemoveExistingImage,
   onRemoveNewImage,
 }: ProductColorsEditorProps) {
@@ -120,9 +116,16 @@ export default function ProductColorsEditor({
     };
   }, [previews]);
 
+  // สินค้าชุด: ช่องรูปแยกตามชนิดที่เลือก (SET/TOP/BOTTOM); รูปที่ไม่ระบุชนิดนับเป็นรูปเต็มชุด (SET)
+  // หมวดอื่น: activePiece = null และไม่กรองตามชนิด
+  const activePiece: ProductPiece | null =
+    category === "set" ? selectedSetPiece : null;
+  const matchesPiece = (piece: ProductPiece | null | undefined) =>
+    activePiece === null || (piece ?? "SET") === activePiece;
+
   const getImageByView = (color: ProductColorForm, view: ImageView) => {
     const newImageIndex = color.new_images.findIndex(
-      (image) => image.view === view,
+      (image) => image.view === view && matchesPiece(image.piece),
     );
 
     if (newImageIndex !== -1) {
@@ -140,7 +143,9 @@ export default function ProductColorsEditor({
 
     const existingImage = color.existing_images.find(
       (image) =>
-        image.view === view && !color.removed_image_ids.includes(image.id),
+        image.view === view &&
+        matchesPiece(image.piece) &&
+        !color.removed_image_ids.includes(image.id),
     );
 
     if (existingImage) {
@@ -163,8 +168,8 @@ export default function ProductColorsEditor({
 
   const setPieceLabels: Record<ProductPiece, string> = {
     SET: "รูปเต็มชุด (SET)",
-    TOP: "รูปท่อนบน (TOP)",
-    BOTTOM: "รูปท่อนล่าง (BOTTOM)",
+    TOP: "รูปท่อนบน (TOP) — ไม่บังคับ",
+    BOTTOM: "รูปท่อนล่าง (BOTTOM) — ไม่บังคับ",
   };
 
   const handleUploadImage = (
@@ -174,11 +179,7 @@ export default function ProductColorsEditor({
   ) => {
     if (!file) return;
 
-    onImageChange(colorIndex, view, file);
-
-    if (category === "set") {
-      onImagePieceChange?.(colorIndex, view, selectedSetPiece);
-    }
+    onImageChange(colorIndex, view, file, activePiece);
   };
 
   const setSteps: ProductPiece[] = ["SET", "TOP", "BOTTOM"];
@@ -305,7 +306,7 @@ export default function ProductColorsEditor({
 
                   <p className="mt-1 text-xs text-[#8B806E]">
                     {category === "set"
-                      ? "ต้องมีรูปด้านหน้าของ SET, TOP และ BOTTOM ครบทุกชนิดต่อสี เพื่อใช้งาน Virtual Try-On"
+                      ? "ต้องมีรูปเต็มชุดด้านหน้า (SET) ต่อสี เพื่อใช้งาน Virtual Try-On — รูปท่อนบน/ท่อนล่างเป็นรูปเสริม"
                       : "ต้องมีรูปภาพด้านหน้าอย่างน้อย 1 รูปต่อสี เพื่อใช้งาน Virtual Try-On"}
                   </p>
 
@@ -316,14 +317,13 @@ export default function ProductColorsEditor({
                       </p>
 
                       <p className="mt-1.5 text-[11px] text-[#6B7A5E]">
-                        ต้องมีรูป{" "}
+                        ต้องมีรูปเต็มชุด (SET) ด้าน
                         <span className="font-semibold text-[#332F29]">
-                          ด้านหน้า
+                          หน้า
                         </span>{" "}
-                        อย่างน้อย 1 รูป ของแต่ละชนิดต่อ 1 สี:
-                        รูปเต็มชุด (SET), รูปท่อนบน (TOP) และรูปท่อนล่าง
-                        (BOTTOM) — เลือกชนิดรูปด้านล่าง แล้วอัปโหลดรูปทับช่อง
-                        ด้านหน้า/ด้านหลัง ทีละชนิด
+                        อย่างน้อย 1 รูปต่อ 1 สี ส่วนรูปท่อนบน (TOP)
+                        และท่อนล่าง (BOTTOM) จะอัปโหลดเพิ่มหรือไม่ก็ได้ —
+                        เลือกชนิดรูปด้านล่าง แล้วอัปโหลดรูปทับช่องด้านหน้า/ด้านหลัง
                       </p>
 
                       <div className="mt-2 grid gap-2 sm:grid-cols-3">
@@ -355,7 +355,7 @@ export default function ProductColorsEditor({
                   {category === "set" && (
                     <p className="mt-1 text-xs text-[#6B7A5E]">
                       ชุด (Set): อัปโหลดรูป 4 ด้านตามลำดับ{" "}
-                      <span className="font-semibold">SET → TOP → BOTTOM</span>
+                      <span className="font-semibold">SET (บังคับ) → TOP → BOTTOM (ไม่บังคับ)</span>
                     </p>
                   )}
                 </div>
@@ -533,7 +533,7 @@ export default function ProductColorsEditor({
             ) : (
               <p className="text-xs text-[#8B806E]">
                 {colors.filter((color) => !color.legacy).length} สี
-                — ครบรูปหน้าของ SET / TOP / BOTTOM ทุกสีแล้ว
+                — ครบรูปเต็มชุดด้านหน้าทุกสีแล้ว
               </p>
             );
           })()

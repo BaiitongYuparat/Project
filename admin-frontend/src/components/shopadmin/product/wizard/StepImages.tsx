@@ -16,7 +16,6 @@ export default function StepImages({ ctl }: StepImagesProps) {
         onUpdateColor={ctl.handleUpdateColor}
         onRemoveColor={ctl.handleRemoveColor}
         onImageChange={ctl.handleColorImageChange}
-        onImagePieceChange={ctl.handleColorImagePieceChange}
         onRemoveExistingImage={ctl.handleRemoveExistingImage}
         onRemoveNewImage={ctl.handleRemoveNewImage}
       />

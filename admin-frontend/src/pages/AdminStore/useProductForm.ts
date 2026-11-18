@@ -11,6 +11,7 @@ import { isAxiosError } from "axios";
 
 import {
   createProduct,
+  getProducts,
   getProductById,
   getProductOptions,
   getSizeChartTemplates,
@@ -828,21 +829,19 @@ const handleOverrideFromChart = (chartId: string) => {
     colorIndex: number,
     view: ProductColorForm["new_images"][number]["view"],
     file: File | undefined,
+    piece: ProductPiece | null = null,
   ) => {
     if (!file) return;
 
     setError("");
 
     setForm((previous) => {
-      // set: รูปแรกของสินค้า = รูปรวมทั้งชุด (SET) อัตโนมัติ
+      // สินค้าชุด: แต่ละชนิดรูป (SET/TOP/BOTTOM) มีรูปของตัวเองในแต่ละมุม — รูปที่ไม่ระบุชนิดนับเป็น SET
+      // หมวดอื่น: ชนิดรูปเป็น null เสมอ (แทนที่รูปมุมเดิม)
       const isSet = previous.category === "set";
-      const hasSetImage = previous.colors.some(
-        (color) =>
-          color.new_images.some((image) => image.piece === "SET") ||
-          color.existing_images.some((image) => image.piece === "SET"),
-      );
-      const defaultPiece: ProductPiece | null =
-        isSet && !hasSetImage ? "SET" : null;
+      const kind = (value: ProductPiece | null | undefined) =>
+        isSet ? (value ?? "SET") : null;
+      const target = kind(piece);
 
       return {
         ...previous,
@@ -850,7 +849,10 @@ const handleOverrideFromChart = (chartId: string) => {
           if (index !== colorIndex) return color;
 
           const oldImage = color.existing_images.find(
-            (image) => image.view === view,
+            (image) =>
+              image.view === view &&
+              kind(image.piece) === target &&
+              !color.removed_image_ids.includes(image.id),
           );
 
           const removedImageIds = oldImage
@@ -861,34 +863,16 @@ const handleOverrideFromChart = (chartId: string) => {
             ...color,
             removed_image_ids: removedImageIds,
             new_images: [
-              ...color.new_images.filter((image) => image.view !== view),
-              { file, view, piece: defaultPiece },
+              ...color.new_images.filter(
+                (image) =>
+                  !(image.view === view && kind(image.piece) === target),
+              ),
+              { file, view, piece: isSet ? target : null },
             ],
           };
         }),
       };
     });
-  };
-
-  // เปลี่ยนชนิดรูปของรูปใหม่ (ใช้กับสินค้าแบบชุด เช่น set)
-  const handleColorImagePieceChange = (
-    colorIndex: number,
-    view: ProductColorForm["new_images"][number]["view"],
-    piece: ProductPiece,
-  ) => {
-    setForm((previous) => ({
-      ...previous,
-      colors: previous.colors.map((color, index) => {
-        if (index !== colorIndex) return color;
-
-        return {
-          ...color,
-          new_images: color.new_images.map((image) =>
-            image.view === view ? { ...image, piece } : image,
-          ),
-        };
-      }),
-    }));
   };
 
   const handleRemoveExistingImage = (
@@ -987,10 +971,10 @@ const handleOverrideFromChart = (chartId: string) => {
           }
         }
 
-        // สินค้าชุด (set): ทุกสีต้องมีรูปด้านหน้าของ SET / TOP / BOTTOM ครบ
+        // สินค้าชุด (set): ทุกสีต้องมีรูปด้านหน้าของ SET (รูปเต็มชุด) — TOP / BOTTOM เป็นรูปเสริม
         // รูปที่ยังไม่ระบุชนิด (piece = null) นับเป็นตัวรองทุกชนิด (เช่นรูปเดิมก่อนมีฟีเจอร์นี้)
         if (form.category === "set") {
-          const requiredPieces: ProductPiece[] = ["SET", "TOP", "BOTTOM"];
+          const requiredPieces: ProductPiece[] = ["SET"];
 
           const pieceLabels: Record<ProductPiece, string> = {
             SET: "รูปเต็มชุด (SET)",
@@ -1017,7 +1001,7 @@ const handleOverrideFromChart = (chartId: string) => {
             );
 
             if (missing.length > 0) {
-              return `สี "${color.name || "สีใหม่"}" ต้องมีรูปด้านหน้าของทั้ง 3 ชนิด (ขาด: ${missing
+              return `สี "${color.name || "สีใหม่"}" ต้องมีรูปเต็มชุดด้านหน้า (ขาด: ${missing
                 .map((piece) => pieceLabels[piece])
                 .join(", ")})`;
             }
@@ -1123,6 +1107,9 @@ const handleOverrideFromChart = (chartId: string) => {
       // charts ต้อง invalidate ด้วย เพราะ product_count ของตารางที่อ้างอิงเปลี่ยน
       invalidateCharts(slug);
 
+      // เริ่มโหลดรายการสินค้าใหม่ทันที (ระหว่างที่กำลังเด้งกลับหน้า list) — หน้า list จะใช้ request เดียวกัน
+      getProducts(slug).catch(() => undefined);
+
       return true;
     } catch (err) {
       console.error("Save product error:", err);
@@ -1226,7 +1213,6 @@ const handleOverrideFromChart = (chartId: string) => {
     handleUpdateColor,
     handleRemoveColor,
     handleColorImageChange,
-    handleColorImagePieceChange,
     handleRemoveExistingImage,
     handleRemoveNewImage,
     // บันทึก

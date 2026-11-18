@@ -579,10 +579,10 @@ export const createProductController = async (
       }
     }
 
-    // สินค้าชุด (set): ทุกสีต้องมีรูปด้านหน้าของ SET / TOP / BOTTOM ครบ
-    // (create บังคับเคร่งครัด — ชนิดรูปต้องระบุครบ เพราะ frontend wizard ส่ง pieces มาเสมอ)
+    // สินค้าชุด (set): ทุกสีต้องมีรูปด้านหน้าของ SET (รูปเต็มชุด) — TOP / BOTTOM เป็นรูปเสริม ไม่บังคับ
+    // (create บังคับเคร่งครัด — ชนิดรูปต้องระบุ เพราะ frontend wizard ส่ง pieces มาเสมอ)
     if (category.trim() === "set") {
-      const requiredPieces: PieceValue[] = ["SET", "TOP", "BOTTOM"];
+      const requiredPieces: PieceValue[] = ["SET"];
 
       for (const [colorIndex, color] of parsedColors.entries()) {
         const frontPieces = files
@@ -603,7 +603,7 @@ export const createProductController = async (
 
         if (missing.length > 0) {
           return res.status(400).json({
-            message: `สี "${color.name}" ต้องมีรูปด้านหน้าของทั้ง SET, TOP และ BOTTOM (ขาด: ${missing.join(", ")})`,
+            message: `สี "${color.name}" ต้องมีรูปด้านหน้าของ SET (รูปเต็มชุด) (ขาด: ${missing.join(", ")})`,
           });
         }
       }
@@ -1030,7 +1030,7 @@ export const updateProductController = async (
       }
     }
 
-    // สินค้าชุด (set): ตรวจสถานะรวมหลังบันทึกว่าทุกสีมีรูปด้านหน้าของ SET / TOP / BOTTOM ครบ
+    // สินค้าชุด (set): ตรวจสถานะรวมหลังบันทึกว่าทุกสีมีรูปเต็มชุดด้านหน้า (SET) — TOP / BOTTOM ไม่บังคับ
     // (รูปเดิมที่ยังไม่ระบุชนิด piece = null นับเป็นตัวรองทุกชนิด เพื่อไม่บล็อกสินค้าเก่าที่แก้ไข)
     if (effectiveCategory === "set") {
       const existingProduct = await getProductById(brandId, id);
@@ -1038,7 +1038,7 @@ export const updateProductController = async (
       if (existingProduct) {
         type SetColorCheck = { name: string; pieces: (PieceValue | null)[] };
 
-        const requiredPieces: PieceValue[] = ["SET", "TOP", "BOTTOM"];
+        const requiredPieces: PieceValue[] = ["SET"];
 
         // รูปเดิมของแต่ละสี (หักรูปที่ขอลบ) — เฉพาะสีที่ยังไม่ถูกลบ
         const frontPiecesByColorId = new Map<string, (PieceValue | null)[]>();
@@ -1116,7 +1116,7 @@ export const updateProductController = async (
 
           if (missing.length > 0) {
             return res.status(400).json({
-              message: `สี "${color.name}" ต้องมีรูปด้านหน้าของทั้ง SET, TOP และ BOTTOM (ขาด: ${missing.join(", ")})`,
+              message: `สี "${color.name}" ต้องมีรูปด้านหน้าของ SET (รูปเต็มชุด) (ขาด: ${missing.join(", ")})`,
             });
           }
         }

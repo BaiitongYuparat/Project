@@ -41,7 +41,7 @@ const NO_LOOKS: SavedLook[] = [];
 
 export default function TryOnPage() {
   const location = useLocation();
-  const preset = location.state as { productId?: string; colorId?: string } | null;
+  const preset = location.state as { productId?: string; colorId?: string; lookId?: string } | null;
   const presetProductId = preset?.productId;
   const requireAuth = useRequireAuth();
   const dispatch = useDispatch();
@@ -128,6 +128,34 @@ export default function TryOnPage() {
     }
   };
 
+  const applyLook = (look: SavedLook) => {
+    if (generatingRef.current) return;
+    const present = look.items.filter((i) => products?.some((p) => p.id === i.product_id));
+    setMode(look.mode);
+    setAngle(look.angle);
+    setRequestedSubject({ key: look.subjectKey, nonce: Date.now() });
+    setSelectedIds(present.map((i) => i.product_id));
+    setColorSelection(
+      Object.fromEntries(present.flatMap((i) => (i.color_id ? [[i.product_id, i.color_id] as const] : []))),
+    );
+    setSavingName(null);
+    setNotice(
+      present.length < look.items.length
+        ? `สินค้า ${look.items.length - present.length} ชิ้นในลุคนี้ไม่มีให้เลือกแล้ว`
+        : "",
+    );
+    const sig = `${look.subjectKey}|${look.angle}|${look.items.map((i) => `${i.product_id}:${i.color_id ?? ""}`).join(",")}`;
+    getTryOn(look.resultId)
+      .then((job) => {
+        if (job.status === "SUCCESS" && job.image_url) {
+          setResult({ id: job.id, url: job.image_url, signature: sig, label: `${look.subjectName} · ${angleLabelOf(look.angle)}` });
+        } else {
+          setNotice("ไม่พบภาพของลุคนี้ กดสร้างภาพใหม่ได้เลย");
+        }
+      })
+      .catch(() => setNotice("ไม่พบภาพของลุคนี้ กดสร้างภาพใหม่ได้เลย"));
+  };
+
   // กู้คืนสถานะที่ค้างไว้ (refresh / กลับมาหน้านี้) — รอรู้ผู้ใช้ + โหลดสินค้าเสร็จก่อน
   useEffect(() => {
     if (hydrated || !authChecked || products === null) return;
@@ -177,6 +205,10 @@ export default function TryOnPage() {
             });
         }
       }
+      // มาจากหน้า My Outfit → โหลดลุคที่บันทึกไว้ทับ (ใช้ได้เฉพาะลุคของผู้ใช้ปัจจุบัน)
+      const lookId = preset?.lookId;
+      const look = user && lookId ? store.getState().tryon.looksByUser[user.id]?.find((l) => l.id === lookId) : undefined;
+      if (look) applyLook(look);
       setHydrated(true);
     }, 0);
     return () => clearTimeout(timer);
@@ -319,34 +351,6 @@ export default function TryOnPage() {
     );
     setSavingName(null);
     setNotice("บันทึกลุคแล้ว");
-  };
-
-  const applyLook = (look: SavedLook) => {
-    if (generatingRef.current) return;
-    const present = look.items.filter((i) => products?.some((p) => p.id === i.product_id));
-    setMode(look.mode);
-    setAngle(look.angle);
-    setRequestedSubject({ key: look.subjectKey, nonce: Date.now() });
-    setSelectedIds(present.map((i) => i.product_id));
-    setColorSelection(
-      Object.fromEntries(present.flatMap((i) => (i.color_id ? [[i.product_id, i.color_id] as const] : []))),
-    );
-    setSavingName(null);
-    setNotice(
-      present.length < look.items.length
-        ? `สินค้า ${look.items.length - present.length} ชิ้นในลุคนี้ไม่มีให้เลือกแล้ว`
-        : "",
-    );
-    const sig = `${look.subjectKey}|${look.angle}|${look.items.map((i) => `${i.product_id}:${i.color_id ?? ""}`).join(",")}`;
-    getTryOn(look.resultId)
-      .then((job) => {
-        if (job.status === "SUCCESS" && job.image_url) {
-          setResult({ id: job.id, url: job.image_url, signature: sig, label: `${look.subjectName} · ${angleLabelOf(look.angle)}` });
-        } else {
-          setNotice("ไม่พบภาพของลุคนี้ กดสร้างภาพใหม่ได้เลย");
-        }
-      })
-      .catch(() => setNotice("ไม่พบภาพของลุคนี้ กดสร้างภาพใหม่ได้เลย"));
   };
 
   const hint = generating

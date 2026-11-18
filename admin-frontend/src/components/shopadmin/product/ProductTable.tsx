@@ -24,6 +24,21 @@ interface ProductTableProps {
 
 type QualityStatus = "PENDING" | "PASSED" | "FAILED";
 
+// รูปหลักของตาราง: เอาด้านหน้าก่อน — สินค้าแบบชุดให้ใช้รูปเต็มชุด (SET)
+const getPrimaryImage = (product: ProductSummary) => {
+  const images = product.images;
+
+  return (
+    images.find(
+      (image) =>
+        image.view === "FRONT" &&
+        (image.piece === "SET" || image.piece === null),
+    ) ??
+    images.find((image) => image.view === "FRONT") ??
+    images[0]
+  );
+};
+
 const getProductQualityStatus = (
   product: ProductSummary,
 ): QualityStatus => {
@@ -139,7 +154,7 @@ export default function ProductTable({
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[750px] text-left text-sm">
+        <table className="w-full min-w-[900px] text-left text-sm">
           <thead className="bg-[#FCFAF6] text-xs text-[#786E5D]">
             <tr>
               <th className="w-12 px-5 py-4 font-medium">
@@ -153,7 +168,7 @@ export default function ProductTable({
                   className="h-4 w-4 cursor-pointer rounded accent-[#87947A] disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </th>
-              <th className="px-5 py-4 font-medium">รูป</th>
+              <th className="w-40 px-5 py-4 font-medium">รูป</th>
               <th className="px-5 py-4 font-medium">สินค้า / SKU</th>
               <th className="px-5 py-4 font-medium">Category</th>
               <th className="px-5 py-4 font-medium">ราคา (฿)</th>
@@ -168,7 +183,7 @@ export default function ProductTable({
               const qualityStatus = getProductQualityStatus(product);
               const isSelected = selectedProductId === product.id;
               const isChecked = selectedIds.has(product.id);
-              const firstImage = product.images[0];
+              const firstImage = getPrimaryImage(product);
 
               return (
                 <tr
@@ -205,10 +220,10 @@ export default function ProductTable({
                       <img
                         src={firstImage.image_url}
                         alt={product.name}
-                        className="h-14 w-14 rounded-xl border border-[#EFE7D8] object-cover"
+                        className="h-40 w-32 max-w-none rounded-xl border border-[#EFE7D8] object-cover object-top"
                       />
                     ) : (
-                      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#F1E8D5] text-[#A99978]">
+                      <div className="flex h-40 w-32 items-center justify-center rounded-xl bg-[#F1E8D5] text-[#A99978]">
                         <span className="text-xs">No image</span>
                       </div>
                     )}

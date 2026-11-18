@@ -87,7 +87,9 @@ export default function ProductCard({
 
           <div className="mt-2.5 flex items-center justify-between gap-2">
             <span className="font-semibold text-[#49352D]">
-              ฿{product.price.toLocaleString("th-TH")}
+              {product.price == null || !Number.isFinite(Number(product.price))
+                ? "ไม่ระบุราคา"
+                : `฿${Number(product.price).toLocaleString("th-TH")}`}
             </span>
 
             <button
