@@ -101,24 +101,25 @@ const formatBucketLabel = (iso: string, unit: DashboardBucket) => {
   return `${d.getUTCDate()} ${THAI_MONTHS_SHORT[d.getUTCMonth()]}`;
 };
 
-function StatCard({
+// การ์ดตัวเลขรอง (เล็กกว่าการ์ดเด่น)
+function CompactStat({
   title,
   value,
-  valueClassName,
+  valueClassName = "text-[#3B2C25]",
   hint,
 }: {
   title: string;
   value: number | string;
-  valueClassName: string;
+  valueClassName?: string;
   hint?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-[#EADFC9] bg-white px-5 py-5">
-      <p className="text-sm text-[#928474]">{title}</p>
-      <p className={`mt-2 text-3xl font-bold ${valueClassName}`}>
+    <div className="rounded-xl border border-[#F1EADB] bg-white/70 px-4 py-3">
+      <p className="text-xs text-[#928474]">{title}</p>
+      <p className={`mt-1 text-xl font-semibold ${valueClassName}`}>
         {typeof value === "number" ? formatNumber(value) : value}
       </p>
-      {hint && <p className="mt-1 text-xs text-[#928474]">{hint}</p>}
+      {hint && <p className="mt-0.5 text-[11px] text-[#B3A897]">{hint}</p>}
     </div>
   );
 }
@@ -224,7 +225,16 @@ export default function Dashboard() {
   const totalSuccess = series.reduce((sum, s) => sum + s.success, 0);
   const totalRequests = data?.totals.requests ?? 0;
   const successRate = totalRequests > 0 ? (totalSuccess / totalRequests) * 100 : 0;
+  const successRateText = `${successRate.toLocaleString("th-TH", { maximumFractionDigits: 1 })}%`;
   const avgCost = totalSuccess > 0 ? (data?.totals.cost ?? 0) / totalSuccess : 0;
+
+  const pendingItems = [
+    { label: "ร้านรอตรวจสอบ", count: data?.pending.brands ?? 0, to: "/superadmin/store-management" },
+    { label: "คำร้องปลดระงับ", count: data?.pending.appeals ?? 0, to: "/superadmin/appeals" },
+    { label: "ขอเปลี่ยนเจ้าของร้าน", count: data?.pending.ownerTransfers ?? 0, to: "/superadmin/owner-transfer-requests" },
+    { label: "รายงานปัญหา AI", count: data?.pending.aiReports ?? 0, to: "/superadmin/ai-reports" },
+  ];
+  const pendingTotal = pendingItems.reduce((sum, i) => sum + i.count, 0);
 
   const unit = data?.range.unit ?? "day";
   const rangeLabel = data
@@ -302,51 +312,110 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* การ์ดตัวเลข 4 ใบ */}
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          title="ร้านค้าทั้งหมด"
-          value={data?.totals.brands ?? 0}
-          valueClassName="text-[#3B2C25]"
-        />
-        <StatCard
-          title="ผู้ใช้ที่ลองสินค้า"
-          value={data?.totals.users ?? 0}
-          valueClassName="text-[#2F4BD0]"
-        />
-        <StatCard
-          title="คำขอลองสินค้า"
-          value={data?.totals.requests ?? 0}
-          valueClassName="text-[#3B2C25]"
-        />
-        <StatCard
-          title="คำขอไม่สำเร็จ"
-          value={data?.totals.failed ?? 0}
-          valueClassName="text-[#B4452F]"
-        />
+      {/* 1. งานที่รอจัดการ — สำคัญสุด เพราะต้องลงมือทำ */}
+      <section
+        className={`mt-5 rounded-2xl border p-5 ${
+          pendingTotal > 0
+            ? "border-[#F0C9B8] bg-[#FDF3EE]"
+            : "border-[#EADFC9] bg-white"
+        }`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-bold text-[#3B2C25]">งานที่รอจัดการ</h2>
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-medium ${
+              pendingTotal > 0
+                ? "bg-[#B4452F] text-white"
+                : "bg-[#E8F0DE] text-[#4F6B2E]"
+            }`}
+          >
+            {pendingTotal > 0
+              ? `รอดำเนินการ ${formatNumber(pendingTotal)} รายการ`
+              : "ไม่มีงานค้าง"}
+          </span>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {pendingItems.map((item) => (
+            <Link
+              key={item.label}
+              to={item.to}
+              className={`rounded-xl border px-4 py-3 transition ${
+                item.count > 0
+                  ? "border-[#F0C9B8] bg-white hover:bg-[#FFF8F4]"
+                  : "border-[#F1EADB] bg-[#FBF7EC] hover:bg-[#F5EFDF]"
+              }`}
+            >
+              <p className="text-xs text-[#928474]">{item.label}</p>
+              <p
+                className={`mt-1 text-2xl font-bold ${
+                  item.count > 0 ? "text-[#B4452F]" : "text-[#B3A897]"
+                }`}
+              >
+                {formatNumber(item.count)}
+              </p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* 2. การ์ดเด่น: การใช้งาน / ต้นทุน / ผู้ใช้ */}
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-2xl bg-[#3B2C25] p-6 text-white sm:col-span-2">
+          <p className="text-sm text-[#E7DCC3]">คำขอลองสินค้า</p>
+          <p className="mt-2 text-5xl font-bold tracking-tight">
+            {formatNumber(totalRequests)}
+          </p>
+          <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#E7DCC3]">
+            <span>
+              อัตราสำเร็จ <b className="text-[#C9E3A4]">{successRateText}</b>
+            </span>
+            <span>
+              ไม่สำเร็จ{" "}
+              <b className="text-[#F4A58E]">
+                {formatNumber(data?.totals.failed ?? 0)}
+              </b>
+            </span>
+            <span>
+              เวลาเฉลี่ย{" "}
+              <b className="text-white">
+                {formatSeconds(data?.totals.avgDurationMs ?? null)}
+              </b>
+            </span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#E9D3AA] bg-[#F7E8D2] p-6">
+          <p className="text-sm text-[#8D6428]">ต้นทุน AI รวม</p>
+          <p className="mt-2 text-3xl font-bold text-[#6B4A17]">
+            {formatUsd(data?.totals.cost ?? 0)}
+          </p>
+          <p className="mt-3 text-xs text-[#8D6428]/80">
+            เฉพาะ Virtual Try-On · ไม่รวมค่า Gemini
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-[#EADFC9] bg-white p-6">
+          <p className="text-sm text-[#928474]">ผู้ใช้ที่ลองสินค้า</p>
+          <p className="mt-2 text-3xl font-bold text-[#2F4BD0]">
+            {formatNumber(data?.totals.users ?? 0)}
+          </p>
+        </div>
       </div>
 
-      {/* ต้นทุน AI และประสิทธิภาพ */}
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          title="ต้นทุน AI รวม"
-          value={formatUsd(data?.totals.cost ?? 0)}
-          valueClassName="text-[#8D6428]"
-          hint="เฉพาะ Virtual Try-On · ไม่รวมค่า Gemini"
-        />
-        <StatCard
+      {/* 3. ตัวเลขรอง */}
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <CompactStat title="ร้านค้าทั้งหมด" value={data?.totals.brands ?? 0} />
+        <CompactStat
           title="ต้นทุนเฉลี่ยต่อภาพ"
           value={formatUsd(avgCost)}
-          valueClassName="text-[#3B2C25]"
           hint="ต่อคำขอที่สำเร็จ"
         />
-        <StatCard
+        <CompactStat
           title="อัตราสำเร็จ"
-          value={`${successRate.toLocaleString("th-TH", { maximumFractionDigits: 1 })}%`}
+          value={successRateText}
           valueClassName="text-[#4F6B2E]"
-          hint={`เวลาประมวลผลเฉลี่ย ${formatSeconds(data?.totals.avgDurationMs ?? null)}`}
         />
-        <StatCard
+        <CompactStat
           title="ผลที่คืนจากแคช"
           value={data?.totals.cacheHits ?? 0}
           valueClassName="text-[#2F4BD0]"
@@ -354,56 +423,7 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* งานที่รอจัดการ + ต้นทุนตาม provider */}
-      <div className="mt-4 grid gap-4 xl:grid-cols-3">
-        <section className="rounded-2xl border border-[#EADFC9] bg-white p-5 xl:col-span-2">
-          <h2 className="text-base font-bold text-[#3B2C25]">งานที่รอจัดการ</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              { label: "ร้านรอตรวจสอบ", count: data?.pending.brands ?? 0, to: "/superadmin/store-management" },
-              { label: "คำร้องปลดระงับ", count: data?.pending.appeals ?? 0, to: "/superadmin/appeals" },
-              { label: "ขอเปลี่ยนเจ้าของร้าน", count: data?.pending.ownerTransfers ?? 0, to: "/superadmin/owner-transfer-requests" },
-              { label: "รายงานปัญหา AI", count: data?.pending.aiReports ?? 0, to: "/superadmin/ai-reports" },
-            ].map((item) => (
-              <Link
-                key={item.label}
-                to={item.to}
-                className="rounded-xl border border-[#F1EADB] bg-[#FBF7EC] px-4 py-3 transition hover:bg-[#F5EFDF]"
-              >
-                <p className="text-xs text-[#928474]">{item.label}</p>
-                <p
-                  className={`mt-1 text-2xl font-bold ${
-                    item.count > 0 ? "text-[#B4452F]" : "text-[#3B2C25]"
-                  }`}
-                >
-                  {formatNumber(item.count)}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-[#EADFC9] bg-white p-5">
-          <h2 className="text-base font-bold text-[#3B2C25]">ต้นทุนตาม Provider</h2>
-          {(data?.byProvider.length ?? 0) === 0 ? (
-            <p className="mt-4 text-sm text-[#928474]">ยังไม่มีการใช้งานในช่วงเวลานี้</p>
-          ) : (
-            <ul className="mt-3 divide-y divide-[#F1EADB]">
-              {data?.byProvider.map((p) => (
-                <li key={p.provider} className="flex items-center justify-between py-2.5 text-sm">
-                  <span className="font-medium uppercase text-[#5F5144]">{p.provider}</span>
-                  <span className="text-[#928474]">
-                    {formatNumber(p.count)} ครั้ง ·{" "}
-                    <span className="font-medium text-[#3B2C25]">{formatUsd(p.cost)}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
-
-      {/* กราฟ + อันดับร้าน */}
+      {/* กราฟ + อันดับร้าน + ต้นทุนตาม provider */}
       <div className="mt-4 grid gap-4 xl:grid-cols-3">
         <section className="rounded-2xl border border-[#EADFC9] bg-white p-5 xl:col-span-2">
           <div className="flex items-start justify-between gap-3">
@@ -487,37 +507,58 @@ export default function Dashboard() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-[#EADFC9] bg-white p-5">
-          <h2 className="text-base font-bold text-[#3B2C25]">
-            ร้านค้าที่มีการใช้งานสูงสุด
-          </h2>
+        <div className="flex flex-col gap-4">
+          <section className="rounded-2xl border border-[#EADFC9] bg-white p-5">
+            <h2 className="text-base font-bold text-[#3B2C25]">
+              ร้านค้าที่มีการใช้งานสูงสุด
+            </h2>
 
-          {(data?.topBrands.length ?? 0) === 0 ? (
-            <p className="mt-6 text-sm text-[#928474]">
-              ยังไม่มีการใช้งานในช่วงเวลานี้
+            {(data?.topBrands.length ?? 0) === 0 ? (
+              <p className="mt-6 text-sm text-[#928474]">
+                ยังไม่มีการใช้งานในช่วงเวลานี้
+              </p>
+            ) : (
+              <ol className="mt-4 divide-y divide-[#F1EADB]">
+                {data?.topBrands.map((brand, index) => (
+                  <li key={brand.id} className="flex items-center gap-3 py-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F1EADB] text-xs font-semibold text-[#8D6428]">
+                      {index + 1}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-[#5F5144]">
+                      {brand.brand_name}
+                    </span>
+                    <span className="text-sm font-medium text-[#3B2C25]">
+                      {formatNumber(brand.count)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+
+            <p className="mt-4 border-t border-[#F1EADB] pt-3 text-xs text-[#928474]">
+              หน่วย: ครั้ง · ช่วงเวลาที่เลือก
             </p>
-          ) : (
-            <ol className="mt-4 divide-y divide-[#F1EADB]">
-              {data?.topBrands.map((brand, index) => (
-                <li key={brand.id} className="flex items-center gap-3 py-3">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F1EADB] text-xs font-semibold text-[#8D6428]">
-                    {index + 1}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-sm text-[#5F5144]">
-                    {brand.brand_name}
-                  </span>
-                  <span className="text-sm font-medium text-[#3B2C25]">
-                    {formatNumber(brand.count)}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          )}
+          </section>
 
-          <p className="mt-4 border-t border-[#F1EADB] pt-3 text-xs text-[#928474]">
-            หน่วย: ครั้ง · ช่วงเวลาที่เลือก
-          </p>
-        </section>
+          <section className="rounded-2xl border border-[#EADFC9] bg-white p-5">
+            <h2 className="text-base font-bold text-[#3B2C25]">ต้นทุนตาม Provider</h2>
+            {(data?.byProvider.length ?? 0) === 0 ? (
+              <p className="mt-4 text-sm text-[#928474]">ยังไม่มีการใช้งานในช่วงเวลานี้</p>
+            ) : (
+              <ul className="mt-3 divide-y divide-[#F1EADB]">
+                {data?.byProvider.map((p) => (
+                  <li key={p.provider} className="flex items-center justify-between py-2.5 text-sm">
+                    <span className="font-medium uppercase text-[#5F5144]">{p.provider}</span>
+                    <span className="text-[#928474]">
+                      {formatNumber(p.count)} ครั้ง ·{" "}
+                      <span className="font-medium text-[#3B2C25]">{formatUsd(p.cost)}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
       </div>
 
       {/* ตารางร้านค้า */}
