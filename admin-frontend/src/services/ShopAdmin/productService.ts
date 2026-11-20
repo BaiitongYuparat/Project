@@ -1,4 +1,5 @@
 import api from "../api";
+import { requiresSizeChart } from "../../components/shopadmin/product/wizard/constants";
 import {
   cachedQuery,
   invalidate,
@@ -36,7 +37,10 @@ export const getProducts = (
   cachedQuery(
     productsKey(slug),
     async () => {
-      const response = await api.get(`/brands/${slug}/products`);
+      // timeout กัน request ค้างจนหน้าโหลดไม่จบ
+      const response = await api.get(`/brands/${slug}/products`, {
+        timeout: 30_000,
+      });
 
       return response.data.products as ProductSummary[];
     },
@@ -131,7 +135,10 @@ const appendCommonFields = (
   formData.append("is_active", String(data.is_active));
 
   // อ้างอิงตารางไซส์กลางของร้าน (ถ้าไม่อ้างอิง → ส่ง rows ตารางเฉพาะตัว)
-  if (data.size_chart_id) {
+  // หมวดที่ไม่ต้องมีตารางไซส์ (accessories) → ไม่ส่งตารางใด ๆ (ส่ง size_chart_id ว่าง = เลิกอ้างอิงตารางเดิม)
+  if (!requiresSizeChart(data.category)) {
+    formData.append("size_chart_id", "");
+  } else if (data.size_chart_id) {
     formData.append("size_chart_id", data.size_chart_id);
   } else {
     formData.append(

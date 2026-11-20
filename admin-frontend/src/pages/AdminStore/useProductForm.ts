@@ -462,12 +462,18 @@ export function useProductForm(
         );
 
         setStep(restoredStep);
-        setFurthestStep(restoredStep);
+        // โหมดแก้ไข: เปิดทุก step ให้คลิกข้ามไปได้เลย ไม่ต้องกด "ถัดไป" ไล่ทีละขั้น
+        setFurthestStep(
+          productId ? WIZARD_STEPS.length - 1 : restoredStep,
+        );
       } else if (productId && editingProduct) {
         // แก้ไขสินค้า — map ข้อมูลเดิม (ไม่ re-prefill ทับ)
         setForm(productToForm(editingProduct));
         setRemoveColorIds([]);
         sizeChartTouched.current = true;
+        setStep(0);
+        // ปลดล็อก sidebar ทุกขั้น (validation ยังทำงานตอนกด "ถัดไป"/"บันทึก")
+        setFurthestStep(WIZARD_STEPS.length - 1);
       } else {
         // สร้างใหม่ — pre-select ตารางกลาง (ถ้ามี) หรือ prefill ตาราง standard
         setRemoveColorIds([]);
@@ -1054,7 +1060,8 @@ const handleOverrideFromChart = (chartId: string) => {
     if (target === step) return;
 
     // ไปข้างหน้าผ่าน sidebar → ต้อง validate ทุก step ระหว่างทาง
-    if (target > furthestStep) {
+    // (โหมดแก้ไข: ข้ามได้ทุกขั้น — ตรวจครบตอนกด "บันทึกสินค้า" อยู่แล้ว)
+    if (!productId && target > furthestStep) {
       for (let index = step; index < target; index += 1) {
         const validationError = validateStep(index);
 
@@ -1139,7 +1146,10 @@ const handleOverrideFromChart = (chartId: string) => {
     setShowChartCreator(false);
     setError("");
     setStep(0);
-    setFurthestStep(0);
+    // โหมดแก้ไข: คงการปลดล็อกทุก step ไว้ หลังกด "เริ่มใหม่"
+    setFurthestStep(
+      productId && editingProduct ? WIZARD_STEPS.length - 1 : 0,
+    );
 
     if (productId && editingProduct) {
       setForm(productToForm(editingProduct));

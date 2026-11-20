@@ -465,8 +465,11 @@ export const createProductController = async (
     }
 
     // ตารางไซส์กลางของร้าน (สำคัญกว่า size_chart rows ถ้าส่งมาพร้อมกัน)
+    // หมวดที่ไม่ต้องมีตารางไซส์ (accessories) → ไม่สนตารางที่ส่งมา (เช่น ค้างจากหมวดก่อนหน้าในฟอร์ม)
     const parsedSizeChartId =
-      typeof size_chart_id === "string" && size_chart_id.trim()
+      requiresSizeChart(category.trim()) &&
+      typeof size_chart_id === "string" &&
+      size_chart_id.trim()
         ? size_chart_id.trim()
         : null;
 
@@ -640,7 +643,11 @@ export const createProductController = async (
       // อ้างอิงตารางกลาง = ไม่สร้างตารางเฉพาะตัว
       ...(parsedSizeChartId
         ? { size_chart_id: parsedSizeChartId }
-        : { size_chart: sizeChartRows ?? [] }),
+        : {
+            size_chart: requiresSizeChart(category.trim())
+              ? sizeChartRows ?? []
+              : [],
+          }),
       colors: colorsWithImages,
     });
 
@@ -836,7 +843,7 @@ export const updateProductController = async (
     }
 
     // ตารางไซส์กลาง (สำคัญกว่า size_chart rows ถ้าส่งมาพร้อมกัน)
-    const parsedSizeChartId =
+    const rawSizeChartId =
       typeof size_chart_id === "string" && size_chart_id.trim()
         ? size_chart_id.trim()
         : null;
@@ -851,6 +858,11 @@ export const updateProductController = async (
         effectiveCategory = existing.category;
       }
     }
+
+    // หมวดที่ไม่ต้องมีตารางไซส์ (accessories) → ไม่สนตารางที่ส่งมา (เช่น ค้างจากหมวดก่อนหน้าในฟอร์ม)
+    const skipSizeChart =
+      !!effectiveCategory && !requiresSizeChart(effectiveCategory);
+    const parsedSizeChartId = skipSizeChart ? null : rawSizeChartId;
 
     if (
       effectiveCategory &&
@@ -1194,7 +1206,7 @@ export const updateProductController = async (
         removeImageIds,
         removeColorIds: parsedRemoveColorIds,
         ...(sizeChartRows !== undefined && {
-          size_chart: sizeChartRows,
+          size_chart: skipSizeChart ? [] : sizeChartRows,
         }),
       }
     );

@@ -45,10 +45,17 @@ export function useCachedQuery<T>(
     };
   }, []);
 
-  const applyResult = useCallback((cacheKey: string) => {
+  const applyResult = useCallback((cacheKey: string, fallback?: T) => {
     if (!aliveRef.current || stateRef.current.key !== cacheKey) return;
 
-    setEntry(peekCache<T>(cacheKey) ?? null);
+    // ห้าม set เป็น null ตอนไม่มีใน cache (เช่น response ถูกทิ้งเพราะ invalidate ซ้อน) —
+    // ไม่งั้นรายการที่โหลดเสร็จแล้วจะกลับไปเป็น "กำลังโหลด" ทั้งที่มีข้อมูลอยู่
+    const cached = peekCache<T>(cacheKey);
+    if (cached) {
+      setEntry(cached);
+    } else if (fallback !== undefined) {
+      setEntry({ data: fallback, fetchedAt: Date.now(), stale: false });
+    }
     setRefreshing(false);
   }, []);
 
@@ -62,13 +69,13 @@ export function useCachedQuery<T>(
 
     try {
       const result = await fetcherRef.current(opts);
-      applyResult(currentKey);
+      applyResult(currentKey, result);
 
       // ได้ข้อมูลเก่าไปแสดงก่อน (refetch เบื้องหลังยังไม่เสร็จ) → รอแล้วอัปเดตเมื่อได้ข้อมูลใหม่
       const refetch = pendingQuery(currentKey);
       if (refetch) {
         await refetch.catch(() => undefined);
-        applyResult(currentKey);
+        applyResult(currentKey, result);
       }
       return result;
     } catch (err) {
@@ -138,7 +145,8 @@ export function useCachedQuery<T>(
 
   return {
     data: entry?.data ?? null,
-    loading: entry === null && !refreshing,
+    // error แล้วไม่ถือว่ากำลังโหลด — ไม่งั้นหน้าค้างที่ "กำลังโหลด" ตลอด ทั้งที่โหลดไม่สำเร็จ
+    loading: entry === null && !refreshing && error === null,
     error,
     refreshing,
     refresh,

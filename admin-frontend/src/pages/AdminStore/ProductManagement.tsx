@@ -152,9 +152,10 @@ export default function ProductManagement() {
     filteredProducts[0] ??
     null;
 
-  // ขณะสินค้าที่เลือกมีรูป "รอตรวจ" ให้ refresh เบื้องหลังแบบไม่ force ให้ลดโหลดวนซ้ำ
-  const hasPendingImages = !!selectedProduct?.images.some(
-    (image) => image.quality_status === "PENDING",
+  // ขณะมีสินค้าใดในรายการที่ยังมีรูป "รอตรวจ" ให้ดึงสถานะใหม่เป็นระยะจนกว่าจะตรวจเสร็จ
+  // ต้อง force เพราะ cache ของรายการยัง "สด" (30 วิ) ถ้าไม่ force จะได้ข้อมูลเก่าที่ยังขึ้นรอตรวจอยู่
+  const hasPendingImages = products.some((product) =>
+    product.images.some((image) => image.quality_status === "PENDING"),
   );
 
   const refreshList = useCallback(() => refresh(), [refresh]);
@@ -163,17 +164,26 @@ export default function ProductManagement() {
     if (!hasPendingImages) return;
 
     const timer = window.setTimeout(() => {
-      refresh().catch(() => {});
-    }, 3000);
+      refresh({ force: true }).catch(() => {});
+    }, 4000);
 
     return () => {
       window.clearTimeout(timer);
     };
-  }, [hasPendingImages, refresh]);
+  }, [hasPendingImages, data, refresh]);
 
   // แก้ไขสินค้า → เปิด wizard (tab "เพิ่ม/แก้สินค้า")
+  // ถ้ามีรูปไม่ผ่านการตรวจสอบ ให้เปิดตรงขั้น "รูปสินค้า & สี" เพื่ออัปใหม่ทันที
   const handleEdit = (product: ProductSummary) => {
-    navigate(`/shopadmin/${slug}/products/${product.id}/edit`);
+    const hasFailedImage = product.images.some(
+      (image) => image.quality_status === "FAILED",
+    );
+
+    navigate(
+      `/shopadmin/${slug}/products/${product.id}/edit${
+        hasFailedImage ? "?step=images" : ""
+      }`,
+    );
   };
 
   // ลบสินค้า: ขอยืนยันผ่าน ConfirmModal แทน window.confirm
