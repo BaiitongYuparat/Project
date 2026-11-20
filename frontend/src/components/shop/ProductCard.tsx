@@ -19,8 +19,8 @@ const categoryLabel: Record<string, string> = {
   dress: "เดรส",
   skirt: "กระโปรง",
   set: "ชุด",
-  accessories: "กระเป๋า",
-  accessory: "กระเป๋า",
+  accessories: "เครื่องประดับ",
+
 };
 
 export default function ProductCard({
