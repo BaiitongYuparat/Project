@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import type { Product } from "../../services/productService";
 import {
@@ -40,6 +40,14 @@ const UsersIcon = () => (
   </svg>
 );
 
+type CompareView = "after" | "before" | "compare";
+
+const COMPARE_VIEWS: { key: CompareView; label: string }[] = [
+  { key: "after", label: "หลัง" },
+  { key: "before", label: "ก่อน" },
+  { key: "compare", label: "เทียบกัน" },
+];
+
 interface Props {
   subject: TryOnSubject | null;
   angle: Angle;
@@ -49,6 +57,8 @@ interface Props {
   onColorChange: (productId: string, colorId: string) => void;
   /** ภาพผลลัพธ์จาก AI (ตรงกับตัวเลือกปัจจุบัน) — ถ้าไม่มีจะแสดงรูปโมเดลเดิม */
   resultUrl?: string | null;
+  /** รูปก่อนลองใส่ (โมเดล/มุมเดียวกับภาพผลลัพธ์) — มีค่าเมื่อเทียบก่อน/หลังได้ */
+  beforeUrl?: string | null;
   /** ชื่อโมเดล · มุม ของภาพผลลัพธ์ (อาจไม่ตรงกับที่เลือกอยู่ตอนนี้) */
   resultLabel?: string;
   generating?: boolean;
@@ -67,14 +77,32 @@ export default function TryOnCanvas({
   colorSelection,
   onColorChange,
   resultUrl = null,
+  beforeUrl = null,
   resultLabel,
   generating = false,
   header,
   choosing = false,
   onPickMode,
 }: Props) {
-  const image = resultUrl ?? subject?.images[angle] ?? null;
   const angleLabel = ANGLES.find((a) => a.key === angle)?.label;
+
+  // มุมมองภาพผลลัพธ์ — ได้ภาพใหม่เมื่อไหร่ให้กลับไปที่ "หลัง"
+  const [view, setView] = useState<CompareView>("after");
+  const [viewFor, setViewFor] = useState(resultUrl);
+  if (viewFor !== resultUrl) {
+    setViewFor(resultUrl);
+    setView("after");
+  }
+
+  const canCompare = !!resultUrl && !!beforeUrl && !generating;
+  const shownView: CompareView = canCompare ? view : "after";
+  const showBefore = shownView === "before";
+  const image = showBefore ? beforeUrl : resultUrl ?? subject?.images[angle] ?? null;
+  const caption = showBefore
+    ? `ก่อน · ${subject?.name ?? ""} · ${angleLabel ?? ""}`
+    : resultUrl
+      ? `${canCompare ? "หลัง · " : ""}${resultLabel ?? ""} · ภาพจาก AI`
+      : `${subject?.name} · ${angleLabel}`;
 
   return (
     <div className="relative flex min-h-[520px] flex-col rounded-[28px] bg-[#EFE3D8] p-6 lg:min-h-[720px]">
@@ -84,6 +112,30 @@ export default function TryOnCanvas({
       </div>
 
       {header && <div className="mt-3">{header}</div>}
+
+      {canCompare && (
+        <div className="mt-4 flex justify-center">
+          <div
+            role="group"
+            aria-label="เทียบภาพก่อน/หลัง"
+            className="inline-flex rounded-full bg-white/85 p-1 shadow-[0_3px_0_rgba(59,44,37,0.10)]"
+          >
+            {COMPARE_VIEWS.map((v) => (
+              <button
+                key={v.key}
+                type="button"
+                aria-pressed={view === v.key}
+                onClick={() => setView(v.key)}
+                className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+                  view === v.key ? "bg-[#3B2C25] text-white" : "text-[#332F29] hover:bg-[#F0E9DD]"
+                }`}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-1 items-center justify-center py-6">
         {choosing ? (
@@ -110,17 +162,35 @@ export default function TryOnCanvas({
               ))}
             </div>
           </div>
+        ) : shownView === "compare" && beforeUrl && resultUrl ? (
+          <div className="grid w-full grid-cols-2 gap-3">
+            {[
+              { src: beforeUrl, label: "ก่อน", alt: `${subject?.name ?? ""} ก่อนลองใส่` },
+              { src: resultUrl, label: "หลัง", alt: resultLabel ?? "ภาพจาก AI" },
+            ].map((p) => (
+              <figure key={p.label} className="relative flex justify-center">
+                <img
+                  src={p.src}
+                  alt={p.alt}
+                  className="max-h-[480px] w-full rounded-[20px] object-contain shadow-[0_18px_48px_rgba(51,47,41,0.12)]"
+                />
+                <figcaption className="absolute left-3 top-3 rounded-full bg-white/85 px-3 py-1 text-xs text-[#332F29]">
+                  {p.label}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
         ) : image ? (
           <figure className="relative">
             <img
               src={image}
-              alt={resultUrl ? resultLabel : subject?.name}
+              alt={showBefore ? subject?.name : resultUrl ? resultLabel : subject?.name}
               className={`max-h-[560px] w-auto rounded-[20px] object-contain shadow-[0_18px_48px_rgba(51,47,41,0.12)] transition ${
                 generating ? "opacity-40" : ""
               }`}
             />
             <figcaption className="absolute left-3 top-3 rounded-full bg-white/85 px-3 py-1 text-xs text-[#332F29]">
-              {resultUrl ? `${resultLabel ?? ""} · ภาพจาก AI` : `${subject?.name} · ${angleLabel}`}
+              {caption}
             </figcaption>
             {generating && (
               <div

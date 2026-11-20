@@ -113,6 +113,11 @@ export default function TryOnPage() {
   const resultUrl = result?.url ?? null;
   // ตัวเลือกปัจจุบันไม่ตรงกับภาพที่แสดงอยู่ → บอกให้กดสร้างใหม่
   const resultStale = !!result && result.signature !== signature;
+  // รูป "ก่อน" สำหรับเทียบ — ใช้ได้เฉพาะเมื่อผลลัพธ์เป็นของโมเดล/มุมเดียวกับที่เลือกอยู่
+  const beforeUrl =
+    result && subject && result.signature.startsWith(`${subject.key}|${angle}|`)
+      ? subject.images[angle] ?? null
+      : null;
 
   // ออกจากหน้า → หยุด poll (งานยังรันต่อที่ backend และกลับมา poll ต่อได้จาก pendingJob ใน session)
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -393,6 +398,7 @@ export default function TryOnPage() {
             colorSelection={pending?.colorSelection ?? colorSelection}
             onColorChange={changeColor}
             resultUrl={pending ? null : resultUrl}
+            beforeUrl={pending ? null : beforeUrl}
             resultLabel={result?.label}
             generating={generating}
             choosing={mode === null}
