@@ -22,11 +22,14 @@ export const adminSlice = createSlice({
     logoutAdmin: (state) => {
       state.admin = null;
     },
+    setAdminName: (state, action: PayloadAction<string>) => {
+      if (state.admin) state.admin.name = action.payload;
+    },
     setAdminAuthChecked: (state) => {
       state.authChecked = true;
     },
   },
 });
 
-export const { loginAdmin, logoutAdmin, setAdminAuthChecked } = adminSlice.actions;
+export const { loginAdmin, logoutAdmin, setAdminName, setAdminAuthChecked } = adminSlice.actions;
 export default adminSlice.reducer;

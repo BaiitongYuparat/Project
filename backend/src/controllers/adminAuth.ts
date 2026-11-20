@@ -169,6 +169,35 @@ export const getCurrentAdmin = async (req: Request, res: Response) => {
   }
 };
 
+// แก้ชื่อที่แสดงของบัญชีผู้ดูแลตัวเอง (แก้ได้เฉพาะชื่อ)
+export const updateCurrentAdminName = async (req: Request, res: Response) => {
+  try {
+    if (!req.admin) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+
+    if (!name) {
+      return res.status(400).json({ message: "กรุณากรอกชื่อ" });
+    }
+    if (name.length > 60) {
+      return res.status(400).json({ message: "ชื่อต้องไม่เกิน 60 ตัวอักษร" });
+    }
+
+    await prisma.admin.update({
+      where: { id: req.admin.id },
+      data: { name },
+    });
+
+    const admin = await getAdminWithBrands(req.admin.id);
+    return res.json({ admin });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 export const logoutAdmin = async (req: Request, res: Response) => {
   res.clearCookie(COOKIE_NAME, cookieOptions);
 

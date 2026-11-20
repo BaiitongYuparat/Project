@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import type { ProductDetail as ProductDetailData } from "../../../services/productService";
-import { getProductById } from "../../../services/productService";
+import type {
+  Product,
+  ProductDetail as ProductDetailData,
+} from "../../../services/productService";
+import { getProductById, getProducts } from "../../../services/productService";
 
 import ProductGallery from "../../../components/shop/detail/ProductGallery";
 import ColorSwatches from "../../../components/shop/detail/ColorSwatches";
@@ -11,9 +14,12 @@ import SizeTable from "../../../components/shop/detail/SizeTable";
 import { hasSizeChartData } from "../../../components/shop/detail/sizeChart";
 import ShopCard from "../../../components/shop/detail/ShopCard";
 import SectionTitle from "../../../components/shop/detail/SectionTitle";
+import RecommendedProducts from "../../../components/shop/detail/RecommendedProducts";
+import { pickRecommendedProducts } from "../../../components/shop/detail/recommendation";
 import { focusRing } from "../../../components/shop/detail/styles";
 import { categoryLabel, genderLabel } from "../../../components/shop/detail/labels";
 
+import { useFavorites } from "../../../context/useFavorites";
 import { useRequireAuth } from "../../../hooks/useRequireAuth";
 
 // ราคาอาจถูกส่งมาเป็น string (Prisma Decimal) — แปลงเป็นตัวเลขก่อนฟอร์แมต
@@ -89,11 +95,15 @@ export default function ProductDetail() {
 const { id } = useParams<{ id: string }>();
 const navigate = useNavigate();
 const requireAuth = useRequireAuth();
+const { favorites, toggleFavorite } = useFavorites();
 
 const [product, setProduct] = useState<ProductDetailData | null>(null);
 const [isLoading, setIsLoading] = useState(true);
 const [error, setError] = useState("");
 const [reloadKey, setReloadKey] = useState(0);
+
+// สินค้าทั้งหมดของร้านค้า (ใช้คัด "สินค้าแนะนำ" ท้ายหน้า)
+const [allProducts, setAllProducts] = useState<Product[]>([]);
 
 // null = แสดงรูปทุกสี (มีค่าเมื่อเลือกสีจาก ColorSwatches)
 const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
@@ -120,6 +130,32 @@ useEffect(() => {
   loadProduct();
 }, [id, reloadKey]);
 
+// โหลดรายการสินค้าสำหรับแถบ "สินค้าแนะนำ" แยกจากข้อมูลหลัก
+// ถ้าดึงไม่สำเร็จก็แค่ไม่แสดงแถบนั้น ไม่ทำให้ทั้งหน้าพัง
+useEffect(() => {
+  if (!id) return;
+
+  let cancelled = false;
+
+  const loadRecommendations = async () => {
+    try {
+      const products = await getProducts();
+
+      if (!cancelled) setAllProducts(products);
+    } catch (err) {
+      console.error(err);
+
+      if (!cancelled) setAllProducts([]);
+    }
+  };
+
+  loadRecommendations();
+
+  return () => {
+    cancelled = true;
+  };
+}, [id, reloadKey]);
+
 // รูปตามสีที่เลือก — ไม่เลือกสี = โชว์ด้านหน้าของทุกสี, เลือกสี = โชว์ทุกด้านของสีนั้น
 const galleryImages = useMemo(() => {
   const images = product?.images ?? [];
@@ -139,12 +175,37 @@ const galleryImages = useMemo(() => {
   return colorImages.length > 0 ? colorImages : images;
 }, [product, selectedColorId]);
 
+// สินค้าแนะนำท้ายหน้า: ร้านเดียวกันก่อน → หมวดเดียวกัน/ใกล้เคียง → เติมที่เหลือ (สูงสุด 6 ชิ้น)
+const recommendedProducts = useMemo(
+  () =>
+    pickRecommendedProducts({
+      all: allProducts,
+      currentId: id ?? "",
+      brandId: product?.brand_id,
+      category: product?.category,
+    }),
+  [allProducts, id, product?.brand_id, product?.category]
+);
+
 const handleTryOn = () => {
   if (!product) return;
 
   requireAuth(() => {
-    // ตอนนี้ยังไม่มี Try-On Flow จริง (เหมือนหน้า Home)
-    alert(`คุณเลือกลองใส่: ${product.name}`);
+    // ไปหน้า Try-On Studio พร้อมเลือกสินค้าชิ้นนี้ไว้ให้ (เหมือนการ์ดสินค้าหน้าร้าน)
+    navigate("/tryon", { state: { productId: product.id } });
+  });
+};
+
+// การ์ดในแถบสินค้าแนะนำ — พฤติกรรมเดียวกับ ProductCard ในหน้าร้าน
+const handleRecommendedTryOn = (recommended: Product) => {
+  requireAuth(() => {
+    navigate("/tryon", { state: { productId: recommended.id } });
+  });
+};
+
+const handleToggleFavorite = (productId: string) => {
+  requireAuth(() => {
+    toggleFavorite(productId);
   });
 };
 
@@ -408,6 +469,18 @@ return (
           <ShopCard brand={product.brand} />
         </aside>
       </div>
+
+      {/* สินค้าแนะนำ — แถวเลื่อนแนวนอน ท้ายสุดของหน้า */}
+      {recommendedProducts.length > 0 && (
+        <div className="mt-12 border-t border-[#EADCCF] pt-8 pd-fade-up">
+          <RecommendedProducts
+            products={recommendedProducts}
+            favorites={favorites}
+            onToggleFavorite={handleToggleFavorite}
+            onTryOn={handleRecommendedTryOn}
+          />
+        </div>
+      )}
     </div>
 
     {/* แถบราคา + ปุ่มลองใส่ ติดด้านล่าง — เฉพาะจอเล็กกว่า sm (ปุ่มอยู่ในการ์ดแล้วตั้งแต่ sm ขึ้นไป) */}

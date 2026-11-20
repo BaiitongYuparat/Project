@@ -62,6 +62,8 @@ export default function ShopAdminManagement() {
   const [members, setMembers] = useState<BrandMember[]>([]);
   const [currentRole, setCurrentRole] = useState<BrandMemberRole>("ADMIN");
   const [loading, setLoading] = useState(true);
+  // refetch เบื้องหลัง (เช่น หลัง mutation) — ไม่ซ่อนตารางด้วย skeleton
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
   // toggle แสดงฟอร์มเพิ่มสมาชิก
@@ -90,58 +92,73 @@ export default function ShopAdminManagement() {
     return () => window.clearTimeout(toastTimerRef.current);
   }, []);
 
-  const fetchMembers = useCallback(async () => {
-    if (!slug) return;
+  const fetchMembers = useCallback(
+    async (opts: { force?: boolean; showSkeleton?: boolean } = {}) => {
+      if (!slug) return;
 
-    try {
-      setLoading(true);
-      setError("");
+      try {
+        // skeleton เฉพาะตอนยังไม่มีข้อมูลให้แสดง — refetch หลัง mutation ให้ตารางเดิมค้างไว้แล้วอัปเดตแทน
+        if (opts.showSkeleton) {
+          setLoading(true);
+        } else {
+          setRefreshing(true);
+        }
+        setError("");
 
-      const [membersResult, transferResult] = await Promise.allSettled([
-        getBrandMembers(slug),
-        getOwnerTransferStatus(slug),
-      ]);
+        const [membersResult, transferResult] = await Promise.allSettled([
+          getBrandMembers(slug, { force: opts.force }),
+          getOwnerTransferStatus(slug, { force: opts.force }),
+        ]);
 
-      if (membersResult.status === "fulfilled") {
-        setMembers(membersResult.value.members);
-        setCurrentRole(membersResult.value.currentRole);
-      } else {
+        if (membersResult.status === "fulfilled") {
+          setMembers(membersResult.value.members);
+          setCurrentRole(membersResult.value.currentRole);
+        } else {
+          setMembers([]);
+          setError(getApiErrorMessage(membersResult.reason, "ไม่สามารถโหลดรายชื่อสมาชิกได้"));
+          console.error("Failed to load members:", membersResult.reason);
+          return;
+        }
+
+        if (transferResult.status === "fulfilled") {
+          setOwnerTransferRequest(transferResult.value.request);
+        } else {
+          setOwnerTransferRequest(null);
+          console.error("Failed to load owner transfer status:", transferResult.reason);
+        }
+      } catch (err) {
         setMembers([]);
-        setError(getApiErrorMessage(membersResult.reason, "ไม่สามารถโหลดรายชื่อสมาชิกได้"));
-        console.error("Failed to load members:", membersResult.reason);
-        return;
+        setError(getApiErrorMessage(err, "ไม่สามารถโหลดรายชื่อสมาชิกได้"));
+        console.error("Failed to load members:", err);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-
-      if (transferResult.status === "fulfilled") {
-        setOwnerTransferRequest(transferResult.value.request);
-      } else {
-        setOwnerTransferRequest(null);
-        console.error("Failed to load owner transfer status:", transferResult.reason);
-      }
-    } catch (err) {
-      setMembers([]);
-      setError(getApiErrorMessage(err, "ไม่สามารถโหลดรายชื่อสมาชิกได้"));
-      console.error("Failed to load members:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [slug]);
+    },
+    [slug],
+  );
 
   // เริ่มโหลดรายการสมาชิกเมื่อเข้าหน้า / เปลี่ยน slug
   useEffect(() => {
-    fetchMembers();
+    fetchMembers({ showSkeleton: true });
   }, [fetchMembers]);
 
   const handleAddMember = async (email: string) => {
     if (!slug) return;
 
     try {
-      await addBrandMember(slug, email);
+      const result = await addBrandMember(slug, email);
+
+      // ใส่สมาชิกใหม่ลงตารางทันที ไม่ต้องรอ refetch
+      setMembers((prev) =>
+        prev.some((m) => m.id === result.member.id) ? prev : [...prev, result.member],
+      );
+
       showToast({ type: "success", message: `${email} ถูกเพิ่มเป็น ADMIN แล้ว` });
       setShowAddForm(false);
     } finally {
-      // ถ้าเพิ่มไม่สำเร็จ error จะไปโชว์ใน AddMemberForm แต่ยัง refetch รายการให้ใหม่
-      await fetchMembers();
+      // ถ้าเพิ่มไม่สำเร็จ error จะไปโชว์ใน AddMemberForm แต่ยัง refetch รายการให้ใหม่ (force เพื่อข้าม cache)
+      await fetchMembers({ force: true });
     }
   };
 
@@ -155,6 +172,10 @@ export default function ShopAdminManagement() {
     try {
       setRemoving(true);
       await removeBrandMember(slug, confirmMember.id);
+
+      // เอาออกจากตารางทันที (optimistic) ไม่ต้องรอ refetch
+      setMembers((prev) => prev.filter((m) => m.id !== confirmMember.id));
+
       showToast({
         type: "success",
         message: `${
@@ -162,7 +183,9 @@ export default function ShopAdminManagement() {
         } ถูกลบออกจากร้านแล้ว`,
       });
       setConfirmMember(null);
-      await fetchMembers();
+
+      // reconcile กับข้อมูลจริงจาก server (force เพื่อข้าม cache ที่ยัง stale)
+      await fetchMembers({ force: true });
     } catch (err) {
       showToast({
         type: "error",
@@ -184,7 +207,7 @@ export default function ShopAdminManagement() {
     });
     setOwnerTransferRequest(res.request);
     setShowTransferModal(false);
-    await fetchMembers();
+    await fetchMembers({ force: true });
   };
 
   return (
@@ -251,6 +274,10 @@ export default function ShopAdminManagement() {
         )}
 
         {/* Member Table */}
+        {refreshing && !loading && (
+          <p className="text-right text-xs text-[#8B806E]">กำลังอัปเดตรายชื่อ...</p>
+        )}
+
         {loading ? (
           <div className="bg-white rounded-xl p-10 text-center text-[#8B806E]">
             กำลังโหลดรายชื่อสมาชิก...
@@ -260,7 +287,7 @@ export default function ShopAdminManagement() {
             <p className="text-red-600 mb-4">{error}</p>
 
             <button
-              onClick={fetchMembers}
+              onClick={() => fetchMembers({ force: true, showSkeleton: true })}
               className="text-blue-700 font-medium hover:underline"
             >
               ลองอีกครั้ง

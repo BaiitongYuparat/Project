@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate, useParams } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { IonIcon } from "@ionic/react";
 import {
   chevronDownOutline,
@@ -14,10 +14,13 @@ import {
   storefrontOutline,
   personOutline,
   settingsOutline,
+  pencilOutline,
+  checkmarkOutline,
 } from "ionicons/icons";
-import { logoutAdmin as logoutAdminApi } from "../services/adminAuthService";
+import { logoutAdmin as logoutAdminApi, updateAdminName } from "../services/adminAuthService";
+import type { RootState } from "../store/store";
 import { invalidateAll } from "../services/cache";
-import { logoutAdmin as clearAdminAuth } from "../store/adminSlice";
+import { logoutAdmin as clearAdminAuth, setAdminName } from "../store/adminSlice";
 import ConfirmLogoutModal from "./ConfirmLogoutModal";
 import { getBrandSettings } from "../services/ShopAdmin/brandService";
 import type { BrandSettings } from "../types/brand";
@@ -124,6 +127,111 @@ function Logo({ name, logoUrl }: { name: string; logoUrl: string | null }) {
         </span>
       </span>
     </span>
+  );
+}
+
+const ROLE_LABEL: Record<string, string> = {
+  OWNER: "เจ้าของร้าน",
+  ADMIN: "แอดมิน",
+};
+
+// การ์ดบัญชีที่ล็อกอินอยู่: ชื่อ (แก้ได้ด้วยดินสอ) + role ในร้านนี้
+function AccountCard({ slug }: { slug: string | undefined }) {
+  const dispatch = useDispatch();
+  const admin = useSelector((state: RootState) => state.admin.admin);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  if (!admin) return null;
+
+  const memberRole = admin.brandMemberships.find((m) => m.slug === slug)?.role;
+  const roleLabel = memberRole ? ROLE_LABEL[memberRole] : "Shop Admin";
+  const displayName = admin.name?.trim() || admin.email;
+
+  const startEdit = () => {
+    setDraft(admin.name ?? "");
+    setError("");
+    setEditing(true);
+  };
+
+  const save = async () => {
+    const name = draft.trim();
+    if (!name) {
+      setError("กรุณากรอกชื่อ");
+      return;
+    }
+    if (name === (admin.name ?? "")) {
+      setEditing(false);
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    try {
+      const updated = await updateAdminName(name);
+      dispatch(setAdminName(updated.name ?? name));
+      setEditing(false);
+    } catch (e) {
+      console.error("Failed to update admin name:", e);
+      setError("บันทึกชื่อไม่สำเร็จ");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mb-2 rounded-xl bg-[#E9E0D2]/60 px-3 py-2.5">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#87947A] text-sm font-bold text-white">
+          {getBrandInitial(displayName)}
+        </span>
+        <div className="min-w-0 flex-1">
+          {editing ? (
+            <input
+              autoFocus
+              value={draft}
+              maxLength={60}
+              disabled={saving}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") save();
+                if (e.key === "Escape") setEditing(false);
+              }}
+              aria-label="ชื่อบัญชี"
+              className="w-full rounded-md border border-[#D9CDB9] bg-white px-2 py-1 text-sm text-[#766454] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            />
+          ) : (
+            <p className="truncate text-sm font-semibold text-[#766454]" title={displayName}>
+              {displayName}
+            </p>
+          )}
+          <p className="mt-0.5 text-[11px] font-medium text-[#A99A87]">{roleLabel}</p>
+        </div>
+        {editing ? (
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            aria-label="บันทึกชื่อ"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg text-[#5F6E53] transition-colors hover:bg-[#F7F3EB] disabled:opacity-50"
+          >
+            <IonIcon icon={checkmarkOutline} />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={startEdit}
+            aria-label="แก้ไขชื่อ"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-base text-[#A99A87] transition-colors hover:bg-[#F7F3EB] hover:text-[#766454]"
+          >
+            <IonIcon icon={pencilOutline} />
+          </button>
+        )}
+      </div>
+      {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
+    </div>
   );
 }
 
@@ -337,6 +445,7 @@ export default function ShopAdminSidebar() {
 
         {/* Footer */}
         <div className="shrink-0 border-t border-[#D9CDB9] p-3">
+          <AccountCard slug={slug} />
           <button
             type="button"
             onClick={() => {

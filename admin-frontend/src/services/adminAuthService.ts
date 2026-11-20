@@ -1,5 +1,5 @@
 import api from "./api";
-import { cachedQuery } from "./cache";
+import { cachedQuery, invalidate } from "./cache";
 import type { Admin } from "../types/admin";
 
 // ระบบ login ฝั่งผู้ดูแล (/admin-auth) — แยกจาก authService ของ shopper
@@ -33,4 +33,13 @@ export async function getCurrentAdmin(): Promise<Admin> {
 
 export async function logoutAdmin(): Promise<void> {
   await api.post("/admin-auth/logout");
+}
+
+// แก้ชื่อที่แสดงของบัญชีตัวเอง — คืน admin ล่าสุด
+export async function updateAdminName(name: string): Promise<Admin> {
+  const response = await api.patch<{ admin: Admin }>("/admin-auth/me", { name });
+  // ชื่ออยู่ใน cache ของ me และรายชื่อสมาชิกร้าน
+  invalidate(CURRENT_ADMIN_KEY);
+  invalidate("brand-members");
+  return response.data.admin;
 }
