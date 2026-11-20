@@ -142,11 +142,27 @@ export type PlatformDashboard = {
     users: number;
     requests: number;
     failed: number;
+    /** ต้นทุน AI รวม (USD) เฉพาะการ gen จริง */
+    cost: number;
+    /** ค่าเฉลี่ยเวลา gen ที่สำเร็จ (ms) — null ถ้าไม่มีข้อมูล */
+    avgDurationMs: number | null;
+    /** จำนวนครั้งที่คืนผลจากแคช (ไม่เสียค่า AI) */
+    cacheHits: number;
+  };
+  /** ต้นทุนแยกตาม provider (fal / bfl) */
+  byProvider: { provider: string; count: number; cost: number }[];
+  /** งานที่รอ Super Admin จัดการ (ทั้งระบบ ไม่ขึ้นกับช่วงเวลา) */
+  pending: {
+    brands: number;
+    appeals: number;
+    ownerTransfers: number;
+    aiReports: number;
   };
   series: {
     date: string;
     requests: number;
     success: number;
+    cost: number;
   }[];
   topBrands: {
     id: string;
@@ -161,6 +177,7 @@ export type PlatformDashboard = {
     status: string;
     products: number;
     tryons: number;
+    cost: number;
   }[];
 };
 
@@ -184,8 +201,23 @@ export const getPlatformDashboard = async (
     OR: [{ provider: null }, { provider: { not: "cache" } }],
   };
 
-  const [brands, brandCount, requests, success, failed, distinctUsers, perBrand] =
-    await Promise.all([
+  const [
+    brands,
+    brandCount,
+    requests,
+    success,
+    failed,
+    distinctUsers,
+    perBrand,
+    costAgg,
+    durationAgg,
+    cacheHits,
+    perProvider,
+    pendingBrands,
+    pendingAppeals,
+    pendingTransfers,
+    pendingReports,
+  ] = await Promise.all([
       prisma.brand.findMany({
         select: {
           id: true,
@@ -209,17 +241,40 @@ export const getPlatformDashboard = async (
         by: ["brand_id"],
         where,
         _count: { _all: true },
+        _sum: { cost: true },
       }),
+      prisma.tryOnLog.aggregate({ where, _sum: { cost: true } }),
+      prisma.tryOnLog.aggregate({
+        where: { ...where, status: "SUCCESS", duration_ms: { not: null } },
+        _avg: { duration_ms: true },
+      }),
+      prisma.tryOnLog.count({
+        where: {
+          created_at: { gte: startUtc, lt: endUtc },
+          provider: "cache",
+        },
+      }),
+      prisma.tryOnLog.groupBy({
+        by: ["provider"],
+        where: { ...where, provider: { not: null } },
+        _count: { _all: true },
+        _sum: { cost: true },
+      }),
+      prisma.brand.count({ where: { status: "PENDING" } }),
+      prisma.appeal.count({ where: { status: "PENDING" } }),
+      prisma.ownerTransferRequest.count({ where: { status: "PENDING" } }),
+      prisma.aiReport.count({ where: { status: "PENDING" } }),
     ]);
 
   // กราฟ: รวมยอดต่อ bucket ในเขตเวลาไทย (created_at เก็บเป็น UTC แบบไม่มี tz)
   const rows = await prisma.$queryRaw<
-    { bucket: string; requests: number; success: number }[]
+    { bucket: string; requests: number; success: number; cost: number }[]
   >(Prisma.sql`
     SELECT
       to_char(date_trunc(${unit}::text, created_at + interval '7 hours'), 'YYYY-MM-DD') AS bucket,
       COUNT(*)::int AS requests,
-      COUNT(*) FILTER (WHERE status = 'SUCCESS')::int AS success
+      COUNT(*) FILTER (WHERE status = 'SUCCESS')::int AS success,
+      COALESCE(SUM(cost), 0)::float8 AS cost
     FROM try_on_logs
     WHERE created_at >= ${startUtc} AND created_at < ${endUtc}
       AND (provider IS NULL OR provider <> 'cache')
@@ -243,11 +298,15 @@ export const getPlatformDashboard = async (
       date: key,
       requests: Number(row?.requests ?? 0),
       success: Number(row?.success ?? 0),
+      cost: Number(row?.cost ?? 0),
     });
   }
 
   const tryOnByBrand = new Map(
     perBrand.map((row) => [row.brand_id, row._count._all])
+  );
+  const costByBrand = new Map(
+    perBrand.map((row) => [row.brand_id, Number(row._sum.cost ?? 0)])
   );
 
   const brandRows = brands
@@ -259,6 +318,7 @@ export const getPlatformDashboard = async (
       status: brand.status,
       products: brand._count.products,
       tryons: Number(tryOnByBrand.get(brand.id) ?? 0),
+      cost: costByBrand.get(brand.id) ?? 0,
     }))
     .sort((a, b) => b.tryons - a.tryons || a.brand_name.localeCompare(b.brand_name, "th"));
 
@@ -278,6 +338,23 @@ export const getPlatformDashboard = async (
       users: distinctUsers.length,
       requests,
       failed,
+      cost: Number(costAgg._sum.cost ?? 0),
+      avgDurationMs:
+        durationAgg._avg.duration_ms === null
+          ? null
+          : Math.round(durationAgg._avg.duration_ms),
+      cacheHits,
+    },
+    byProvider: perProvider.map((row) => ({
+      provider: row.provider ?? "unknown",
+      count: row._count._all,
+      cost: Number(row._sum.cost ?? 0),
+    })),
+    pending: {
+      brands: pendingBrands,
+      appeals: pendingAppeals,
+      ownerTransfers: pendingTransfers,
+      aiReports: pendingReports,
     },
     series,
     topBrands,

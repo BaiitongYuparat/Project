@@ -17,11 +17,22 @@ export type DashboardStats = {
     users: number;
     requests: number;
     failed: number;
+    cost: number; // USD
+    avgDurationMs: number | null;
+    cacheHits: number;
+  };
+  byProvider: { provider: string; count: number; cost: number }[];
+  pending: {
+    brands: number;
+    appeals: number;
+    ownerTransfers: number;
+    aiReports: number;
   };
   series: {
     date: string;
     requests: number;
     success: number;
+    cost: number;
   }[];
   topBrands: {
     id: string;
@@ -36,6 +47,7 @@ export type DashboardStats = {
     status: string;
     products: number;
     tryons: number;
+    cost: number;
   }[];
 };
 

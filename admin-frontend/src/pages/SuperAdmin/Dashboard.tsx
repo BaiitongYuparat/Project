@@ -49,6 +49,15 @@ const daysAgoLocalIso = (days: number) => {
 
 const formatNumber = (n: number) => n.toLocaleString("th-TH");
 
+const formatUsd = (n: number) =>
+  `$${n.toLocaleString("en-US", {
+    minimumFractionDigits: n > 0 && n < 1 ? 4 : 2,
+    maximumFractionDigits: n > 0 && n < 1 ? 4 : 2,
+  })}`;
+
+const formatSeconds = (ms: number | null) =>
+  ms === null ? "—" : `${(ms / 1000).toLocaleString("th-TH", { maximumFractionDigits: 1 })} วิ`;
+
 const buddhistYear = (d: Date) => d.getUTCFullYear() + 543;
 
 // "12–18 ต.ค. 2569" / "พ.ย. 2568 – ต.ค. 2569" / "2564 – 2569"
@@ -96,17 +105,20 @@ function StatCard({
   title,
   value,
   valueClassName,
+  hint,
 }: {
   title: string;
-  value: number;
+  value: number | string;
   valueClassName: string;
+  hint?: string;
 }) {
   return (
     <div className="rounded-2xl border border-[#EADFC9] bg-white px-5 py-5">
       <p className="text-sm text-[#928474]">{title}</p>
       <p className={`mt-2 text-3xl font-bold ${valueClassName}`}>
-        {formatNumber(value)}
+        {typeof value === "number" ? formatNumber(value) : value}
       </p>
+      {hint && <p className="mt-1 text-xs text-[#928474]">{hint}</p>}
     </div>
   );
 }
@@ -209,6 +221,11 @@ export default function Dashboard() {
     ...series.map((s) => Math.max(s.requests, s.success))
   );
 
+  const totalSuccess = series.reduce((sum, s) => sum + s.success, 0);
+  const totalRequests = data?.totals.requests ?? 0;
+  const successRate = totalRequests > 0 ? (totalSuccess / totalRequests) * 100 : 0;
+  const avgCost = totalSuccess > 0 ? (data?.totals.cost ?? 0) / totalSuccess : 0;
+
   const unit = data?.range.unit ?? "day";
   const rangeLabel = data
     ? formatRangeLabel(data.range.from, data.range.to, unit)
@@ -309,6 +326,83 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* ต้นทุน AI และประสิทธิภาพ */}
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="ต้นทุน AI รวม"
+          value={formatUsd(data?.totals.cost ?? 0)}
+          valueClassName="text-[#8D6428]"
+          hint="เฉพาะ Virtual Try-On · ไม่รวมค่า Gemini"
+        />
+        <StatCard
+          title="ต้นทุนเฉลี่ยต่อภาพ"
+          value={formatUsd(avgCost)}
+          valueClassName="text-[#3B2C25]"
+          hint="ต่อคำขอที่สำเร็จ"
+        />
+        <StatCard
+          title="อัตราสำเร็จ"
+          value={`${successRate.toLocaleString("th-TH", { maximumFractionDigits: 1 })}%`}
+          valueClassName="text-[#4F6B2E]"
+          hint={`เวลาประมวลผลเฉลี่ย ${formatSeconds(data?.totals.avgDurationMs ?? null)}`}
+        />
+        <StatCard
+          title="ผลที่คืนจากแคช"
+          value={data?.totals.cacheHits ?? 0}
+          valueClassName="text-[#2F4BD0]"
+          hint="ไม่เสียค่า AI"
+        />
+      </div>
+
+      {/* งานที่รอจัดการ + ต้นทุนตาม provider */}
+      <div className="mt-4 grid gap-4 xl:grid-cols-3">
+        <section className="rounded-2xl border border-[#EADFC9] bg-white p-5 xl:col-span-2">
+          <h2 className="text-base font-bold text-[#3B2C25]">งานที่รอจัดการ</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              { label: "ร้านรอตรวจสอบ", count: data?.pending.brands ?? 0, to: "/superadmin/store-management" },
+              { label: "คำร้องปลดระงับ", count: data?.pending.appeals ?? 0, to: "/superadmin/appeals" },
+              { label: "ขอเปลี่ยนเจ้าของร้าน", count: data?.pending.ownerTransfers ?? 0, to: "/superadmin/owner-transfer-requests" },
+              { label: "รายงานปัญหา AI", count: data?.pending.aiReports ?? 0, to: "/superadmin/ai-reports" },
+            ].map((item) => (
+              <Link
+                key={item.label}
+                to={item.to}
+                className="rounded-xl border border-[#F1EADB] bg-[#FBF7EC] px-4 py-3 transition hover:bg-[#F5EFDF]"
+              >
+                <p className="text-xs text-[#928474]">{item.label}</p>
+                <p
+                  className={`mt-1 text-2xl font-bold ${
+                    item.count > 0 ? "text-[#B4452F]" : "text-[#3B2C25]"
+                  }`}
+                >
+                  {formatNumber(item.count)}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-[#EADFC9] bg-white p-5">
+          <h2 className="text-base font-bold text-[#3B2C25]">ต้นทุนตาม Provider</h2>
+          {(data?.byProvider.length ?? 0) === 0 ? (
+            <p className="mt-4 text-sm text-[#928474]">ยังไม่มีการใช้งานในช่วงเวลานี้</p>
+          ) : (
+            <ul className="mt-3 divide-y divide-[#F1EADB]">
+              {data?.byProvider.map((p) => (
+                <li key={p.provider} className="flex items-center justify-between py-2.5 text-sm">
+                  <span className="font-medium uppercase text-[#5F5144]">{p.provider}</span>
+                  <span className="text-[#928474]">
+                    {formatNumber(p.count)} ครั้ง ·{" "}
+                    <span className="font-medium text-[#3B2C25]">{formatUsd(p.cost)}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+
       {/* กราฟ + อันดับร้าน */}
       <div className="mt-4 grid gap-4 xl:grid-cols-3">
         <section className="rounded-2xl border border-[#EADFC9] bg-white p-5 xl:col-span-2">
@@ -339,7 +433,7 @@ export default function Dashboard() {
                   <div
                     key={point.date}
                     className="flex h-full flex-1 items-end justify-center gap-1"
-                    title={`${point.date}: คำขอ ${formatNumber(point.requests)} · สำเร็จ ${formatNumber(point.success)}`}
+                    title={`${point.date}: คำขอ ${formatNumber(point.requests)} · สำเร็จ ${formatNumber(point.success)} · ต้นทุน ${formatUsd(point.cost)}`}
                   >
                     <div
                       style={{
@@ -525,6 +619,9 @@ export default function Dashboard() {
                     <th scope="col" className="px-4 py-3 text-right font-normal">
                       การลองสินค้า
                     </th>
+                    <th scope="col" className="px-4 py-3 text-right font-normal">
+                      ต้นทุน AI
+                    </th>
                     <th scope="col" className="px-5 py-3 text-right font-normal">
                       จัดการ
                     </th>
@@ -552,6 +649,9 @@ export default function Dashboard() {
                       </td>
                       <td className="px-4 py-4 text-right text-[#5F5144]">
                         {formatNumber(brand.tryons)}
+                      </td>
+                      <td className="px-4 py-4 text-right text-[#5F5144]">
+                        {formatUsd(brand.cost)}
                       </td>
                       <td className="px-5 py-4 text-right">
                         <Link
