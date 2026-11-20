@@ -5,6 +5,7 @@ import {
   cameraOutline,
   chevronForwardOutline,
 } from "ionicons/icons";
+import DeleteAccount from "../../../components/profile/DeleteAccount";
 
 export default function ProfilePage() {
   const menuItems = [
@@ -91,6 +92,8 @@ export default function ProfilePage() {
                 ข้อมูลที่ครบถ้วนช่วยให้ AI แนะนำเสื้อผ้าได้เหมาะสมยิ่งขึ้น
               </p>
             </div>
+
+            <DeleteAccount />
           </div>
         </aside>
 

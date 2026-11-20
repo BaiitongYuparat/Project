@@ -22,10 +22,14 @@ import {
   getOwnerTransferRequests,
   decideOwnerTransferRequest,
 } from "../controllers/ownerTransfer";
+import { getDashboard } from "../controllers/dashboard";
 const router = Router();
 
 // ทุก Route ต้องเป็น Super Admin (session ฝั่ง Admin — cookie admin_token)
 router.use(adminAuthMiddleware, requireSuperAdmin);
+
+// Dashboard (ภาพรวมแพลตฟอร์ม)
+router.get("/dashboard", getDashboard);
 
 // Brand Management
 router.get("/brands", getBrands);

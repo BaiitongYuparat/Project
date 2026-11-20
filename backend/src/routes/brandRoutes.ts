@@ -7,6 +7,7 @@ import { requireBrandAccess } from "../middlewares/brandAccess";
 import { createProductController, deleteProductController, deleteProductsController, getProductByIdController, getProductsController, recheckProductImageController, updateProductController } from "../controllers/product";
 import { getSizeChartTemplatesController, getProductOptionsController } from "../controllers/productConfig";
 import { createBrandSizeChartController, deleteBrandSizeChartController, getBrandSizeChartByIdController, getBrandSizeChartsController, updateBrandSizeChartController } from "../controllers/sizeChart";
+import { getShopDashboardController } from "../controllers/shopDashboard";
 
 const router = Router();
 
@@ -54,6 +55,14 @@ router.delete("/:slug/members/:memberId",removeBrandMember);
 // คำขอเปลี่ยน OWNER — OWNER ยื่นแจ้ง Super Admin (ดูสถานะ / ยื่นคำขอ)
 router.get("/:slug/members/owner-transfer",getOwnerTransferRequestStatus);
 router.post("/:slug/members/owner-transfer",requestOwnerTransfer);
+
+// Dashboard ของร้าน — สถิติ Virtual Try-On เฉพาะร้านตัวเอง
+router.get(
+  "/:slug/dashboard",
+  adminAuthMiddleware,
+  requireBrandAccess,
+  getShopDashboardController
+);
 
 // Store Settings — ดู/แก้ข้อมูลร้าน (ชื่อ, โลโก้, รายละเอียด, social ฯลฯ)
 // วางไว้ท้ายสุดเพื่อไม่ให้ /:slug กลืน /register, /size-chart-templates, /product-options

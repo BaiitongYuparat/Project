@@ -15,8 +15,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   dress: "เดรส",
   skirt: "กระโปรง",
   set: "ชุด",
-  accessories: "กระเป๋า",
-  accessory: "กระเป๋า",
+  accessories: "เครื่องประดับ",
+
 };
 
 export const categoryLabel = (value?: string | null) =>

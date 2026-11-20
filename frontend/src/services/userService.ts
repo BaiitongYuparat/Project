@@ -14,6 +14,11 @@ export const updateMe = async ( data: Partial<Pick<User, "email" | "name" | "gen
 };
 
 
+// ลบบัญชีของตัวเอง พร้อมข้อมูลทั้งหมด (backend ล้าง cookie ให้ด้วย)
+export const deleteMyAccount = async (): Promise<void> => {
+  await api.delete("/user");
+};
+
 export const deleteUserById = async (id: string): Promise<void> => {
   await api.delete(`/user/${id}`);
 }
