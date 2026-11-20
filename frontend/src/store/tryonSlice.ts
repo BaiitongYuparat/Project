@@ -68,8 +68,13 @@ const tryonSlice = createSlice({
       const { userId, lookId } = action.payload;
       state.looksByUser[userId] = (state.looksByUser[userId] ?? []).filter((l) => l.id !== lookId);
     },
+    /** ล้างข้อมูล try-on ทั้งหมดของ user (ใช้ตอนลบบัญชี) */
+    clearUserData: (state, action: PayloadAction<string>) => {
+      delete state.looksByUser[action.payload];
+      if (state.session?.userId === action.payload) state.session = null;
+    },
   },
 });
 
-export const { saveSession, clearSession, addLook, removeLook } = tryonSlice.actions;
+export const { saveSession, clearSession, addLook, removeLook, clearUserData } = tryonSlice.actions;
 export default tryonSlice.reducer;

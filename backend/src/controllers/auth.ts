@@ -10,7 +10,7 @@ const allowedAudiences = [
   process.env.GOOGLE_CLIENT_ID_APP,
 ].filter(Boolean) as string[];
 
-const cookieOptions = {
+export const cookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax" as const,

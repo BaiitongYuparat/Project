@@ -1,5 +1,7 @@
 import { Request, Response } from "express"
 import { prisma } from "../../lib/prisma"
+import { purgeUser } from "../services/userDeletionService"
+import { cookieOptions } from "./auth"
 
 // เรียกผ่าน /admin (adminRoutes) — Super Admin เท่านั้น
 // แสดง user ทุกคนในตาราง User (บัญชี admin/เจ้าของร้านอยู่ตาราง Admin แยกอยู่แล้ว จึงไม่ต้องกรอง)
@@ -58,6 +60,23 @@ export const deleteUser = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to delete user" });
   }
 };
+
+// DELETE /user — shopper ลบบัญชีของตัวเอง (id จาก token เท่านั้น) พร้อมข้อมูลทั้งหมด
+export const deleteMe = async (req: Request, res: Response) => {
+  const id = req.user!.id as string
+  try {
+    const user = await prisma.user.findUnique({ where: { id } })
+    if (!user) {
+      return res.status(404).json({ error: "User not found" })
+    }
+    await purgeUser(id)
+    res.clearCookie("token", cookieOptions)
+    res.json({ message: "Account deleted successfully" })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: "Failed to delete account" })
+  }
+}
 
 export const updateUser = async (req: Request, res: Response) => {
     const id = req.user!.id as string
